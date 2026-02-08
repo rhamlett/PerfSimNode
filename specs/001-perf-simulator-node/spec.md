@@ -47,8 +47,9 @@ Azure metrics).
 3. **Given** the simulator is running, **When** I request health status, **Then** I receive
    confirmation that the service is operational along with basic system metrics.
 
-4. **Given** a CPU simulation is running, **When** I attempt to start another CPU simulation,
-   **Then** I receive a clear message about the existing active simulation.
+4. **Given** a CPU simulation is running, **When** I start another CPU simulation,
+   **Then** both simulations run concurrently (stacking) and the response confirms the new
+   simulation was added.
 
 ---
 
@@ -152,9 +153,6 @@ process restart behavior.
 
 3. **Given** the simulator is running, **When** I trigger a crash via memory exhaustion,
    **Then** the process terminates due to out-of-memory condition.
-
-4. **Given** the simulator is running, **When** I trigger a crash via unhandled exception,
-   **Then** the process terminates and a crash can be observed in diagnostic logs.
 
 ---
 

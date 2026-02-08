@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PerfSimNode - Performance Simulator Dashboard</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <header>
+    <h1>PerfSimNode Dashboard</h1>
+    <nav>
+      <a href="/" class="active">Dashboard</a>
+      <a href="/docs.html">Documentation</a>
+    </nav>
+    <div id="connection-status" class="status-disconnected">Disconnected</div>
+  </header>
+
+  <main>
+    <section id="metrics-section">
+      <h2>System Metrics</h2>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <h3>CPU Usage</h3>
+          <div class="metric-value" id="cpu-value">--</div>
+          <div class="metric-unit">%</div>
+          <canvas id="cpu-chart"></canvas>
+        </div>
+        <div class="metric-card">
+          <h3>Memory (Heap)</h3>
+          <div class="metric-value" id="memory-value">--</div>
+          <div class="metric-unit">MB</div>
+          <canvas id="memory-chart"></canvas>
+        </div>
+        <div class="metric-card">
+          <h3>Event Loop Lag</h3>
+          <div class="metric-value" id="eventloop-value">--</div>
+          <div class="metric-unit">ms</div>
+          <canvas id="eventloop-chart"></canvas>
+        </div>
+        <div class="metric-card">
+          <h3>RSS Memory</h3>
+          <div class="metric-value" id="rss-value">--</div>
+          <div class="metric-unit">MB</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="simulations-section">
+      <h2>Simulation Controls</h2>
+      
+      <div class="simulation-controls">
+        <!-- CPU Stress -->
+        <div class="control-card">
+          <h3>CPU Stress</h3>
+          <form id="cpu-form">
+            <label>
+              Target Load (%)
+              <input type="number" name="targetLoadPercent" value="80" min="1" max="100">
+            </label>
+            <label>
+              Duration (seconds)
+              <input type="number" name="durationSeconds" value="30" min="1" max="300">
+            </label>
+            <button type="submit" class="btn-start">Start CPU Stress</button>
+          </form>
+          <div id="cpu-active" class="active-simulations"></div>
+        </div>
+
+        <!-- Memory Pressure -->
+        <div class="control-card">
+          <h3>Memory Pressure</h3>
+          <form id="memory-form">
+            <label>
+              Size (MB)
+              <input type="number" name="sizeMb" value="100" min="1" max="500">
+            </label>
+            <button type="submit" class="btn-start">Allocate Memory</button>
+          </form>
+          <div id="memory-active" class="active-simulations"></div>
+        </div>
+
+        <!-- Event Loop Blocking -->
+        <div class="control-card">
+          <h3>Event Loop Blocking</h3>
+          <form id="eventloop-form">
+            <label>
+              Duration (seconds)
+              <input type="number" name="durationSeconds" value="5" min="1" max="300">
+            </label>
+            <button type="submit" class="btn-warning">Block Event Loop</button>
+          </form>
+          <p class="warning-text">⚠️ Server will be unresponsive during blocking</p>
+        </div>
+
+        <!-- Slow Request -->
+        <div class="control-card">
+          <h3>Slow Request</h3>
+          <form id="slow-form">
+            <label>
+              Delay (seconds)
+              <input type="number" name="delaySeconds" value="5" min="1" max="300">
+            </label>
+            <button type="submit" class="btn-start">Send Slow Request</button>
+          </form>
+          <div id="slow-status"></div>
+        </div>
+
+        <!-- Crash Simulation -->
+        <div class="control-card">
+          <h3>Crash Simulation</h3>
+          <p class="warning-text">⚠️ These will terminate the process!</p>
+          <button id="crash-exception" class="btn-danger">Crash (Exception)</button>
+          <button id="crash-memory" class="btn-danger">Crash (OOM)</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="events-section">
+      <h2>Event Log</h2>
+      <div id="event-log" class="event-log"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>PerfSimNode v1.0.0 | Educational Tool for Azure Diagnostics Training</p>
+  </footer>
+
+  <script src="/js/socket-client.js"></script>
+  <script src="/js/charts.js"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,324 @@
+/* PerfSimNode Dashboard Styles */
+
+:root {
+  --primary-color: #0078d4;
+  --success-color: #107c10;
+  --warning-color: #ff8c00;
+  --danger-color: #d83b01;
+  --background-color: #f3f2f1;
+  --card-background: #ffffff;
+  --text-color: #323130;
+  --text-secondary: #605e5c;
+  --border-color: #edebe9;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.5;
+}
+
+/* Header */
+header {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+header nav {
+  display: flex;
+  gap: 1rem;
+}
+
+header nav a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+header nav a:hover,
+header nav a.active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+#connection-status {
+  margin-left: auto;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.status-connected {
+  background-color: var(--success-color);
+}
+
+.status-disconnected {
+  background-color: var(--danger-color);
+}
+
+.status-reconnecting {
+  background-color: var(--warning-color);
+}
+
+/* Main Content */
+main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+section {
+  margin-bottom: 2rem;
+}
+
+section h2 {
+  margin-bottom: 1rem;
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+/* Metrics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.metric-card {
+  background-color: var(--card-background);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.metric-card h3 {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.metric-value {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.metric-unit {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.metric-card canvas {
+  max-height: 100px;
+  width: 100%;
+}
+
+/* Simulation Controls */
+.simulation-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.control-card {
+  background-color: var(--card-background);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.control-card h3 {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  color: var(--text-color);
+}
+
+.control-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.control-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.control-card input {
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.control-card input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+}
+
+/* Buttons */
+button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-start {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.btn-start:hover {
+  background-color: #106ebe;
+}
+
+.btn-stop {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.btn-stop:hover {
+  background-color: #b83200;
+}
+
+.btn-warning {
+  background-color: var(--warning-color);
+  color: white;
+}
+
+.btn-warning:hover {
+  background-color: #d47600;
+}
+
+.btn-danger {
+  background-color: var(--danger-color);
+  color: white;
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
+.btn-danger:hover {
+  background-color: #b83200;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.warning-text {
+  font-size: 0.75rem;
+  color: var(--warning-color);
+  margin-top: 0.5rem;
+}
+
+/* Active Simulations */
+.active-simulations {
+  margin-top: 1rem;
+}
+
+.active-simulation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: var(--background-color);
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.active-simulation .sim-id {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* Event Log */
+.event-log {
+  background-color: var(--card-background);
+  border-radius: 8px;
+  padding: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.8125rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.event-entry {
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.event-entry:last-child {
+  border-bottom: none;
+}
+
+.event-entry.info {
+  color: var(--text-color);
+}
+
+.event-entry.warn {
+  color: var(--warning-color);
+}
+
+.event-entry.error {
+  color: var(--danger-color);
+}
+
+.event-time {
+  color: var(--text-secondary);
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  header {
+    flex-wrap: wrap;
+  }
+
+  header nav {
+    order: 3;
+    width: 100%;
+    margin-top: 1rem;
+  }
+
+  main {
+    padding: 1rem;
+  }
+}

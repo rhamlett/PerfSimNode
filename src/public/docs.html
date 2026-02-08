@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PerfSimNode - Documentation</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .docs-container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .docs-nav {
+      background-color: var(--card-background);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .docs-nav ul {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .docs-nav a {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background-color: var(--background-color);
+      border-radius: 4px;
+      text-decoration: none;
+      color: var(--text-color);
+    }
+    .docs-nav a:hover {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    .docs-section {
+      background-color: var(--card-background);
+      border-radius: 8px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    .docs-section h2 {
+      color: var(--primary-color);
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .docs-section h3 {
+      color: var(--text-color);
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .docs-section code {
+      background-color: var(--background-color);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-family: 'Consolas', monospace;
+    }
+    .docs-section pre {
+      background-color: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 1rem 0;
+    }
+    .docs-section pre code {
+      background: none;
+      padding: 0;
+    }
+    .warning-box {
+      background-color: #fff4ce;
+      border-left: 4px solid var(--warning-color);
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    .info-box {
+      background-color: #e6f3ff;
+      border-left: 4px solid var(--primary-color);
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+    }
+    th, td {
+      border: 1px solid var(--border-color);
+      padding: 0.5rem;
+      text-align: left;
+    }
+    th {
+      background-color: var(--background-color);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PerfSimNode Documentation</h1>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/docs.html" class="active">Documentation</a>
+    </nav>
+  </header>
+
+  <main class="docs-container">
+    <nav class="docs-nav">
+      <ul>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#cpu-stress">CPU Stress</a></li>
+        <li><a href="#memory-pressure">Memory Pressure</a></li>
+        <li><a href="#eventloop-blocking">Event Loop Blocking</a></li>
+        <li><a href="#slow-requests">Slow Requests</a></li>
+        <li><a href="#crash-simulation">Crash Simulation</a></li>
+        <li><a href="#azure-diagnostics">Azure Diagnostics</a></li>
+        <li><a href="#linux-tools">Linux Tools</a></li>
+        <li><a href="#api-reference">API Reference</a></li>
+      </ul>
+    </nav>
+
+    <section id="overview" class="docs-section">
+      <h2>Overview</h2>
+      <p>PerfSimNode is an educational tool designed to help Azure support engineers practice diagnosing common Node.js performance problems. It intentionally generates controllable performance issues that mimic real-world scenarios.</p>
+      
+      <h3>Features</h3>
+      <ul>
+        <li><strong>CPU Stress</strong> - Generate high CPU usage at configurable percentages</li>
+        <li><strong>Memory Pressure</strong> - Allocate and retain memory to simulate leaks</li>
+        <li><strong>Event Loop Blocking</strong> - Block the Node.js event loop with synchronous operations</li>
+        <li><strong>Slow Requests</strong> - Simulate slow HTTP responses</li>
+        <li><strong>Crash Simulation</strong> - Trigger unhandled exceptions or OOM conditions</li>
+      </ul>
+
+      <h3>Architecture</h3>
+      <p>The application runs as a single Node.js process with:</p>
+      <ul>
+        <li>Express.js HTTP server serving REST API and static dashboard</li>
+        <li>Socket.IO for real-time metrics broadcasting</li>
+        <li>In-memory state (no persistence)</li>
+      </ul>
+    </section>
+
+    <section id="cpu-stress" class="docs-section">
+      <h2>CPU Stress Simulation</h2>
+      <p>Generates high CPU usage by performing cryptographic operations (PBKDF2) in a controlled loop.</p>
+
+      <h3>How It Works</h3>
+      <p>The simulation uses <code>crypto.pbkdf2Sync()</code> to perform CPU-intensive password hashing. The load percentage is achieved by burning CPU for a portion of each 100ms interval.</p>
+
+      <h3>Usage</h3>
+      <pre><code>POST /api/simulations/cpu
+Content-Type: application/json
+
+{
+  "targetLoadPercent": 80,
+  "durationSeconds": 30
+}</code></pre>
+
+      <h3>Parameters</h3>
+      <table>
+        <tr><th>Parameter</th><th>Range</th><th>Description</th></tr>
+        <tr><td>targetLoadPercent</td><td>1-100</td><td>Target CPU usage percentage</td></tr>
+        <tr><td>durationSeconds</td><td>1-300</td><td>How long to run the simulation</td></tr>
+      </table>
+
+      <h3>Diagnostic Tools</h3>
+      <ul>
+        <li><code>top</code> / <code>htop</code> - View CPU usage in real-time</li>
+        <li>Azure App Service Diagnostics → CPU drill-down</li>
+        <li>Application Insights → Performance metrics</li>
+      </ul>
+    </section>
+
+    <section id="memory-pressure" class="docs-section">
+      <h2>Memory Pressure Simulation</h2>
+      <p>Allocates and retains memory buffers to simulate memory leaks or high memory usage.</p>
+
+      <h3>How It Works</h3>
+      <p>Uses <code>Buffer.alloc()</code> to allocate memory that is held until explicitly released. Multiple allocations can coexist (stacking behavior).</p>
+
+      <h3>Usage</h3>
+      <pre><code># Allocate memory
+POST /api/simulations/memory
+{"sizeMb": 100}
+
+# Release memory (use the returned ID)
+DELETE /api/simulations/memory/{id}</code></pre>
+
+      <h3>Parameters</h3>
+      <table>
+        <tr><th>Parameter</th><th>Range</th><th>Description</th></tr>
+        <tr><td>sizeMb</td><td>1-500</td><td>Memory to allocate in megabytes</td></tr>
+      </table>
+
+      <h3>Diagnostic Tools</h3>
+      <ul>
+        <li><code>node --inspect</code> - Take heap snapshots</li>
+        <li>Azure App Service → Memory metrics</li>
+        <li>Application Insights → Memory tracking</li>
+        <li><code>process.memoryUsage()</code> - Programmatic access</li>
+      </ul>
+    </section>
+
+    <section id="eventloop-blocking" class="docs-section">
+      <h2>Event Loop Blocking Simulation</h2>
+      <p>Demonstrates how synchronous operations can block the Node.js event loop, making the server unresponsive.</p>
+
+      <div class="warning-box">
+        <strong>Warning:</strong> During this simulation, the server will be completely unresponsive to all requests. WebSocket connections may timeout.
+      </div>
+
+      <h3>How It Works</h3>
+      <p>Performs synchronous cryptographic operations that block the single-threaded event loop. All pending I/O, timers, and incoming requests are queued until the blocking completes.</p>
+
+      <h3>Usage</h3>
+      <pre><code>POST /api/simulations/eventloop
+{"durationSeconds": 5}</code></pre>
+
+      <h3>Symptoms to Observe</h3>
+      <ul>
+        <li>Event loop lag spikes in metrics</li>
+        <li>Requests timeout or take unexpectedly long</li>
+        <li>WebSocket heartbeats fail</li>
+        <li>Health checks fail during blocking</li>
+      </ul>
+
+      <h3>Diagnostic Tools</h3>
+      <ul>
+        <li><code>perf_hooks.monitorEventLoopDelay()</code> - Measure lag</li>
+        <li>Clinic.js Doctor - Analyze event loop issues</li>
+        <li>0x - Flame graph profiling</li>
+      </ul>
+    </section>
+
+    <section id="slow-requests" class="docs-section">
+      <h2>Slow Request Simulation</h2>
+      <p>Simulates slow HTTP responses using artificial delays.</p>
+
+      <h3>How It Works</h3>
+      <p>Uses <code>setTimeout()</code> to delay the response for a configurable duration. Unlike event loop blocking, this doesn't affect other requests.</p>
+
+      <h3>Usage</h3>
+      <pre><code># Using query parameter (easy browser testing)
+GET /api/simulations/slow?delaySeconds=10</code></pre>
+
+      <h3>Use Cases</h3>
+      <ul>
+        <li>Testing timeout configurations</li>
+        <li>Simulating slow external API calls</li>
+        <li>Load balancer health check testing</li>
+      </ul>
+    </section>
+
+    <section id="crash-simulation" class="docs-section">
+      <h2>Crash Simulation</h2>
+      <p>Intentionally crashes the Node.js process for testing crash recovery.</p>
+
+      <div class="warning-box">
+        <strong>Warning:</strong> These operations will terminate the process. In Azure App Service, the process will restart automatically.
+      </div>
+
+      <h3>Unhandled Exception</h3>
+      <pre><code>POST /api/simulations/crash/exception</code></pre>
+      <p>Throws an unhandled exception that terminates the process.</p>
+
+      <h3>Memory Exhaustion (OOM)</h3>
+      <pre><code>POST /api/simulations/crash/memory</code></pre>
+      <p>Rapidly allocates memory until the process is killed by the OS.</p>
+
+      <h3>Diagnostic Tools</h3>
+      <ul>
+        <li>Azure App Service → Diagnose and Solve Problems</li>
+        <li>Application Insights → Failures</li>
+        <li>Kudu → LogFiles</li>
+      </ul>
+    </section>
+
+    <section id="azure-diagnostics" class="docs-section">
+      <h2>Azure App Service Diagnostics</h2>
+      <p>When deployed to Azure App Service, use these diagnostic tools to analyze performance issues.</p>
+
+      <h3>App Service Diagnostics</h3>
+      <p>Navigate to your App Service in Azure Portal → Diagnose and Solve Problems:</p>
+      <ul>
+        <li><strong>Availability and Performance</strong> - Overview of app health</li>
+        <li><strong>CPU drill-down</strong> - Detailed CPU analysis</li>
+        <li><strong>Memory drill-down</strong> - Memory usage breakdown</li>
+        <li><strong>Web App Slow</strong> - Slow request analysis</li>
+        <li><strong>Web App Restarted</strong> - Crash investigation</li>
+      </ul>
+
+      <h3>Application Insights</h3>
+      <p>If configured, Application Insights provides:</p>
+      <ul>
+        <li>Performance metrics and trends</li>
+        <li>Request traces with timing</li>
+        <li>Exception tracking</li>
+        <li>Custom metrics from your code</li>
+      </ul>
+
+      <h3>Kudu (SCM) Console</h3>
+      <p>Access at <code>https://yourapp.scm.azurewebsites.net</code>:</p>
+      <ul>
+        <li><strong>Process Explorer</strong> - View running processes</li>
+        <li><strong>Debug Console</strong> - SSH into the container</li>
+        <li><strong>LogFiles</strong> - Access application logs</li>
+        <li><strong>WebJobs Dashboard</strong> - Background job status</li>
+      </ul>
+    </section>
+
+    <section id="linux-tools" class="docs-section">
+      <h2>Linux Diagnostic Tools</h2>
+      <p>When running on Linux (including Azure App Service Linux), these tools are available.</p>
+
+      <h3>Process Monitoring</h3>
+      <pre><code># View processes with CPU/memory
+top
+htop  # More user-friendly
+
+# Process tree
+ps aux | grep node
+
+# Memory details
+free -m
+cat /proc/meminfo</code></pre>
+
+      <h3>Node.js Debugging</h3>
+      <pre><code># Start with inspector
+node --inspect dist/index.js
+
+# Take heap snapshot
+kill -USR2 &lt;pid&gt;
+
+# Profile CPU
+node --prof dist/index.js
+node --prof-process isolate-*.log</code></pre>
+
+      <h3>Network Analysis</h3>
+      <pre><code># View open connections
+netstat -an | grep ESTABLISHED
+ss -tuln
+
+# Test endpoint
+curl -w "@curl-format.txt" http://localhost:3000/api/health</code></pre>
+    </section>
+
+    <section id="api-reference" class="docs-section">
+      <h2>API Reference</h2>
+      
+      <h3>Health Check</h3>
+      <pre><code>GET /api/health</code></pre>
+      <p>Returns service status and uptime.</p>
+
+      <h3>Metrics</h3>
+      <pre><code>GET /api/metrics</code></pre>
+      <p>Returns current system metrics (CPU, memory, event loop lag).</p>
+
+      <h3>List Active Simulations</h3>
+      <pre><code>GET /api/simulations</code></pre>
+      <p>Returns all currently active simulations.</p>
+
+      <h3>Admin Status</h3>
+      <pre><code>GET /api/admin/status</code></pre>
+      <p>Returns detailed status including configuration.</p>
+
+      <h3>Event Log</h3>
+      <pre><code>GET /api/admin/events?limit=50</code></pre>
+      <p>Returns recent event log entries.</p>
+
+      <h3>WebSocket Events</h3>
+      <p>Connect via Socket.IO to receive real-time updates:</p>
+      <ul>
+        <li><code>metrics</code> - System metrics (every second)</li>
+        <li><code>event</code> - Simulation events</li>
+        <li><code>simulation</code> - Simulation status changes</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>PerfSimNode v1.0.0 | Educational Tool for Azure Diagnostics Training</p>
+  </footer>
+</body>
+</html>
