@@ -1,50 +1,150 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+  ============================================================================
+  SYNC IMPACT REPORT
+  ============================================================================
+  Version change: N/A → 1.0.0 (initial ratification)
+  
+  Modified principles: N/A (new constitution)
+  
+  Added sections:
+    - Core Principles (4 principles)
+    - Technology Standards
+    - Development Workflow
+    - Governance
+  
+  Removed sections: N/A
+  
+  Templates requiring updates:
+    ✅ plan-template.md - Compatible (Constitution Check section exists)
+    ✅ spec-template.md - Compatible (requirements align with principles)
+    ✅ tasks-template.md - Compatible (test guidance aligns with TDD-encouraged)
+    ✅ agent-file-template.md - Compatible (general structure preserved)
+    ✅ checklist-template.md - Compatible (can reference principles)
+  
+  Follow-up TODOs: None
+  ============================================================================
+-->
+
+# PerfSimNode Constitution
+
+A governing document for the Performance Simulation Node project, establishing core
+development principles and quality standards.
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Code Quality & Readability
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+All code MUST be written with clarity as the primary objective. This project serves
+as a learning resource, and every line of code should be understandable by developers
+who are still building their skills.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+**Requirements**:
+- Code MUST use descriptive, self-documenting names for variables, functions, and classes
+- Functions MUST be focused and do one thing well (Single Responsibility)
+- Complex logic MUST be broken into smaller, named helper functions
+- Magic numbers and strings MUST be extracted to named constants
+- Code MUST follow consistent formatting (enforced by ESLint/Prettier)
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**Rationale**: Readable code reduces bugs, accelerates onboarding, and creates a
+codebase that teaches best practices by example.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### II. Documentation-First
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Every piece of code MUST include documentation that explains the "what" and "why"
+in terms accessible to learning developers.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+**Requirements**:
+- All exported functions, classes, and modules MUST have JSDoc/TSDoc comments
+- Comments MUST explain intent and reasoning, not just restate the code
+- Complex algorithms MUST include explanatory comments with references where applicable
+- README files MUST exist at the project root and for significant modules
+- Code examples SHOULD be included in documentation where helpful
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Rationale**: Documentation is an investment in future maintainability. A learning
+developer should be able to understand any function by reading its comments.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### III. Test-Driven Development (Encouraged)
+
+Testing is strongly encouraged using a test-first approach. While not mandatory,
+TDD SHOULD be the default workflow for new features.
+
+**Requirements**:
+- New features SHOULD have tests written before implementation when practical
+- All public APIs MUST have corresponding test coverage before merge
+- Tests MUST be readable and serve as usage documentation
+- Test descriptions MUST clearly state what behavior is being verified
+- Integration tests SHOULD cover critical user journeys
+
+**Rationale**: Tests provide confidence in correctness and serve as executable
+documentation. Writing tests first encourages better API design.
+
+### IV. Simplicity & Incremental Progress
+
+The simplest solution that meets requirements MUST be preferred. Features MUST
+be built incrementally with working software at each step.
+
+**Requirements**:
+- YAGNI (You Aren't Gonna Need It): Do not add features until they are needed
+- Each commit SHOULD represent a small, focused, working change
+- Abstractions MUST be justified by concrete use cases, not speculation
+- Dependencies MUST be added sparingly and with clear justification
+- Refactoring SHOULD be done in separate commits from feature work
+
+**Rationale**: Simplicity reduces cognitive load, minimizes bugs, and makes the
+codebase approachable for developers at all skill levels.
+
+## Technology Standards
+
+This project uses Node.js with TypeScript as the primary technology stack.
+
+**Stack Requirements**:
+- **Runtime**: Node.js (LTS version recommended)
+- **Language**: TypeScript with strict mode enabled
+- **Package Manager**: npm or yarn (consistent across project)
+- **Linting**: ESLint with recommended TypeScript rules
+- **Formatting**: Prettier with consistent configuration
+- **Testing**: Jest or Vitest for unit/integration tests
+
+**Code Standards**:
+- TypeScript strict mode MUST be enabled (`"strict": true`)
+- No `any` types without explicit justification in comments
+- Prefer `const` over `let`; avoid `var`
+- Use async/await over raw promises where applicable
+- Error handling MUST be explicit and informative
+
+## Development Workflow
+
+All development follows a structured process to maintain quality and traceability.
+
+**Workflow Requirements**:
+- Features MUST be developed on feature branches, not main/master
+- Commits SHOULD follow conventional commit format (type: description)
+- Code reviews SHOULD verify principle compliance before merge
+- Breaking changes MUST be documented in commit messages and changelogs
+- All CI checks MUST pass before merge
+
+**Quality Gates**:
+- Linting and formatting checks MUST pass
+- Existing tests MUST pass (no regressions)
+- New code SHOULD include test coverage
+- Documentation MUST be updated for public API changes
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other development practices for the PerfSimNode
+project. All contributors MUST adhere to these principles.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Amendment Process**:
+- Constitution changes require documented rationale
+- Version increments follow semantic versioning:
+  - MAJOR: Principle removals or incompatible redefinitions
+  - MINOR: New principles or significant guidance additions
+  - PATCH: Clarifications, wording improvements, non-semantic changes
+- All amendments MUST update the Last Amended date
+
+**Compliance**:
+- Code reviews SHOULD verify adherence to Core Principles
+- Complexity exceeding principle guidance MUST be justified in PR description
+- Runtime development guidance maintained in `.specify/` directory
+
+**Version**: 1.0.0 | **Ratified**: 2026-02-08 | **Last Amended**: 2026-02-08

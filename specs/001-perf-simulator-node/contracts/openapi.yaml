@@ -1,0 +1,678 @@
+openapi: 3.0.3
+info:
+  title: PerfSimNode API
+  description: |
+    REST API for the Performance Problem Simulator. This API allows you to trigger
+    various performance simulations (CPU stress, memory pressure, event loop blocking,
+    slow requests, crashes) and observe system metrics.
+    
+    **Note**: This is a training/educational tool. Do not deploy in production environments.
+  version: 1.0.0
+  contact:
+    name: PerfSimNode
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://{appname}.azurewebsites.net
+    description: Azure App Service
+    variables:
+      appname:
+        default: perfsimnode
+        description: Your App Service name
+
+tags:
+  - name: Health
+    description: Service health and status
+  - name: Metrics
+    description: System metrics collection
+  - name: Simulations
+    description: Performance simulation triggers
+  - name: Admin
+    description: Administration and configuration
+
+paths:
+  /api/health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Returns service status and basic metrics to verify the application is running.
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/metrics:
+    get:
+      tags:
+        - Metrics
+      summary: Get current system metrics
+      description: Returns a snapshot of current CPU, memory, event loop, and process metrics.
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Current system metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemMetrics'
+
+  /api/simulations:
+    get:
+      tags:
+        - Simulations
+      summary: List active simulations
+      description: Returns all currently active simulations.
+      operationId: listSimulations
+      responses:
+        '200':
+          description: List of active simulations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  simulations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Simulation'
+                  count:
+                    type: integer
+                    description: Number of active simulations
+
+  /api/simulations/cpu:
+    post:
+      tags:
+        - Simulations
+      summary: Start CPU stress simulation
+      description: |
+        Triggers a CPU stress simulation that consumes CPU cycles for the specified
+        duration at approximately the target load percentage.
+        
+        Multiple CPU simulations can run concurrently (stacking effects).
+      operationId: startCpuStress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CpuStressRequest'
+      responses:
+        '201':
+          description: CPU stress simulation started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationStartedResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/simulations/cpu/{id}:
+    delete:
+      tags:
+        - Simulations
+      summary: Stop CPU stress simulation
+      description: Stops a running CPU stress simulation by ID.
+      operationId: stopCpuStress
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Simulation ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Simulation stopped
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationStoppedResponse'
+        '404':
+          description: Simulation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/simulations/memory:
+    post:
+      tags:
+        - Simulations
+      summary: Start memory pressure simulation
+      description: |
+        Allocates the specified amount of memory and retains it until explicitly released.
+        Returns an allocation ID that can be used to release the memory later.
+        
+        Multiple memory allocations can exist concurrently.
+      operationId: startMemoryPressure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryPressureRequest'
+      responses:
+        '201':
+          description: Memory allocated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationStartedResponse'
+        '400':
+          description: Invalid parameters or allocation would exceed limits
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/simulations/memory/{id}:
+    delete:
+      tags:
+        - Simulations
+      summary: Release memory allocation
+      description: Releases a memory allocation by ID, freeing the memory.
+      operationId: releaseMemory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Allocation ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Memory released
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationStoppedResponse'
+        '404':
+          description: Allocation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/simulations/eventloop:
+    post:
+      tags:
+        - Simulations
+      summary: Start event loop blocking simulation
+      description: |
+        Blocks the Node.js event loop for the specified duration using synchronous operations.
+        
+        **Warning**: During this simulation, the server will be unresponsive to all requests.
+        The response is sent AFTER the blocking completes.
+      operationId: startEventLoopBlocking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventLoopBlockingRequest'
+      responses:
+        '200':
+          description: Event loop blocking completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationCompletedResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/simulations/slow:
+    get:
+      tags:
+        - Simulations
+      summary: Slow request simulation
+      description: |
+        Returns a response after an artificial delay. Use query parameter to specify delay.
+        
+        This endpoint is GET to allow easy testing from browsers.
+      operationId: slowRequest
+      parameters:
+        - name: delaySeconds
+          in: query
+          required: false
+          description: Delay in seconds (1-300, default 5)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 300
+            default: 5
+      responses:
+        '200':
+          description: Response after delay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlowRequestResponse'
+        '400':
+          description: Invalid delay parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/simulations/crash/exception:
+    post:
+      tags:
+        - Simulations
+      summary: Crash via unhandled exception
+      description: |
+        Triggers an unhandled exception that will crash the process.
+        
+        **Warning**: This will terminate the Node.js process. In Azure App Service,
+        the process will be automatically restarted.
+      operationId: crashException
+      responses:
+        '202':
+          description: Crash initiated (response may not be received)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Crash initiated - process will terminate
+
+  /api/simulations/crash/memory:
+    post:
+      tags:
+        - Simulations
+      summary: Crash via memory exhaustion
+      description: |
+        Triggers memory exhaustion by rapidly allocating memory until OOM.
+        
+        **Warning**: This will terminate the Node.js process with an out-of-memory error.
+      operationId: crashMemory
+      responses:
+        '202':
+          description: Memory exhaustion initiated (response may not be received)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Memory exhaustion initiated - process will terminate
+
+  /api/admin/status:
+    get:
+      tags:
+        - Admin
+      summary: Get admin status
+      description: Returns detailed status including configuration and all active simulations.
+      operationId: getAdminStatus
+      responses:
+        '200':
+          description: Admin status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStatusResponse'
+
+  /api/admin/events:
+    get:
+      tags:
+        - Admin
+      summary: Get event log
+      description: Returns recent simulation events from the event log.
+      operationId: getEventLog
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of events to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Event log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EventLogEntry'
+                  count:
+                    type: integer
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [healthy]
+          example: healthy
+        timestamp:
+          type: string
+          format: date-time
+        uptime:
+          type: number
+          description: Process uptime in seconds
+        version:
+          type: string
+          description: Application version
+
+    SystemMetrics:
+      type: object
+      required:
+        - timestamp
+        - cpu
+        - memory
+        - eventLoop
+        - process
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        cpu:
+          $ref: '#/components/schemas/CpuMetrics'
+        memory:
+          $ref: '#/components/schemas/MemoryMetrics'
+        eventLoop:
+          $ref: '#/components/schemas/EventLoopMetrics'
+        process:
+          $ref: '#/components/schemas/ProcessMetrics'
+
+    CpuMetrics:
+      type: object
+      properties:
+        usagePercent:
+          type: number
+          description: CPU usage percentage (0-100)
+        user:
+          type: number
+          description: User CPU time in microseconds
+        system:
+          type: number
+          description: System CPU time in microseconds
+
+    MemoryMetrics:
+      type: object
+      properties:
+        heapUsedMb:
+          type: number
+          description: V8 heap memory used in MB
+        heapTotalMb:
+          type: number
+          description: V8 heap memory allocated in MB
+        rssMb:
+          type: number
+          description: Resident Set Size in MB
+        externalMb:
+          type: number
+          description: External memory (C++ objects) in MB
+
+    EventLoopMetrics:
+      type: object
+      properties:
+        lagMs:
+          type: number
+          description: Current event loop lag in ms
+        lagP99Ms:
+          type: number
+          description: 99th percentile lag in ms
+        minMs:
+          type: number
+          description: Minimum observed lag in ms
+        maxMs:
+          type: number
+          description: Maximum observed lag in ms
+
+    ProcessMetrics:
+      type: object
+      properties:
+        activeHandles:
+          type: integer
+          description: Number of active handles
+        activeRequests:
+          type: integer
+          description: Number of active libuv requests
+        uptime:
+          type: number
+          description: Process uptime in seconds
+
+    Simulation:
+      type: object
+      required:
+        - id
+        - type
+        - status
+        - startedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/SimulationType'
+        parameters:
+          type: object
+          description: Type-specific parameters
+        status:
+          $ref: '#/components/schemas/SimulationStatus'
+        startedAt:
+          type: string
+          format: date-time
+        stoppedAt:
+          type: string
+          format: date-time
+          nullable: true
+        scheduledEndAt:
+          type: string
+          format: date-time
+
+    SimulationType:
+      type: string
+      enum:
+        - CPU_STRESS
+        - MEMORY_PRESSURE
+        - EVENT_LOOP_BLOCKING
+        - SLOW_REQUEST
+        - CRASH_EXCEPTION
+        - CRASH_MEMORY
+
+    SimulationStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - COMPLETED
+        - STOPPED
+        - FAILED
+
+    CpuStressRequest:
+      type: object
+      required:
+        - targetLoadPercent
+        - durationSeconds
+      properties:
+        targetLoadPercent:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Target CPU load percentage
+          example: 80
+        durationSeconds:
+          type: integer
+          minimum: 1
+          maximum: 300
+          description: Duration in seconds
+          example: 30
+
+    MemoryPressureRequest:
+      type: object
+      required:
+        - sizeMb
+      properties:
+        sizeMb:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: Memory to allocate in megabytes
+          example: 100
+
+    EventLoopBlockingRequest:
+      type: object
+      required:
+        - durationSeconds
+      properties:
+        durationSeconds:
+          type: integer
+          minimum: 1
+          maximum: 300
+          description: Duration to block in seconds
+          example: 5
+
+    SimulationStartedResponse:
+      type: object
+      required:
+        - id
+        - type
+        - message
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Simulation ID for tracking/stopping
+        type:
+          $ref: '#/components/schemas/SimulationType'
+        message:
+          type: string
+          example: CPU stress simulation started
+        parameters:
+          type: object
+
+    SimulationStoppedResponse:
+      type: object
+      required:
+        - id
+        - message
+      properties:
+        id:
+          type: string
+          format: uuid
+        message:
+          type: string
+          example: Simulation stopped
+        durationMs:
+          type: integer
+          description: Actual duration before stop
+
+    SimulationCompletedResponse:
+      type: object
+      required:
+        - id
+        - type
+        - message
+        - durationMs
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/SimulationType'
+        message:
+          type: string
+          example: Event loop blocking completed
+        durationMs:
+          type: integer
+          description: Actual duration
+
+    SlowRequestResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Response after 5 second delay
+        delaySeconds:
+          type: integer
+        actualDelayMs:
+          type: integer
+
+    EventLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        level:
+          type: string
+          enum: [info, warn, error]
+        simulationId:
+          type: string
+          format: uuid
+          nullable: true
+        simulationType:
+          $ref: '#/components/schemas/SimulationType'
+        event:
+          type: string
+          description: Event type identifier
+        message:
+          type: string
+        details:
+          type: object
+          nullable: true
+
+    AdminStatusResponse:
+      type: object
+      properties:
+        config:
+          type: object
+          description: Current configuration
+        activeSimulations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Simulation'
+        metrics:
+          $ref: '#/components/schemas/SystemMetrics'
+        connectedClients:
+          type: integer
+          description: Number of WebSocket clients connected
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details
