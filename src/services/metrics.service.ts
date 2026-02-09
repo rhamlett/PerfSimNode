@@ -20,13 +20,22 @@ import { bytesToMb, nsToMs } from '../utils';
 
 /**
  * Detects the container memory limit.
- * Checks Azure App Service env var first, then cgroup files.
+ * Checks environment variables first, then cgroup files.
  * Falls back to os.totalmem() if not in a container.
  * 
  * @returns Memory limit in bytes
  */
 function getContainerMemoryLimit(): number {
-  // Check Azure App Service environment variable first
+  // Check explicit override first (can be set in Azure App Service configuration)
+  const containerMemLimitMb = process.env.CONTAINER_MEMORY_LIMIT_MB;
+  if (containerMemLimitMb) {
+    const limitMb = parseInt(containerMemLimitMb, 10);
+    if (!isNaN(limitMb) && limitMb > 0) {
+      return limitMb * 1024 * 1024;
+    }
+  }
+
+  // Check Azure App Service environment variable
   const websiteMemoryLimitMb = process.env.WEBSITE_MEMORY_LIMIT_MB;
   if (websiteMemoryLimitMb) {
     const limitMb = parseInt(websiteMemoryLimitMb, 10);
@@ -42,7 +51,8 @@ function getContainerMemoryLimit(): number {
       const content = fs.readFileSync(cgroupV2Path, 'utf8').trim();
       if (content !== 'max') {
         const limit = parseInt(content, 10);
-        if (!isNaN(limit) && limit > 0 && limit < os.totalmem()) {
+        // Accept any reasonable limit (not the "unlimited" marker)
+        if (!isNaN(limit) && limit > 0 && limit < 9223372036854771712) {
           return limit;
         }
       }
@@ -58,7 +68,7 @@ function getContainerMemoryLimit(): number {
       const content = fs.readFileSync(cgroupV1Path, 'utf8').trim();
       const limit = parseInt(content, 10);
       // Cgroup v1 returns a very large number (9223372036854771712) when unlimited
-      if (!isNaN(limit) && limit > 0 && limit < os.totalmem()) {
+      if (!isNaN(limit) && limit > 0 && limit < 9223372036854771712) {
         return limit;
       }
     }
