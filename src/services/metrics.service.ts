@@ -18,70 +18,76 @@ import {
 } from '../types';
 import { bytesToMb, nsToMs } from '../utils';
 
+// Marker value used by cgroups when memory is unlimited
+const CGROUP_UNLIMITED = 9223372036854771712;
+
 /**
- * Detects the container memory limit.
- * Checks environment variables first, then cgroup files.
- * Falls back to os.totalmem() if not in a container.
- * 
- * @returns Memory limit in bytes
+ * Reads a cgroup file and returns its numeric value, or null if unavailable.
  */
-function getContainerMemoryLimit(): number {
-  // Check explicit override first (can be set in Azure App Service configuration)
-  const containerMemLimitMb = process.env.CONTAINER_MEMORY_LIMIT_MB;
-  if (containerMemLimitMb) {
-    const limitMb = parseInt(containerMemLimitMb, 10);
-    if (!isNaN(limitMb) && limitMb > 0) {
-      return limitMb * 1024 * 1024;
-    }
-  }
-
-  // Check Azure App Service environment variable
-  const websiteMemoryLimitMb = process.env.WEBSITE_MEMORY_LIMIT_MB;
-  if (websiteMemoryLimitMb) {
-    const limitMb = parseInt(websiteMemoryLimitMb, 10);
-    if (!isNaN(limitMb) && limitMb > 0) {
-      return limitMb * 1024 * 1024;
-    }
-  }
-
-  // Try cgroup v2 (newer systems)
+function readCgroupValue(path: string): number | null {
   try {
-    const cgroupV2Path = '/sys/fs/cgroup/memory.max';
-    if (fs.existsSync(cgroupV2Path)) {
-      const content = fs.readFileSync(cgroupV2Path, 'utf8').trim();
-      if (content !== 'max') {
-        const limit = parseInt(content, 10);
-        // Accept any reasonable limit (not the "unlimited" marker)
-        if (!isNaN(limit) && limit > 0 && limit < 9223372036854771712) {
-          return limit;
-        }
+    if (fs.existsSync(path)) {
+      const content = fs.readFileSync(path, 'utf8').trim();
+      if (content === 'max') return null; // cgroup v2 unlimited marker
+      const value = parseInt(content, 10);
+      if (!isNaN(value) && value > 0 && value < CGROUP_UNLIMITED) {
+        return value;
       }
     }
   } catch {
-    // Ignore errors, fall through to next method
+    // Ignore read errors
   }
-
-  // Try cgroup v1 (older systems, common on Azure)
-  try {
-    const cgroupV1Path = '/sys/fs/cgroup/memory/memory.limit_in_bytes';
-    if (fs.existsSync(cgroupV1Path)) {
-      const content = fs.readFileSync(cgroupV1Path, 'utf8').trim();
-      const limit = parseInt(content, 10);
-      // Cgroup v1 returns a very large number (9223372036854771712) when unlimited
-      if (!isNaN(limit) && limit > 0 && limit < 9223372036854771712) {
-        return limit;
-      }
-    }
-  } catch {
-    // Ignore errors, fall through to default
-  }
-
-  // Fall back to system total memory
-  return os.totalmem();
+  return null;
 }
 
-// Cache the container memory limit (doesn't change during runtime)
-const containerMemoryLimit = getContainerMemoryLimit();
+/**
+ * Detects the container memory limit by checking multiple sources.
+ * Automatically works in Docker, Kubernetes, Azure App Service, etc.
+ * 
+ * @returns Object with limit in bytes and detection source
+ */
+function detectContainerMemoryLimit(): { limit: number; source: string } {
+  const osTotalMem = os.totalmem();
+  
+  // Cgroup v2 paths (modern systems)
+  const cgroupV2Paths = [
+    '/sys/fs/cgroup/memory.max',
+    '/sys/fs/cgroup/memory.high',
+  ];
+  
+  // Cgroup v1 paths (older systems, including many Azure containers)
+  const cgroupV1Paths = [
+    '/sys/fs/cgroup/memory/memory.limit_in_bytes',
+    '/sys/fs/cgroup/memory/memory.soft_limit_in_bytes',
+  ];
+  
+  // Try cgroup v2 first
+  for (const path of cgroupV2Paths) {
+    const value = readCgroupValue(path);
+    if (value !== null) {
+      return { limit: value, source: `cgroup v2: ${path}` };
+    }
+  }
+  
+  // Try cgroup v1
+  for (const path of cgroupV1Paths) {
+    const value = readCgroupValue(path);
+    if (value !== null) {
+      return { limit: value, source: `cgroup v1: ${path}` };
+    }
+  }
+  
+  // Fall back to OS total memory
+  return { limit: osTotalMem, source: 'os.totalmem()' };
+}
+
+// Detect and cache the container memory limit at startup
+const memoryDetection = detectContainerMemoryLimit();
+const containerMemoryLimit = memoryDetection.limit;
+
+// Log detection result on startup
+console.log(`[Metrics] Memory limit detected: ${bytesToMb(containerMemoryLimit).toFixed(0)} MB (source: ${memoryDetection.source})`);
+console.log(`[Metrics] OS reports total: ${bytesToMb(os.totalmem()).toFixed(0)} MB`);
 
 /**
  * Service for collecting system metrics.
