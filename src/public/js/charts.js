@@ -83,6 +83,80 @@ const slowRequestStats = {
   lastLatency: null,
 };
 
+// Latency threshold colors for gradient fill
+const LATENCY_COLORS = {
+  good: { value: 0, color: 'rgba(16, 124, 16' },        // Green - good (<150ms)
+  degraded: { value: 150, color: 'rgba(255, 185, 0' },  // Yellow - degraded (150ms-1s)
+  severe: { value: 1000, color: 'rgba(255, 140, 0' },   // Orange - severe (1s+)
+  critical: { value: 30000, color: 'rgba(209, 52, 56' } // Red - critical (30s+)
+};
+
+/**
+ * Creates a vertical gradient for the latency chart based on threshold values.
+ * The gradient transitions from green (bottom/low latency) to red (top/high latency).
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Object} chartArea - Chart area dimensions
+ * @param {Object} scales - Chart scales
+ * @returns {CanvasGradient} - The gradient fill
+ */
+function createLatencyGradient(ctx, chartArea, scales) {
+  if (!chartArea || !scales.y) return 'rgba(16, 124, 16, 0.2)';
+  
+  const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+  const yMax = scales.y.max || 200;
+  
+  // Add color stops based on where thresholds fall in the current scale
+  // Start with green at the bottom (0ms)
+  gradient.addColorStop(0, `${LATENCY_COLORS.good.color}, 0.3)`);
+  
+  // Calculate position of each threshold within the chart (0 = bottom, 1 = top)
+  const degradedPos = Math.min(LATENCY_COLORS.degraded.value / yMax, 1);
+  const severePos = Math.min(LATENCY_COLORS.severe.value / yMax, 1);
+  const criticalPos = Math.min(LATENCY_COLORS.critical.value / yMax, 1);
+  
+  // Add transitions based on thresholds visible in current scale
+  if (degradedPos < 1) {
+    // Green zone below degraded threshold
+    if (degradedPos > 0.05) {
+      gradient.addColorStop(Math.max(0.01, degradedPos - 0.05), `${LATENCY_COLORS.good.color}, 0.3)`);
+    }
+    gradient.addColorStop(degradedPos, `${LATENCY_COLORS.degraded.color}, 0.4)`);
+  }
+  
+  if (severePos < 1) {
+    gradient.addColorStop(severePos, `${LATENCY_COLORS.severe.color}, 0.5)`);
+  }
+  
+  if (criticalPos < 1) {
+    gradient.addColorStop(criticalPos, `${LATENCY_COLORS.critical.color}, 0.6)`);
+  }
+  
+  // Ensure we end at the top with the appropriate color
+  if (yMax > LATENCY_COLORS.critical.value) {
+    gradient.addColorStop(1, `${LATENCY_COLORS.critical.color}, 0.6)`);
+  } else if (yMax > LATENCY_COLORS.severe.value) {
+    gradient.addColorStop(1, `${LATENCY_COLORS.severe.color}, 0.5)`);
+  } else if (yMax > LATENCY_COLORS.degraded.value) {
+    gradient.addColorStop(1, `${LATENCY_COLORS.degraded.color}, 0.4)`);
+  } else {
+    gradient.addColorStop(1, `${LATENCY_COLORS.good.color}, 0.3)`);
+  }
+  
+  return gradient;
+}
+
+/**
+ * Gets the border color for the latency line based on current max value.
+ * @param {number} maxValue - Maximum latency value in the dataset
+ * @returns {string} - CSS color string
+ */
+function getLatencyBorderColor(maxValue) {
+  if (maxValue > 30000) return '#d13438';  // Critical: red
+  if (maxValue > 1000) return '#ff8c00';   // Severe: orange
+  if (maxValue > 150) return '#ffb900';    // Degraded: yellow
+  return '#107c10';                         // Good: green
+}
+
 // Server responsiveness tracking
 // Probe interval is dynamic: 100ms normally, 5000ms during slow request simulations
 // to avoid noise in Node.js profiling tools (V8 CPU Profiler, Application Insights, perf traces).
@@ -559,8 +633,20 @@ function initCharts() {
           {
             label: 'Latency (ms)',
             data: latencyChartData.values,
-            borderColor: '#107c10',
-            backgroundColor: 'rgba(16, 124, 16, 0.2)',
+            // Dynamic border color based on max latency
+            borderColor: (context) => {
+              const chart = context.chart;
+              const dataset = chart.data.datasets[0];
+              const maxValue = Math.max(...(dataset.data || [0]));
+              return getLatencyBorderColor(maxValue);
+            },
+            // Dynamic gradient fill based on latency thresholds
+            backgroundColor: (context) => {
+              const chart = context.chart;
+              const { ctx, chartArea, scales } = chart;
+              if (!chartArea) return 'rgba(16, 124, 16, 0.2)';
+              return createLatencyGradient(ctx, chartArea, scales);
+            },
             fill: true,
             // Show points for slow request latencies
             pointRadius: (context) => {
@@ -570,7 +656,8 @@ function initCharts() {
             pointBackgroundColor: (context) => {
               const value = context.raw;
               if (value > 30000) return '#d13438'; // Critical: red
-              if (value > 1000) return '#ffb900';  // Slow: orange
+              if (value > 1000) return '#ff8c00';  // Severe: orange
+              if (value > 150) return '#ffb900';   // Degraded: yellow
               return '#107c10';                     // Normal: green
             },
           },
