@@ -709,6 +709,18 @@ function formatLatency(latencyMs) {
 }
 
 /**
+ * Gets the color for a latency value based on thresholds.
+ * @param {number} latencyMs - Latency in milliseconds
+ * @returns {string} CSS color value
+ */
+function getLatencyColor(latencyMs) {
+  if (latencyMs >= 30000) return '#d13438';  // Critical (>30s): Red
+  if (latencyMs >= 1000) return '#ff8c00';   // Severe (>1s): Orange
+  if (latencyMs >= 150) return '#ffb900';    // Degraded (150ms-1s): Yellow
+  return '#17a035';                           // Good (<150ms): Green
+}
+
+/**
  * Updates latency statistics display.
  */
 function updateLatencyDisplay() {
@@ -722,16 +734,19 @@ function updateLatencyDisplay() {
   
   if (currentEl) {
     currentEl.textContent = formatLatency(latencyStats.current);
+    currentEl.style.color = getLatencyColor(latencyStats.current);
   }
   
   if (avgEl && values.length > 0) {
     const avg = values.reduce((a, b) => a + b, 0) / values.length;
     avgEl.textContent = formatLatency(avg);
+    avgEl.style.color = getLatencyColor(avg);
   }
   
   if (maxEl && values.length > 0) {
     const max = Math.max(...values);
     maxEl.textContent = formatLatency(max);
+    maxEl.style.color = getLatencyColor(max);
     // Add warning class if max is high
     if (max > 1000) {
       maxEl.classList.add('warning');
@@ -742,6 +757,8 @@ function updateLatencyDisplay() {
   
   if (criticalEl) {
     criticalEl.textContent = latencyStats.critical.toString();
+    // Green if 0, red if any critical events
+    criticalEl.style.color = latencyStats.critical > 0 ? '#d13438' : '#17a035';
   }
 }
 
