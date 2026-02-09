@@ -633,13 +633,20 @@ function initCharts() {
           {
             label: 'Latency (ms)',
             data: latencyChartData.values,
-            // Dynamic border color based on max latency
-            borderColor: (context) => {
-              const chart = context.chart;
-              const dataset = chart.data.datasets[0];
-              const maxValue = Math.max(...(dataset.data || [0]));
-              return getLatencyBorderColor(maxValue);
+            // Segment-based border color - each line segment colored by its data value
+            segment: {
+              borderColor: (ctx) => {
+                // Use the higher of the two endpoint values for the segment color
+                const p0 = ctx.p0.parsed.y;
+                const p1 = ctx.p1.parsed.y;
+                const value = Math.max(p0, p1);
+                if (value > 30000) return '#d13438';  // Critical: red
+                if (value > 1000) return '#ff8c00';   // Severe: orange
+                if (value > 150) return '#ffb900';    // Degraded: yellow
+                return '#107c10';                      // Good: green
+              },
             },
+            borderColor: '#107c10', // Default/fallback
             // Dynamic gradient fill based on latency thresholds
             backgroundColor: (context) => {
               const chart = context.chart;
