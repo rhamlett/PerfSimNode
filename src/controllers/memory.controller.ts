@@ -8,9 +8,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { MemoryPressureService } from '../services/memory-pressure.service';
-import { SimulationTrackerService } from '../services/simulation-tracker.service';
 import { validateMemoryPressureParams, validateUuid } from '../middleware/validation';
-import { NotFoundError } from '../middleware/error-handler';
 
 /**
  * Express router for memory simulation endpoints.

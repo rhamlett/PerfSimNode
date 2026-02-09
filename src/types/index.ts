@@ -15,7 +15,9 @@ export type SimulationType =
   | 'EVENT_LOOP_BLOCKING'
   | 'SLOW_REQUEST'
   | 'CRASH_EXCEPTION'
-  | 'CRASH_MEMORY';
+  | 'CRASH_MEMORY'
+  | 'CRASH_FAILFAST'
+  | 'CRASH_STACKOVERFLOW';
 
 /**
  * Lifecycle states for a simulation instance.

@@ -30,7 +30,6 @@ class MetricsServiceClass {
   // Real-time heartbeat lag measurement
   // This measures actual time for setImmediate to fire, showing real blocking
   private heartbeatLagMs: number = 0;
-  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     // Initialize event loop delay histogram with 10ms resolution
@@ -58,8 +57,8 @@ class MetricsServiceClass {
       });
     };
     
-    // Measure heartbeat every 100ms
-    this.heartbeatInterval = setInterval(measureHeartbeat, 100);
+    // Measure heartbeat every 100ms (runs forever for this singleton service)
+    setInterval(measureHeartbeat, 100);
     // Initial measurement
     measureHeartbeat();
   }

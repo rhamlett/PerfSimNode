@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "node --expose-gc node_modules/ts-node-dev/lib/bin.js --respawn --transpile-only src/index.ts",
-    "build": "tsc",
+    "build": "tsc && npm run copy-public",
+    "copy-public": "cp -r src/public dist/ || xcopy src\\public dist\\public /E /I /Y",
     "start": "node --expose-gc dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
