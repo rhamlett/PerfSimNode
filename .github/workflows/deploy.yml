@@ -39,16 +39,17 @@ jobs:
 
       - name: Create deployment package
         run: |
-          # Build already copies public files to dist/
-          # Create deployment package - files at root level for Azure
-          cp package.json dist/
-          cp package-lock.json dist/
+          # Create deployment structure with dist folder intact
+          mkdir -p deploy
+          cp package.json deploy/
+          cp package-lock.json deploy/
+          cp -r dist deploy/
           
-          # Install production dependencies in dist folder
-          cd dist
+          # Install production dependencies
+          cd deploy
           npm ci --omit=dev
           
-          # Zip for deployment (from inside dist so files are at root)
+          # Zip for deployment
           zip -r ../deploy.zip .
 
       - name: Login to Azure

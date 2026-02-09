@@ -1,0 +1,9 @@
+<step title="Incoming Request" date="2026-02-09T17:54:02.998" instance="e5c999" url="/api/deployments/latest?deployer=OneDeploy&amp;time=2026-02-09_17-53-57Z" method="GET" type="request" pid="851,1,54" Host="perfsimnode.scm.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_21213a93a7dcce9117f28b3e52cab26154e613e70d8e2e20379aca6a0239cf7e" Authorization="Bea..." Content-Type="application/json; charset=utf-8" Cookie="ARRAffinity=e5c999bcc43d239d25df6593b46f6094cdce9b8adbca3432a3bea5e3fa99bbe4;Path=/;HttpOnly;Secure;Domain=perfsimnode.scm.azurewebsites.net; ARRAffinitySameSite=e5c999bcc43d239d25df6593b46f6094cdce9b8adbca3432a3bea5e3fa99bbe4;Path=/;HttpOnly;SameSite=None;Secure;Domain=perfsimnode.scm.azurewebsites.net" Content-Length="0" X-ARR-LOG-ID="de5da864-3480-4d01-b8ae-49fbb0658310" CLIENT-IP="52.176.35.117:34857" X-SITE-DEPLOYMENT-ID="perfsimnode" WAS-DEFAULT-HOSTNAME="perfsimnode.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/deployments/latest?deployer=OneDeploy&amp;time=2026-02-09_17-53-57Z" X-Client-IP="52.176.35.117" X-Client-Port="34857" >
+  <step title="Cleanup Xml Logs" date="2026-02-09T17:54:03.012" /><!-- duration: 3ms -->
+  <step title="DeploymentService.GetResult" date="2026-02-09T17:54:03.020" >
+    <step title="DeploymentService.GetLatestDeployment" date="2026-02-09T17:54:03.022" >
+      <step title="DeploymentManager.GetResults" date="2026-02-09T17:54:03.025" /><!-- duration: 471ms -->
+    </step><!-- duration: 478ms -->
+  </step><!-- duration: 483ms -->
+  <step title="Outgoing response" date="2026-02-09T17:54:03.506" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 2ms -->
+</step><!-- duration: 512ms -->
