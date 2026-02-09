@@ -15,7 +15,7 @@ Performance Problem Simulator for Node.js - An educational tool for Azure suppor
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/rhamlett/PerfSimNode.git
 cd PerfSimNode
 
 # Install dependencies
@@ -36,6 +36,7 @@ The server starts on `http://localhost:3000` by default.
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/health` | GET | Health check |
+| `/api/health/probe` | GET | Lightweight probe for latency monitoring |
 | `/api/metrics` | GET | Current system metrics |
 | `/api/simulations` | GET | List active simulations |
 | `/api/simulations/cpu` | POST | Start CPU stress |
@@ -98,6 +99,8 @@ The application is designed for Azure App Service Linux:
 2. Enable WebSockets in Configuration → General settings
 3. Deploy via Git, GitHub Actions, or ZIP deploy
 4. Access the dashboard at your App Service URL
+
+See the **Azure Diagnostics Guide** (`/azure-diagnostics.html`) for comprehensive diagnostic workflows, tool usage, and KQL queries.
 
 ## Development
 

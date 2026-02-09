@@ -107,10 +107,10 @@
     <h1>🔥 Performance Problem Simulator - Node 24 on Linux</h1>
     <span id="sku-badge" class="sku-badge">SKU: Local</span>
     <nav>
-      <a href="https://github.com" target="_blank" class="nav-link">🐙 GitHub</a>
+      <a href="https://github.com/rhamlett/PerfSimNode" target="_blank" class="nav-link">🐙 GitHub</a>
       <a href="/azure-diagnostics.html" class="nav-link">☁️ Azure Diagnostics</a>
       <a href="/docs.html" class="nav-link active">📚 Documentation</a>
-      <a href="/" class="btn-panel-toggle">🎮 Controls</a>
+      <a href="/" class="btn-panel-toggle">🎮 Dashboard</a>
     </nav>
   </header>
 
@@ -123,8 +123,7 @@
         <li><a href="#eventloop-blocking">Event Loop Blocking</a></li>
         <li><a href="#slow-requests">Slow Requests</a></li>
         <li><a href="#crash-simulation">Crash Simulation</a></li>
-        <li><a href="#azure-diagnostics">Azure Diagnostics</a></li>
-        <li><a href="#linux-tools">Linux Tools</a></li>
+        <li><a href="#diagnostics">Diagnostics</a></li>
         <li><a href="#api-reference">API Reference</a></li>
       </ul>
     </nav>
@@ -143,12 +142,40 @@
       </ul>
 
       <h3>Architecture</h3>
-      <p>The application runs as a single Node.js process with:</p>
-      <ul>
-        <li>Express.js HTTP server serving REST API and static dashboard</li>
-        <li>Socket.IO for real-time metrics broadcasting</li>
-        <li>In-memory state (no persistence)</li>
-      </ul>
+      <p>The application runs as a single Node.js process with Express.js, Socket.IO for real-time metrics, and in-memory state.</p>
+      <pre><code>src/
+├── controllers/                # API endpoints
+│   ├── admin.controller.ts
+│   ├── cpu.controller.ts
+│   ├── crash.controller.ts
+│   ├── eventloop.controller.ts
+│   ├── health.controller.ts
+│   ├── memory.controller.ts
+│   ├── metrics.controller.ts
+│   └── slow.controller.ts
+│
+├── services/                   # Business logic
+│   ├── cpu-stress.service.ts
+│   ├── crash.service.ts
+│   ├── event-log.service.ts
+│   ├── eventloop-block.service.ts
+│   ├── memory-pressure.service.ts
+│   ├── metrics.service.ts
+│   ├── simulation-tracker.service.ts
+│   └── slow-request.service.ts
+│
+├── middleware/                 # Express middleware
+├── types/                      # TypeScript interfaces
+├── config/                     # Configuration
+│
+└── public/                     # Static dashboard
+    ├── index.html              # Main dashboard
+    ├── docs.html               # Documentation
+    ├── azure-diagnostics.html  # Diagnostics guide
+    └── js/
+        ├── charts.js           # Real-time charts
+        ├── dashboard.js        # UI interactions
+        └── socket-client.js    # WebSocket client</code></pre>
     </section>
 
     <section id="cpu-stress" class="docs-section">
@@ -286,73 +313,23 @@ GET /api/simulations/slow?delaySeconds=10</code></pre>
       </ul>
     </section>
 
-    <section id="azure-diagnostics" class="docs-section">
-      <h2>Azure App Service Diagnostics</h2>
-      <p>When deployed to Azure App Service, use these diagnostic tools to analyze performance issues.</p>
-
-      <h3>App Service Diagnostics</h3>
-      <p>Navigate to your App Service in Azure Portal → Diagnose and Solve Problems:</p>
+    <section id="diagnostics" class="docs-section">
+      <h2>Diagnostics</h2>
+      <p>For comprehensive guidance on diagnosing Node.js performance issues, see the dedicated <a href="/azure-diagnostics.html"><strong>Azure Diagnostics Guide</strong></a>.</p>
+      
+      <h3>What's Covered</h3>
       <ul>
-        <li><strong>Availability and Performance</strong> - Overview of app health</li>
-        <li><strong>CPU drill-down</strong> - Detailed CPU analysis</li>
-        <li><strong>Memory drill-down</strong> - Memory usage breakdown</li>
-        <li><strong>Web App Slow</strong> - Slow request analysis</li>
-        <li><strong>Web App Restarted</strong> - Crash investigation</li>
+        <li><strong>Understanding Metrics</strong> - What CPU, memory, event loop lag, and latency metrics mean</li>
+        <li><strong>Node.js vs .NET</strong> - Key differences in concurrency models and diagnostic approaches</li>
+        <li><strong>Diagnostic Scenarios</strong> - Step-by-step walkthroughs for each simulation type</li>
+        <li><strong>Azure Tools</strong> - App Service Diagnostics, Application Insights, Kudu console</li>
+        <li><strong>Linux Tools</strong> - Process monitoring, Node.js debugging, network analysis</li>
+        <li><strong>AppLens Queries</strong> - Ready-to-use KQL queries for Azure diagnostics</li>
       </ul>
-
-      <h3>Application Insights</h3>
-      <p>If configured, Application Insights provides:</p>
-      <ul>
-        <li>Performance metrics and trends</li>
-        <li>Request traces with timing</li>
-        <li>Exception tracking</li>
-        <li>Custom metrics from your code</li>
-      </ul>
-
-      <h3>Kudu (SCM) Console</h3>
-      <p>Access at <code>https://yourapp.scm.azurewebsites.net</code>:</p>
-      <ul>
-        <li><strong>Process Explorer</strong> - View running processes</li>
-        <li><strong>Debug Console</strong> - SSH into the container</li>
-        <li><strong>LogFiles</strong> - Access application logs</li>
-        <li><strong>WebJobs Dashboard</strong> - Background job status</li>
-      </ul>
-    </section>
-
-    <section id="linux-tools" class="docs-section">
-      <h2>Linux Diagnostic Tools</h2>
-      <p>When running on Linux (including Azure App Service Linux), these tools are available.</p>
-
-      <h3>Process Monitoring</h3>
-      <pre><code># View processes with CPU/memory
-top
-htop  # More user-friendly
-
-# Process tree
-ps aux | grep node
-
-# Memory details
-free -m
-cat /proc/meminfo</code></pre>
-
-      <h3>Node.js Debugging</h3>
-      <pre><code># Start with inspector
-node --inspect dist/index.js
-
-# Take heap snapshot
-kill -USR2 &lt;pid&gt;
-
-# Profile CPU
-node --prof dist/index.js
-node --prof-process isolate-*.log</code></pre>
-
-      <h3>Network Analysis</h3>
-      <pre><code># View open connections
-netstat -an | grep ESTABLISHED
-ss -tuln
-
-# Test endpoint
-curl -w "@curl-format.txt" http://localhost:3000/api/health</code></pre>
+      
+      <div class="info-box">
+        <strong>💡 Tip:</strong> Open the <a href="/azure-diagnostics.html">Azure Diagnostics Guide</a> in a separate tab while running simulations to follow along with the diagnostic workflows.
+      </div>
     </section>
 
     <section id="api-reference" class="docs-section">
