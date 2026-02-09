@@ -8,6 +8,7 @@
 
 import { monitorEventLoopDelay, IntervalHistogram } from 'perf_hooks';
 import * as os from 'os';
+import * as fs from 'fs';
 import {
   SystemMetrics,
   CpuMetrics,
@@ -16,6 +17,61 @@ import {
   ProcessMetrics,
 } from '../types';
 import { bytesToMb, nsToMs } from '../utils';
+
+/**
+ * Detects the container memory limit.
+ * Checks Azure App Service env var first, then cgroup files.
+ * Falls back to os.totalmem() if not in a container.
+ * 
+ * @returns Memory limit in bytes
+ */
+function getContainerMemoryLimit(): number {
+  // Check Azure App Service environment variable first
+  const websiteMemoryLimitMb = process.env.WEBSITE_MEMORY_LIMIT_MB;
+  if (websiteMemoryLimitMb) {
+    const limitMb = parseInt(websiteMemoryLimitMb, 10);
+    if (!isNaN(limitMb) && limitMb > 0) {
+      return limitMb * 1024 * 1024;
+    }
+  }
+
+  // Try cgroup v2 (newer systems)
+  try {
+    const cgroupV2Path = '/sys/fs/cgroup/memory.max';
+    if (fs.existsSync(cgroupV2Path)) {
+      const content = fs.readFileSync(cgroupV2Path, 'utf8').trim();
+      if (content !== 'max') {
+        const limit = parseInt(content, 10);
+        if (!isNaN(limit) && limit > 0 && limit < os.totalmem()) {
+          return limit;
+        }
+      }
+    }
+  } catch {
+    // Ignore errors, fall through to next method
+  }
+
+  // Try cgroup v1 (older systems, common on Azure)
+  try {
+    const cgroupV1Path = '/sys/fs/cgroup/memory/memory.limit_in_bytes';
+    if (fs.existsSync(cgroupV1Path)) {
+      const content = fs.readFileSync(cgroupV1Path, 'utf8').trim();
+      const limit = parseInt(content, 10);
+      // Cgroup v1 returns a very large number (9223372036854771712) when unlimited
+      if (!isNaN(limit) && limit > 0 && limit < os.totalmem()) {
+        return limit;
+      }
+    }
+  } catch {
+    // Ignore errors, fall through to default
+  }
+
+  // Fall back to system total memory
+  return os.totalmem();
+}
+
+// Cache the container memory limit (doesn't change during runtime)
+const containerMemoryLimit = getContainerMemoryLimit();
 
 /**
  * Service for collecting system metrics.
@@ -103,7 +159,7 @@ class MetricsServiceClass {
       heapTotalMb: bytesToMb(memUsage.heapTotal),
       rssMb: bytesToMb(memUsage.rss),
       externalMb: bytesToMb(memUsage.external),
-      totalSystemMb: bytesToMb(os.totalmem()),
+      totalSystemMb: bytesToMb(containerMemoryLimit),
     };
   }
 
