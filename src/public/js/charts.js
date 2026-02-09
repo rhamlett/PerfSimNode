@@ -31,15 +31,15 @@ const chartData = {
   rss: [],
 };
 
-// Separate data store for latency chart (60 seconds at 1s intervals)
-// We throttle probe updates to 1 per second to match this
-const maxLatencyDataPoints = 60;
+// Separate data store for latency chart (60 seconds at 100ms intervals)
+// We throttle probe updates to 10 per second to match this
+const maxLatencyDataPoints = 600;
 const latencyChartData = {
   labels: [],
   values: [],
 };
 let lastLatencyChartUpdate = 0;
-const LATENCY_CHART_UPDATE_INTERVAL_MS = 1000; // Update chart once per second
+const LATENCY_CHART_UPDATE_INTERVAL_MS = 100; // Update chart 10x per second
 
 // Latency tracking - uses time-based retention (last 60 seconds)
 // Each entry is { time: timestamp, value: latencyMs }
