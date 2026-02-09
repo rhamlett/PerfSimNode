@@ -759,10 +759,19 @@ async function triggerCrash(crashType) {
     exception: '/api/simulations/crash/exception',
     oom: '/api/simulations/crash/memory'
   };
+
+  // Crash types that may not auto-recover on Azure App Service
+  const requiresAzureRestart = ['stackoverflow', 'oom'];
   
   const description = crashDescriptions[crashType] || crashType;
   
-  if (!confirm(`This will TERMINATE the server via ${description}!\n\nAre you sure?`)) {
+  let confirmMessage = `This will TERMINATE the server via ${description}!\n\nAre you sure?`;
+  
+  if (requiresAzureRestart.includes(crashType)) {
+    confirmMessage = `This will TERMINATE the server via ${description}!\n\n⚠️ WARNING: On Azure App Service, this crash type may not auto-recover.\nManual restart from Azure Portal may be required.\n\nAre you sure?`;
+  }
+  
+  if (!confirm(confirmMessage)) {
     return;
   }
 
