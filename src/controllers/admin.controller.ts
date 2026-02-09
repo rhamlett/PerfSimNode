@@ -50,7 +50,7 @@ adminRouter.get('/simulations', (_req: Request, res: Response) => {
  * @route GET /api/admin/status
  * @returns {AdminStatusResponse} Detailed admin status
  */
-adminRouter.get('/status', (_req: Request, res: Response) => {
+adminRouter.get('/admin/status', (_req: Request, res: Response) => {
   const simulations = SimulationTrackerService.getActiveSimulations();
   const metrics = MetricsService.getMetrics();
 
@@ -91,7 +91,7 @@ adminRouter.get('/status', (_req: Request, res: Response) => {
  * @query {number} limit - Maximum number of events to return (default: 50, max: 100)
  * @returns {Object} Recent event log entries
  */
-adminRouter.get('/events', (req: Request, res: Response) => {
+adminRouter.get('/admin/events', (req: Request, res: Response) => {
   const limit = validateOptionalInteger(req.query.limit, 'limit', 1, 100, 50);
   const events = EventLogService.getRecentEntries(limit);
 

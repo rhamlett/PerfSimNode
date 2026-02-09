@@ -63,7 +63,3 @@ jobs:
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           package: deploy.zip
-
-      - name: Logout from Azure
-        run: az logout
-        if: always()

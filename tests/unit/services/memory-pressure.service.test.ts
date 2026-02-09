@@ -51,7 +51,7 @@ describe('MemoryPressureService', () => {
       const released = MemoryPressureService.release(simulation.id);
 
       expect(released).toBeDefined();
-      expect(released?.status).toBe('STOPPED');
+      expect(released?.simulation?.status).toBe('STOPPED');
       expect(MemoryPressureService.getTotalAllocatedMb()).toBe(0);
     });
 
