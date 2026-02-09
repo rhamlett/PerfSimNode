@@ -42,10 +42,12 @@ describe('MetricsService', () => {
       const metrics = MetricsService.getMetrics();
 
       expect(metrics.eventLoop).toHaveProperty('lagMs');
+      expect(metrics.eventLoop).toHaveProperty('heartbeatLagMs');
       expect(metrics.eventLoop).toHaveProperty('lagP99Ms');
       expect(metrics.eventLoop).toHaveProperty('minMs');
       expect(metrics.eventLoop).toHaveProperty('maxMs');
       expect(typeof metrics.eventLoop.lagMs).toBe('number');
+      expect(typeof metrics.eventLoop.heartbeatLagMs).toBe('number');
     });
 
     it('should return valid process metrics', () => {

@@ -24,7 +24,7 @@ export const cpuRouter = Router();
  *
  * @route POST /api/simulations/cpu
  * @body {number} targetLoadPercent - Target CPU load percentage (1-100)
- * @body {number} durationSeconds - Duration in seconds (1-300)
+ * @body {number} durationSeconds - Duration in seconds (no limit)
  * @returns {SimulationResponse} Created simulation details
  */
 cpuRouter.post('/', (req: Request, res: Response, next: NextFunction) => {

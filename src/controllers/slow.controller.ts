@@ -24,7 +24,7 @@ export const slowRouter = Router();
  * This endpoint uses GET to allow easy testing from browsers.
  *
  * @route GET /api/simulations/slow
- * @query {number} delaySeconds - Delay in seconds (1-300, default: 5)
+ * @query {number} delaySeconds - Delay in seconds (no limit, default: 5)
  * @returns {SlowRequestResponse} Response after delay
  */
 slowRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {

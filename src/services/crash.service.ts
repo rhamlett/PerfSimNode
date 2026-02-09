@@ -15,6 +15,41 @@ import { EventLogService } from './event-log.service';
  */
 class CrashServiceClass {
   /**
+   * Crashes the process via FailFast (process.abort / SIGABRT).
+   *
+   * WARNING: This will immediately terminate the Node.js process.
+   */
+  crashWithFailFast(): void {
+    EventLogService.error('SIMULATION_STARTED', 'Crash simulation initiated: FailFast (SIGABRT)', {
+      simulationType: 'CRASH_FAILFAST',
+      details: { method: 'process.abort()' },
+    });
+
+    // Use setImmediate to ensure the log is written before crashing
+    setImmediate(() => {
+      process.abort();
+    });
+  }
+
+  /**
+   * Crashes the process via stack overflow (infinite recursion).
+   *
+   * WARNING: This will terminate the Node.js process with a stack overflow.
+   */
+  crashWithStackOverflow(): void {
+    EventLogService.error('SIMULATION_STARTED', 'Crash simulation initiated: stack overflow', {
+      simulationType: 'CRASH_STACKOVERFLOW',
+      details: { method: 'infinite recursion' },
+    });
+
+    // Use setImmediate to ensure the log is written before crashing
+    setImmediate(() => {
+      const recurse = (): void => recurse();
+      recurse();
+    });
+  }
+
+  /**
    * Crashes the process via an unhandled exception.
    *
    * WARNING: This will terminate the Node.js process.

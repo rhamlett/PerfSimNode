@@ -4,17 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PerfSimNode - Documentation</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/css/styles.css">
   <style>
     .docs-container {
       max-width: 900px;
       margin: 0 auto;
+      padding: 1rem;
     }
     .docs-nav {
-      background-color: var(--card-background);
-      border-radius: 8px;
+      background-color: var(--color-card);
+      border-radius: var(--radius-md);
       padding: 1.5rem;
       margin-bottom: 2rem;
+      box-shadow: var(--shadow-sm);
     }
     .docs-nav ul {
       list-style: none;
@@ -25,43 +28,44 @@
     .docs-nav a {
       display: inline-block;
       padding: 0.5rem 1rem;
-      background-color: var(--background-color);
-      border-radius: 4px;
+      background-color: var(--color-bg);
+      border-radius: var(--radius-sm);
       text-decoration: none;
-      color: var(--text-color);
+      color: var(--color-text);
     }
     .docs-nav a:hover {
-      background-color: var(--primary-color);
+      background-color: var(--color-primary);
       color: white;
     }
     .docs-section {
-      background-color: var(--card-background);
-      border-radius: 8px;
+      background-color: var(--color-card);
+      border-radius: var(--radius-md);
       padding: 2rem;
       margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-sm);
     }
     .docs-section h2 {
-      color: var(--primary-color);
-      border-bottom: 2px solid var(--border-color);
+      color: var(--color-primary);
+      border-bottom: 2px solid #edebe9;
       padding-bottom: 0.5rem;
       margin-bottom: 1rem;
     }
     .docs-section h3 {
-      color: var(--text-color);
+      color: var(--color-text);
       margin-top: 1.5rem;
       margin-bottom: 0.5rem;
     }
     .docs-section code {
-      background-color: var(--background-color);
+      background-color: var(--color-bg);
       padding: 0.2rem 0.4rem;
-      border-radius: 4px;
-      font-family: 'Consolas', monospace;
+      border-radius: var(--radius-sm);
+      font-family: 'Cascadia Code', 'Consolas', monospace;
     }
     .docs-section pre {
       background-color: #1e1e1e;
       color: #d4d4d4;
       padding: 1rem;
-      border-radius: 4px;
+      border-radius: var(--radius-sm);
       overflow-x: auto;
       margin: 1rem 0;
     }
@@ -71,15 +75,17 @@
     }
     .warning-box {
       background-color: #fff4ce;
-      border-left: 4px solid var(--warning-color);
+      border-left: 4px solid var(--color-warning);
       padding: 1rem;
       margin: 1rem 0;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     }
     .info-box {
       background-color: #e6f3ff;
-      border-left: 4px solid var(--primary-color);
+      border-left: 4px solid var(--color-primary);
       padding: 1rem;
       margin: 1rem 0;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     }
     table {
       width: 100%;
@@ -87,21 +93,24 @@
       margin: 1rem 0;
     }
     th, td {
-      border: 1px solid var(--border-color);
+      border: 1px solid #edebe9;
       padding: 0.5rem;
       text-align: left;
     }
     th {
-      background-color: var(--background-color);
+      background-color: var(--color-bg);
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>PerfSimNode Documentation</h1>
+    <h1>🔥 Performance Problem Simulator - Node 24 on Linux</h1>
+    <span id="sku-badge" class="sku-badge">SKU: Local</span>
     <nav>
-      <a href="/">Dashboard</a>
-      <a href="/docs.html" class="active">Documentation</a>
+      <a href="https://github.com" target="_blank" class="nav-link">🐙 GitHub</a>
+      <a href="/azure-diagnostics.html" class="nav-link">☁️ Azure Diagnostics</a>
+      <a href="/docs.html" class="nav-link active">📚 Documentation</a>
+      <a href="/" class="btn-panel-toggle">🎮 Controls</a>
     </nav>
   </header>
 
@@ -380,7 +389,28 @@ curl -w "@curl-format.txt" http://localhost:3000/api/health</code></pre>
   </main>
 
   <footer>
-    <p>PerfSimNode v1.0.0 | Educational Tool for Azure Diagnostics Training</p>
+    <p>Performance Problem Simulator - Educational Tool for Azure App Service Diagnostics</p>
+    <p>Created by <a href="https://speckit.org/" target="_blank">SpecKit</a> in collaboration with <a href="mailto:rhamlett@microsoft.com">Richard Hamlett</a></p>
+    <p id="build-info">Build: Loading...</p>
   </footer>
+  <script>
+    // Load environment info for SKU badge
+    fetch('/api/health/environment')
+      .then(r => r.json())
+      .then(env => {
+        const badge = document.getElementById('sku-badge');
+        if (badge) badge.textContent = 'SKU: ' + env.sku;
+      })
+      .catch(() => {});
+    
+    // Load build info for footer
+    fetch('/api/health/build')
+      .then(r => r.json())
+      .then(build => {
+        const buildInfo = document.getElementById('build-info');
+        if (buildInfo) buildInfo.textContent = 'Build: ' + build.buildTime;
+      })
+      .catch(() => {});
+  </script>
 </body>
 </html>

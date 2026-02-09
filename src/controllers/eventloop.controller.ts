@@ -24,7 +24,7 @@ export const eventloopRouter = Router();
  * The response is sent AFTER the blocking completes.
  *
  * @route POST /api/simulations/eventloop
- * @body {number} durationSeconds - Duration to block in seconds (1-300)
+ * @body {number} durationSeconds - Duration to block in seconds (no limit)
  * @returns {SimulationCompletedResponse} Completed simulation details
  */
 eventloopRouter.post('/', (req: Request, res: Response, next: NextFunction) => {

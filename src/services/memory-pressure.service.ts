@@ -1,7 +1,7 @@
 /**
  * Memory Pressure Service
  *
- * Simulates memory pressure by allocating and retaining buffers.
+ * Simulates memory pressure by allocating and retaining V8 heap memory.
  *
  * @module services/memory-pressure
  */
@@ -9,19 +9,25 @@
 import { Simulation, MemoryPressureParams } from '../types';
 import { SimulationTrackerService } from './simulation-tracker.service';
 import { EventLogService } from './event-log.service';
-import { mbToBytes, bytesToMb } from '../utils';
+
+/** Memory allocation entry with data and size tracking */
+interface MemoryAllocation {
+  data: object[];
+  sizeMb: number;
+}
 
 /** Active memory allocations by simulation ID */
-const allocations: Map<string, Buffer> = new Map();
+const allocations: Map<string, MemoryAllocation> = new Map();
 
 /**
  * Memory Pressure Service
  *
- * Uses Buffer.alloc to create memory pressure with explicit tracking.
+ * Uses object arrays to create memory pressure in V8 heap.
  */
 class MemoryPressureServiceClass {
   /**
    * Allocates memory and starts a memory pressure simulation.
+   * Allocation happens asynchronously to avoid blocking the event loop.
    *
    * @param params - Memory pressure parameters
    * @returns The created simulation
@@ -37,67 +43,107 @@ class MemoryPressureServiceClass {
       Number.MAX_SAFE_INTEGER / 1000
     );
 
-    try {
-      // Allocate the buffer
-      const sizeBytes = mbToBytes(sizeMb);
-      const buffer = Buffer.alloc(sizeBytes);
+    // Initialize allocation immediately so it shows up
+    const data: object[] = [];
+    allocations.set(simulation.id, { data, sizeMb });
 
-      // Store the allocation
-      allocations.set(simulation.id, buffer);
+    // Log the start
+    EventLogService.info('MEMORY_ALLOCATING', `Starting allocation of ${sizeMb}MB...`, {
+      simulationId: simulation.id,
+      simulationType: 'MEMORY_PRESSURE',
+      details: { sizeMb },
+    });
 
-      // Log the allocation
-      EventLogService.info('MEMORY_ALLOCATED', `Allocated ${sizeMb}MB of memory`, {
-        simulationId: simulation.id,
-        simulationType: 'MEMORY_PRESSURE',
-        details: { sizeMb, sizeBytes },
-      });
+    // Allocate asynchronously in batches to avoid blocking the event loop
+    // Calibrated: ~4800 objects = ~1MB of V8 heap (each object ~210 bytes with properties + overhead)
+    const objectsPerMb = 4800;
+    const totalObjects = sizeMb * objectsPerMb;
+    const batchSize = 10000; // Allocate 10k objects per batch (~2MB)
+    let allocated = 0;
 
-      return simulation;
-    } catch (error) {
-      // Allocation failed - mark simulation as failed
-      SimulationTrackerService.failSimulation(simulation.id);
-      EventLogService.error(
-        'SIMULATION_FAILED',
-        `Failed to allocate ${sizeMb}MB: ${(error as Error).message}`,
-        {
+    const allocateBatch = () => {
+      const allocation = allocations.get(simulation.id);
+      if (!allocation) {
+        // Allocation was released before completion
+        return;
+      }
+
+      const end = Math.min(allocated + batchSize, totalObjects);
+      for (let i = allocated; i < end; i++) {
+        allocation.data.push({ 
+          id: i, 
+          timestamp: Date.now(), 
+          random: Math.random(),
+          payload: `data-${i}-${Math.random().toString(36)}`
+        });
+      }
+      allocated = end;
+
+      if (allocated < totalObjects) {
+        // Continue allocation on next tick
+        setImmediate(allocateBatch);
+      } else {
+        // Allocation complete
+        EventLogService.info('MEMORY_ALLOCATED', `Allocated ${sizeMb}MB of heap memory (${totalObjects} objects)`, {
           simulationId: simulation.id,
           simulationType: 'MEMORY_PRESSURE',
-        }
-      );
-      throw error;
-    }
+          details: { sizeMb, objects: totalObjects },
+        });
+      }
+    };
+
+    // Start the async allocation
+    setImmediate(allocateBatch);
+
+    return simulation;
   }
 
   /**
    * Releases a memory allocation.
    *
    * @param id - Simulation/allocation ID
-   * @returns The stopped simulation or undefined if not found
+   * @returns Object with release info, or undefined if nothing was found to release
    */
-  release(id: string): Simulation | undefined {
-    const buffer = allocations.get(id);
-    if (!buffer) {
+  release(id: string): { simulation?: Simulation; sizeMb: number; wasAllocated: boolean } | undefined {
+    const allocation = allocations.get(id);
+    
+    // Get size before deleting
+    const sizeMb = allocation?.sizeMb ?? 0;
+    const wasAllocated = !!allocation;
+
+    // Delete the allocation if it exists
+    if (allocation) {
+      // Clear the data array to release object references
+      allocation.data.length = 0;
+      allocations.delete(id);
+      
+      // Force garbage collection if available (requires --expose-gc flag)
+      // Run GC synchronously and multiple times to ensure memory is reclaimed
+      if (typeof global.gc === 'function') {
+        console.log('[MemoryPressure] Running garbage collection...');
+        global.gc();
+        global.gc();  // Run twice for good measure
+      } else {
+        console.log('[MemoryPressure] GC not exposed - run with --expose-gc flag');
+      }
+    }
+
+    // Stop the simulation tracking
+    const simulation = SimulationTrackerService.stopSimulation(id);
+
+    // If neither existed, return undefined
+    if (!wasAllocated && !simulation) {
       return undefined;
     }
 
-    // Get size before deleting
-    const sizeMb = bytesToMb(buffer.length);
+    // Log the release
+    EventLogService.info('MEMORY_RELEASED', `Released ${sizeMb}MB of heap memory`, {
+      simulationId: id,
+      simulationType: 'MEMORY_PRESSURE',
+      details: { sizeMb, wasAllocated, hadSimulation: !!simulation },
+    });
 
-    // Delete the allocation (allows GC to reclaim)
-    allocations.delete(id);
-
-    // Stop the simulation
-    const simulation = SimulationTrackerService.stopSimulation(id);
-
-    if (simulation) {
-      EventLogService.info('MEMORY_RELEASED', `Released ${sizeMb}MB of memory`, {
-        simulationId: id,
-        simulationType: 'MEMORY_PRESSURE',
-        details: { sizeMb },
-      });
-    }
-
-    return simulation;
+    return { simulation, sizeMb, wasAllocated };
   }
 
   /**
@@ -116,10 +162,10 @@ class MemoryPressureServiceClass {
    */
   getTotalAllocatedMb(): number {
     let total = 0;
-    for (const buffer of allocations.values()) {
-      total += buffer.length;
+    for (const allocation of allocations.values()) {
+      total += allocation.sizeMb;
     }
-    return bytesToMb(total);
+    return total;
   }
 
   /**
@@ -129,8 +175,8 @@ class MemoryPressureServiceClass {
    * @returns Allocation size in MB or undefined if not found
    */
   getAllocationSize(id: string): number | undefined {
-    const buffer = allocations.get(id);
-    return buffer ? bytesToMb(buffer.length) : undefined;
+    const allocation = allocations.get(id);
+    return allocation ? allocation.sizeMb : undefined;
   }
 
   /**

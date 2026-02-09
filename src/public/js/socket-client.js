@@ -30,6 +30,11 @@ function initSocket() {
     statusEl.className = 'status-connected';
     console.log('[Socket] Connected to server');
 
+    // Log connection to event log
+    if (typeof addEventToLog === 'function') {
+      addEventToLog({ level: 'success', message: 'Connected to metrics hub' });
+    }
+
     // Notify dashboard of connection
     if (typeof onSocketConnected === 'function') {
       onSocketConnected();
@@ -41,12 +46,24 @@ function initSocket() {
     statusEl.textContent = 'Disconnected';
     statusEl.className = 'status-disconnected';
     console.log('[Socket] Disconnected:', reason);
+    
+    // Log disconnection to event log
+    if (typeof addEventToLog === 'function') {
+      addEventToLog({ level: 'warning', message: 'Connection lost. Attempting to reconnect...' });
+    }
   });
 
   socket.on('reconnect_attempt', (attempt) => {
     reconnectAttempts = attempt;
     statusEl.textContent = `Reconnecting (${attempt}/${maxReconnectAttempts})...`;
     statusEl.className = 'status-reconnecting';
+  });
+
+  socket.on('reconnect', () => {
+    // Log reconnection to event log
+    if (typeof addEventToLog === 'function') {
+      addEventToLog({ level: 'success', message: 'Reconnected to server' });
+    }
   });
 
   socket.on('reconnect_failed', () => {

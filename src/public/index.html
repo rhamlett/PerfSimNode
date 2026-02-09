@@ -3,129 +3,292 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PerfSimNode - Performance Simulator Dashboard</title>
+  <title>Performance Problem Simulator - Node 24 on Linux</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/css/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
   <header>
-    <h1>PerfSimNode Dashboard</h1>
+    <h1>🔥 Performance Problem Simulator - Node 24 on Linux</h1>
+    <span id="sku-badge" class="sku-badge">SKU: Local</span>
     <nav>
-      <a href="/" class="active">Dashboard</a>
-      <a href="/docs.html">Documentation</a>
+      <a href="https://github.com" target="_blank" class="nav-link">🐙 GitHub</a>
+      <a href="/azure-diagnostics.html" class="nav-link">☁️ Azure Diagnostics</a>
+      <a href="/docs.html" class="nav-link">📚 Documentation</a>
+      <button id="toggle-panel" class="btn-panel-toggle">🎮 Controls</button>
     </nav>
     <div id="connection-status" class="status-disconnected">Disconnected</div>
   </header>
 
-  <main>
-    <section id="metrics-section">
-      <h2>System Metrics</h2>
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <h3>CPU Usage</h3>
-          <div class="metric-value" id="cpu-value">--</div>
-          <div class="metric-unit">%</div>
-          <canvas id="cpu-chart"></canvas>
+  <div class="app-container">
+    <main>
+      <!-- Compact Metric Tiles -->
+      <section id="metrics-section">
+        <div class="metrics-tiles">
+          <div class="metric-tile cpu">
+            <div class="tile-content">
+              <div class="tile-icon">⚡</div>
+              <div class="tile-info">
+                <span class="tile-label">CPU Usage</span>
+                <div class="tile-value"><span id="cpu-value">0.0</span> <span class="tile-unit">%</span></div>
+              </div>
+            </div>
+            <div class="metric-bar"><div class="metric-bar-fill" id="cpu-bar" style="width: 0%;"></div></div>
+          </div>
+          <div class="metric-tile memory">
+            <div class="tile-content">
+              <div class="tile-icon">📊</div>
+              <div class="tile-info">
+                <span class="tile-label">Memory Working Set</span>
+                <div class="tile-value"><span id="memory-value">0</span> <span class="tile-unit">MB</span> <span id="memory-total" class="tile-subtext">of -- GB</span></div>
+              </div>
+            </div>
+            <div class="metric-bar"><div class="metric-bar-fill" id="memory-bar" style="width: 0%;"></div></div>
+          </div>
+          <div class="metric-tile eventloop">
+            <div class="tile-content">
+              <div class="tile-icon">🧵</div>
+              <div class="tile-info">
+                <span class="tile-label">Event Loop Lag</span>
+                <div class="tile-value"><span id="eventloop-value">0.0</span> <span class="tile-unit">ms</span></div>
+              </div>
+            </div>
+            <div class="metric-bar"><div class="metric-bar-fill" id="eventloop-bar" style="width: 0%;"></div></div>
+          </div>
+          <div class="metric-tile latency">
+            <div class="tile-content">
+              <div class="tile-icon">📋</div>
+              <div class="tile-info">
+                <span class="tile-label">RSS Memory</span>
+                <div class="tile-value"><span id="rss-value">0</span> <span class="tile-unit">MB</span></div>
+              </div>
+            </div>
+            <div class="metric-bar"><div class="metric-bar-fill" id="rss-bar" style="width: 0%;"></div></div>
+          </div>
         </div>
-        <div class="metric-card">
-          <h3>Memory (Heap)</h3>
-          <div class="metric-value" id="memory-value">--</div>
-          <div class="metric-unit">MB</div>
-          <canvas id="memory-chart"></canvas>
-        </div>
-        <div class="metric-card">
-          <h3>Event Loop Lag</h3>
-          <div class="metric-value" id="eventloop-value">--</div>
-          <div class="metric-unit">ms</div>
-          <canvas id="eventloop-chart"></canvas>
-        </div>
-        <div class="metric-card">
-          <h3>RSS Memory</h3>
-          <div class="metric-value" id="rss-value">--</div>
-          <div class="metric-unit">MB</div>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <section id="simulations-section">
-      <h2>Simulation Controls</h2>
-      
-      <div class="simulation-controls">
+      <!-- Charts Section -->
+      <section id="charts-section">
+        <div class="charts-grid">
+          <div class="chart-card">
+            <h3>📈 CPU & Memory Over Time</h3>
+            <div class="chart-legend">
+              <span class="legend-item"><span class="legend-color" style="background: #0078d4;"></span> CPU %</span>
+              <span class="legend-item"><span class="legend-color" style="background: #107c10;"></span> Memory MB</span>
+            </div>
+            <canvas id="cpu-memory-chart"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3>🧵 Event Loop & RSS Memory</h3>
+            <div class="chart-legend">
+              <span class="legend-item"><span class="legend-color" style="background: #8764b8;"></span> Lag (ms)</span>
+              <span class="legend-item"><span class="legend-color" style="background: #ffb900;"></span> RSS (MB)</span>
+            </div>
+            <canvas id="eventloop-chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Request Latency Monitor -->
+      <section id="latency-section">
+        <div class="latency-card">
+          <h3>⚙️ Request Latency Monitor</h3>
+          <p class="latency-description">Measures actual response time to a lightweight probe endpoint. Times include server processing and queue time.</p>
+          
+          <!-- Server Responsiveness Indicator -->
+          <div class="responsiveness-panel">
+            <div class="responsiveness-header">
+              <div id="server-responsive-indicator" class="responsive-indicator ok"></div>
+              <span id="server-responsive-status" class="responsive-status ok">Responsive</span>
+              <span id="unresponsive-duration" class="unresponsive-duration" style="display: none;"></span>
+            </div>
+            <div class="probe-visualization-container">
+              <span class="probe-label">Probe History (100ms, reduced during profiling):</span>
+              <div id="probe-visualization" class="probe-visualization"></div>
+            </div>
+          </div>
+          
+          <div class="latency-stats">
+            <div class="latency-stat">
+              <span class="stat-label">CURRENT</span>
+              <span class="stat-value" id="latency-current">0.0ms</span>
+            </div>
+            <div class="latency-stat">
+              <span class="stat-label">AVG (60S)</span>
+              <span class="stat-value" id="latency-avg">0.0ms</span>
+            </div>
+            <div class="latency-stat">
+              <span class="stat-label">MAX (60S)</span>
+              <span class="stat-value warning" id="latency-max">0.0ms</span>
+            </div>
+            <div class="latency-stat">
+              <span class="stat-label">CRITICAL (>30S)</span>
+              <span class="stat-value" id="latency-critical">0</span>
+            </div>
+          </div>
+          <div class="thresholds">
+            <span class="threshold-label">Thresholds:</span>
+            <span class="threshold good">● Good (&lt;150ms)</span>
+            <span class="threshold degraded">● Degraded (150ms-1s)</span>
+            <span class="threshold severe">● Severe (&gt;1s)</span>
+            <span class="threshold critical">● Critical (&gt;30s)</span>
+          </div>
+          <h4>📊 Response Latency Over Time</h4>
+          <div id="probe-reduced-message" class="probe-reduced-message" style="display: none;"></div>
+          <canvas id="latency-chart"></canvas>
+        </div>
+      </section>
+
+      <!-- Active Simulations -->
+      <section id="active-section">
+        <div class="active-card">
+          <h3>🏃 Active Simulations</h3>
+          <div id="active-simulations-list">
+            <p class="no-simulations">No active simulations</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Event Log -->
+      <section id="events-section">
+        <div class="event-log-card">
+          <h3>📜 Event Log</h3>
+          <div id="event-log" class="event-log"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Side Panel for Simulation Controls -->
+    <aside id="simulation-panel" class="side-panel">
+      <div class="panel-header">
+        <h2>⚙️ Simulation Controls</h2>
+        <button id="close-panel" class="close-btn">✕</button>
+      </div>
+      <div class="panel-warning">
+        ⚠️ These buttons intentionally cause performance problems!
+      </div>
+      <div class="panel-content">
         <!-- CPU Stress -->
-        <div class="control-card">
-          <h3>CPU Stress</h3>
+        <div class="control-section cpu-section">
+          <h3>🔥 CPU Stress</h3>
+          <p class="control-description">Creates parallel spin loops to max out all CPU cores.</p>
           <form id="cpu-form">
             <label>
-              Target Load (%)
-              <input type="number" name="targetLoadPercent" value="80" min="1" max="100">
+              Duration (s):
+              <input type="number" name="durationSeconds" value="10" min="1" max="300">
             </label>
             <label>
-              Duration (seconds)
-              <input type="number" name="durationSeconds" value="30" min="1" max="300">
+              Target Load:
+              <select name="targetLoadPercent" class="wide-select">
+                <option value="55">50% - 60%</option>
+                <option value="65">60% - 70%</option>
+                <option value="75" selected>70% - 80%</option>
+                <option value="85">80% - 90%</option>
+                <option value="95">90% - 100%</option>
+              </select>
             </label>
-            <button type="submit" class="btn-start">Start CPU Stress</button>
+            <button type="submit" class="btn-trigger btn-cpu">🔥 Trigger High CPU</button>
           </form>
           <div id="cpu-active" class="active-simulations"></div>
         </div>
 
         <!-- Memory Pressure -->
-        <div class="control-card">
-          <h3>Memory Pressure</h3>
+        <div class="control-section memory-section">
+          <h3>📊 Memory Pressure</h3>
+          <p class="control-description">Allocates pinned memory blocks to increase working set.</p>
           <form id="memory-form">
             <label>
-              Size (MB)
-              <input type="number" name="sizeMb" value="100" min="1" max="500">
+              Size (MB):
+              <input type="number" name="sizeMb" value="512" min="1" max="2000">
             </label>
-            <button type="submit" class="btn-start">Allocate Memory</button>
+            <div class="btn-group">
+              <button type="submit" class="btn-trigger btn-memory">📈 Allocate</button>
+              <button type="button" id="release-all-memory" class="btn-release">🗑️ Release</button>
+            </div>
           </form>
           <div id="memory-active" class="active-simulations"></div>
         </div>
 
         <!-- Event Loop Blocking -->
-        <div class="control-card">
-          <h3>Event Loop Blocking</h3>
+        <div class="control-section eventloop-section">
+          <h3>🧵 Event Loop Blocking</h3>
+          <p class="control-description">Blocks Node.js event loop with synchronous crypto operations. Watch the probe dots turn red!</p>
+          <div class="eventloop-education">
+            <strong>What to observe:</strong>
+            <ul>
+              <li>Probe visualization dots turn red (failed) or orange (slow)</li>
+              <li>"Responsive" indicator changes to "UNRESPONSIVE"</li>
+              <li>Dashboard metrics stop updating during block</li>
+              <li>Request latency spikes after server recovers</li>
+            </ul>
+          </div>
           <form id="eventloop-form">
             <label>
-              Duration (seconds)
-              <input type="number" name="durationSeconds" value="5" min="1" max="300">
+              Block Duration (s):
+              <input type="number" name="durationSeconds" value="5" min="1" max="60">
             </label>
-            <button type="submit" class="btn-warning">Block Event Loop</button>
+            <button type="submit" class="btn-trigger btn-eventloop">🧵 Block Event Loop</button>
           </form>
-          <p class="warning-text">⚠️ Server will be unresponsive during blocking</p>
+          <div id="eventloop-impact" class="eventloop-impact"></div>
         </div>
 
-        <!-- Slow Request -->
-        <div class="control-card">
-          <h3>Slow Request</h3>
+        <!-- Slow Requests -->
+        <div class="control-section slow-section">
+          <h3>� Slow Requests</h3>
+          <p class="control-description">Generates requests using sync-over-async patterns. Ideal for profiler diagnosis.</p>
+          <div class="slow-note">
+            ⚠️ Note: Requests exceeding 30 seconds total time (queue + execution) are flagged as critical
+          </div>
           <form id="slow-form">
             <label>
-              Delay (seconds)
-              <input type="number" name="delaySeconds" value="5" min="1" max="300">
+              Request Execution Time (s) <span class="info-icon" title="Time for each request">ⓘ</span>:
+              <input type="number" name="delaySeconds" value="25" min="1" max="300">
             </label>
-            <button type="submit" class="btn-start">Send Slow Request</button>
+            <label>
+              Interval (s):
+              <input type="number" name="intervalSeconds" value="2" min="1" max="60">
+            </label>
+            <label>
+              Max Requests:
+              <input type="number" name="maxRequests" value="10" min="1" max="100">
+            </label>
+            <div class="btn-group">
+              <button type="submit" class="btn-trigger btn-slow">🐌 Start Slow Requests</button>
+              <button type="button" id="stop-slow-requests" class="btn-stop">⬛ Stop</button>
+            </div>
           </form>
           <div id="slow-status"></div>
         </div>
 
         <!-- Crash Simulation -->
-        <div class="control-card">
-          <h3>Crash Simulation</h3>
-          <p class="warning-text">⚠️ These will terminate the process!</p>
-          <button id="crash-exception" class="btn-danger">Crash (Exception)</button>
-          <button id="crash-memory" class="btn-danger">Crash (OOM)</button>
+        <div class="control-section crash-section">
+          <h3>💥 Application Crash</h3>
+          <p class="control-description">Triggers a fatal crash for crash dump analysis.</p>
+          <form id="crash-form">
+            <label>
+              Crash Type:
+              <select name="crashType" class="crash-select">
+                <option value="failfast">FailFast (SIGABRT)</option>
+                <option value="stackoverflow">Stack Overflow</option>
+                <option value="exception" selected>Unhandled Exception</option>
+                <option value="oom">Out of Memory</option>
+              </select>
+            </label>
+            <button type="submit" class="btn-danger btn-crash">💥 Trigger Crash</button>
+          </form>
+          <p class="crash-warning">⚠️ This will TERMINATE the app!</p>
         </div>
       </div>
-    </section>
-
-    <section id="events-section">
-      <h2>Event Log</h2>
-      <div id="event-log" class="event-log"></div>
-    </section>
-  </main>
+    </aside>
+  </div>
 
   <footer>
-    <p>PerfSimNode v1.0.0 | Educational Tool for Azure Diagnostics Training</p>
+    <p>Performance Problem Simulator - Educational Tool for Azure App Service Diagnostics</p>
+    <p>Created by <a href="https://speckit.org/" target="_blank">SpecKit</a> in collaboration with <a href="mailto:rhamlett@microsoft.com">Richard Hamlett</a></p>
+    <p id="build-info">Build: Loading...</p>
   </footer>
 
   <script src="/js/socket-client.js"></script>

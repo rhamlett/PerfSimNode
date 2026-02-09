@@ -35,6 +35,7 @@ export type EventType =
   | 'SIMULATION_STOPPED'
   | 'SIMULATION_COMPLETED'
   | 'SIMULATION_FAILED'
+  | 'MEMORY_ALLOCATING'
   | 'MEMORY_ALLOCATED'
   | 'MEMORY_RELEASED'
   | 'SERVER_STARTED'
@@ -130,14 +131,18 @@ export interface MemoryMetrics {
   rssMb: number;
   /** External memory (C++ objects) in MB */
   externalMb: number;
+  /** Total system memory in MB */
+  totalSystemMb: number;
 }
 
 /**
  * Event loop lag metrics.
  */
 export interface EventLoopMetrics {
-  /** Current event loop lag in ms */
+  /** Current event loop lag in ms (from histogram mean) */
   lagMs: number;
+  /** Real-time heartbeat lag in ms (actual time for setImmediate to fire) */
+  heartbeatLagMs: number;
   /** 99th percentile lag in ms */
   lagP99Ms: number;
   /** Minimum observed lag in ms */
@@ -150,6 +155,8 @@ export interface EventLoopMetrics {
  * Process-level metrics.
  */
 export interface ProcessMetrics {
+  /** Process ID */
+  pid: number;
   /** Number of active handles (sockets, timers, etc.) */
   activeHandles: number;
   /** Number of active libuv requests */

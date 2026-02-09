@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure Diagnostics Guide - PerfSimNode</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .diag-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .diag-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .diag-header h1 {
+      color: var(--primary-color);
+      margin-bottom: 0.5rem;
+    }
+    .diag-header p {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+    }
+    .diag-nav {
+      background: var(--card-background);
+      border-radius: 8px;
+      padding: 1rem 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .diag-nav ul {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .diag-nav a {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: var(--background-color);
+      border-radius: 4px;
+      text-decoration: none;
+      color: var(--text-color);
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .diag-nav a:hover {
+      background: var(--primary-color);
+      color: white;
+    }
+    .card {
+      background: var(--card-background);
+      border-radius: 8px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .card h2 {
+      color: var(--primary-color);
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .card h3 {
+      color: var(--text-color);
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .card h4 {
+      color: var(--text-secondary);
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .metric-explanation {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .metric-box {
+      border-left: 4px solid var(--primary-color);
+      background: var(--background-color);
+      padding: 1rem;
+      border-radius: 0 8px 8px 0;
+    }
+    .metric-box.cpu { border-color: #ff8c00; }
+    .metric-box.memory { border-color: #0078d4; }
+    .metric-box.eventloop { border-color: #8764b8; }
+    .metric-box.latency { border-color: #107c10; }
+    .metric-box h4 {
+      margin: 0 0 0.5rem 0;
+      color: var(--text-color);
+    }
+    .metric-box p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin: 1rem 0;
+    }
+    .scenario-card {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .scenario-card .header {
+      padding: 1rem;
+      font-weight: 600;
+      color: white;
+    }
+    .scenario-card .header.cpu { background: linear-gradient(135deg, #d83b01, #ff8c00); }
+    .scenario-card .header.memory { background: linear-gradient(135deg, #0078d4, #00bcf2); }
+    .scenario-card .header.eventloop { background: linear-gradient(135deg, #5c2d91, #8764b8); }
+    .scenario-card .header.slow { background: linear-gradient(135deg, #ff8c00, #ffb900); }
+    .scenario-card .header.crash { background: linear-gradient(135deg, #a4262c, #d83b01); }
+    .scenario-card .body {
+      padding: 1rem;
+    }
+    .scenario-card .body h4 {
+      margin: 0.75rem 0 0.25rem;
+      font-size: 0.9rem;
+    }
+    .scenario-card .body ul {
+      margin: 0;
+      padding-left: 1.25rem;
+      font-size: 0.85rem;
+    }
+    .scenario-card .body li {
+      margin-bottom: 0.25rem;
+    }
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .tool-card {
+      background: var(--background-color);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .tool-card h4 {
+      margin: 0 0 0.5rem;
+      color: var(--primary-color);
+    }
+    .tool-card p {
+      margin: 0 0 0.5rem;
+      font-size: 0.85rem;
+    }
+    .tool-card code {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+    }
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    .comparison-table th, .comparison-table td {
+      border: 1px solid var(--border-color);
+      padding: 0.75rem;
+      text-align: left;
+    }
+    .comparison-table th {
+      background: var(--background-color);
+      font-weight: 600;
+    }
+    .comparison-table tr:nth-child(even) {
+      background: rgba(0,0,0,0.02);
+    }
+    .alert-box {
+      padding: 1rem 1.25rem;
+      border-radius: 6px;
+      margin: 1rem 0;
+    }
+    .alert-box.info {
+      background: #e6f3ff;
+      border-left: 4px solid var(--primary-color);
+    }
+    .alert-box.warning {
+      background: #fff4ce;
+      border-left: 4px solid var(--warning-color);
+    }
+    .alert-box.success {
+      background: #dff6dd;
+      border-left: 4px solid var(--success-color);
+    }
+    .alert-box strong {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      margin: 1rem 0;
+    }
+    code {
+      background: var(--background-color);
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      font-family: 'Consolas', 'Monaco', monospace;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    .flowchart {
+      background: var(--background-color);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+      text-align: center;
+    }
+    .flowchart .step {
+      display: inline-block;
+      padding: 0.75rem 1rem;
+      background: var(--card-background);
+      border: 2px solid var(--primary-color);
+      border-radius: 6px;
+      margin: 0.25rem;
+    }
+    .flowchart .arrow {
+      display: inline-block;
+      color: var(--primary-color);
+      font-weight: bold;
+      margin: 0 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔥 Performance Problem Simulator - Node 24 on Linux</h1>
+    <span id="sku-badge" class="sku-badge">SKU: Local</span>
+    <nav>
+      <a href="https://github.com" target="_blank" class="nav-link">🐙 GitHub</a>
+      <a href="/azure-diagnostics.html" class="nav-link active">☁️ Azure Diagnostics</a>
+      <a href="/docs.html" class="nav-link">📚 Documentation</a>
+      <a href="/" class="btn-panel-toggle">🎮 Controls</a>
+    </nav>
+    <div class="status-indicator">● Connected</div>
+  </header>
+
+  <main class="diag-container">
+    <div class="diag-header">
+      <h1>☁️ Azure Diagnostics Guide</h1>
+      <p>How to diagnose Node.js performance issues using Azure tools and understand what the metrics mean</p>
+    </div>
+
+    <nav class="diag-nav">
+      <ul>
+        <li><a href="#understanding-metrics">Understanding Metrics</a></li>
+        <li><a href="#nodejs-vs-dotnet">Node.js vs .NET</a></li>
+        <li><a href="#diagnostic-scenarios">Diagnostic Scenarios</a></li>
+        <li><a href="#azure-tools">Azure Tools</a></li>
+        <li><a href="#diagnostic-workflow">Diagnostic Workflow</a></li>
+        <li><a href="#kudu-console">Kudu Console</a></li>
+        <li><a href="#app-insights">Application Insights</a></li>
+      </ul>
+    </nav>
+
+    <!-- Understanding Metrics -->
+    <section id="understanding-metrics" class="card">
+      <h2>📈 Understanding the Dashboard Metrics</h2>
+      <p>The PerfSimNode dashboard displays real-time metrics that help identify performance issues. Here's what each metric means:</p>
+
+      <div class="metric-explanation">
+        <div class="metric-box cpu">
+          <h4>⚡ CPU Usage (%)</h4>
+          <p><strong>What it measures:</strong> Percentage of CPU time consumed by the Node.js process.</p>
+          <p><strong>Why it matters:</strong> High CPU indicates compute-bound operations. In Node.js, this typically means synchronous code is running (crypto, JSON parsing large objects, complex calculations).</p>
+          <p><strong>Normal range:</strong> 0-30% at idle, spikes during requests are normal.</p>
+          <p><strong>Warning signs:</strong> Sustained >70% indicates a problem.</p>
+        </div>
+
+        <div class="metric-box memory">
+          <h4>📊 Memory Working Set (MB)</h4>
+          <p><strong>What it measures:</strong> Total memory the Node.js process has allocated and is actively using.</p>
+          <p><strong>Why it matters:</strong> Memory that grows without releasing indicates leaks. Node.js uses V8's garbage collector, but references held too long prevent cleanup.</p>
+          <p><strong>Normal range:</strong> Depends on app, but should stabilize after warmup.</p>
+          <p><strong>Warning signs:</strong> Continuous growth over time (sawtooth pattern is OK).</p>
+        </div>
+
+        <div class="metric-box eventloop">
+          <h4>🧵 Event Loop Lag (ms)</h4>
+          <p><strong>What it measures:</strong> Time between when a callback is scheduled and when it actually executes.</p>
+          <p><strong>Why it matters:</strong> <em>This is the key metric for sync-over-async problems!</em> When synchronous code blocks the event loop, ALL pending callbacks must wait—including incoming HTTP requests.</p>
+          <p><strong>Normal range:</strong> &lt;10ms</p>
+          <p><strong>Warning signs:</strong> >100ms causes noticeable delays; >1000ms means severe blocking.</p>
+        </div>
+
+        <div class="metric-box latency">
+          <h4>⏱️ Request Latency (ms)</h4>
+          <p><strong>What it measures:</strong> Time from request received to response sent, including time waiting in the event loop queue.</p>
+          <p><strong>Why it matters:</strong> Direct measure of user experience. High latency with low CPU often indicates blocking or external dependency issues.</p>
+          <p><strong>Normal range:</strong> &lt;150ms for simple requests</p>
+          <p><strong>Warning signs:</strong> >1s degraded; >30s critical.</p>
+        </div>
+      </div>
+
+      <div class="alert-box info">
+        <strong>💡 Key Insight: Event Loop Lag</strong>
+        Unlike .NET's thread pool (which has multiple threads that can be exhausted), Node.js has a <em>single-threaded event loop</em>. When you see high Event Loop Lag, it means the main thread is blocked—equivalent to ALL threads being busy in a .NET thread pool. This is why a single blocking operation can affect ALL requests.
+      </div>
+    </section>
+
+    <!-- Node.js vs .NET Comparison -->
+    <section id="nodejs-vs-dotnet" class="card">
+      <h2>⚖️ Node.js vs .NET: Understanding the Difference</h2>
+      <p>If you're familiar with diagnosing .NET applications, here's how Node.js differs:</p>
+
+      <table class="comparison-table">
+        <tr>
+          <th>Aspect</th>
+          <th>.NET (Thread Pool)</th>
+          <th>Node.js (Event Loop)</th>
+        </tr>
+        <tr>
+          <td><strong>Concurrency Model</strong></td>
+          <td>Multiple threads in a pool (default: 1 per core)</td>
+          <td>Single thread with async I/O</td>
+        </tr>
+        <tr>
+          <td><strong>Sync-over-Async Impact</strong></td>
+          <td>Blocks ONE thread; others can still serve requests</td>
+          <td>Blocks THE thread; ALL requests must wait</td>
+        </tr>
+        <tr>
+          <td><strong>Key Metric for Blocking</strong></td>
+          <td>Thread Pool Active Threads / Queue Length</td>
+          <td>Event Loop Lag</td>
+        </tr>
+        <tr>
+          <td><strong>What Gets Starved</strong></td>
+          <td>Thread pool exhaustion = requests queue</td>
+          <td>Event loop blocked = all callbacks queue</td>
+        </tr>
+        <tr>
+          <td><strong>Recovery</strong></td>
+          <td>Automatic as threads free up</td>
+          <td>Only when blocking code completes</td>
+        </tr>
+        <tr>
+          <td><strong>Scaling</strong></td>
+          <td>More threads (up to limit)</td>
+          <td>Cluster mode (multiple processes)</td>
+        </tr>
+      </table>
+
+      <h3>Why "Event Loop Lag" Replaces "Thread Pool Metrics"</h3>
+      <p>In .NET, you watch the thread pool to see if sync-over-async is starving threads. In Node.js:</p>
+      <ul>
+        <li><strong>Thread Pool</strong> → Not applicable (only 1 main thread for JS)</li>
+        <li><strong>Queue Length</strong> → Replaced by <strong>Event Loop Lag</strong> (shows how long callbacks wait)</li>
+      </ul>
+
+      <div class="alert-box warning">
+        <strong>⚠️ Same Anti-Pattern, Different Symptom</strong>
+        The "sync-over-async" anti-pattern causes the same underlying problem in both runtimes—blocking I/O that should be asynchronous. But the symptoms differ:
+        <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+          <li>.NET: Thread pool saturation, queued work items growing</li>
+          <li>Node.js: Event loop lag spikes, ALL requests slow simultaneously</li>
+        </ul>
+      </div>
+
+      <h3>Node.js Does Have a Thread Pool (libuv)</h3>
+      <p>Node.js uses a background thread pool (libuv, default 4 threads) for:</p>
+      <ul>
+        <li>File system operations</li>
+        <li>DNS lookups</li>
+        <li>Some crypto operations</li>
+        <li>Compression</li>
+      </ul>
+      <p>However, this is separate from the main event loop. Exhausting the libuv pool slows I/O operations but doesn't block the event loop directly.</p>
+    </section>
+
+    <!-- Diagnostic Scenarios -->
+    <section id="diagnostic-scenarios" class="card">
+      <h2>🔍 Diagnostic Scenarios</h2>
+      <p>Here's how to diagnose each type of performance problem this simulator creates:</p>
+
+      <div class="scenario-grid">
+        <div class="scenario-card">
+          <div class="header cpu">🔥 High CPU Usage</div>
+          <div class="body">
+            <p><strong>Symptom:</strong> CPU metric pinned high, requests may still complete but slower.</p>
+            <h4>What's Happening</h4>
+            <ul>
+              <li>Simulation runs CPU-intensive crypto (PBKDF2)</li>
+              <li>Synchronous operations keep CPU busy</li>
+              <li>Event loop still runs between operations</li>
+            </ul>
+            <h4>Azure Diagnostic Tools</h4>
+            <ul>
+              <li>App Service Diagnostics → <strong>CPU Drill Down</strong></li>
+              <li>Application Insights → <strong>Performance</strong></li>
+              <li>Kudu → <strong>Process Explorer</strong></li>
+            </ul>
+            <h4>What to Look For</h4>
+            <ul>
+              <li>Which process is consuming CPU</li>
+              <li>CPU profiler to find hot code paths</li>
+              <li>Correlation with specific requests</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="header memory">📊 Memory Pressure</div>
+          <div class="body">
+            <p><strong>Symptom:</strong> Memory grows, stays high, may eventually crash with OOM.</p>
+            <h4>What's Happening</h4>
+            <ul>
+              <li>Simulation allocates Buffers and holds references</li>
+              <li>V8 garbage collector can't free held memory</li>
+              <li>Simulates memory leaks from caching gone wrong</li>
+            </ul>
+            <h4>Azure Diagnostic Tools</h4>
+            <ul>
+              <li>App Service Diagnostics → <strong>Memory Analysis</strong></li>
+              <li>Application Insights → <strong>Metrics</strong></li>
+              <li>Kudu → <strong>Process Explorer</strong></li>
+            </ul>
+            <h4>What to Look For</h4>
+            <ul>
+              <li>Heap snapshots to find retained objects</li>
+              <li>Memory growth pattern (leak vs. normal usage)</li>
+              <li>Correlation with specific operations</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="header eventloop">🧵 Event Loop Blocking</div>
+          <div class="body">
+            <p><strong>Symptom:</strong> Event Loop Lag spikes, ALL requests become slow simultaneously.</p>
+            <h4>What's Happening</h4>
+            <ul>
+              <li>Synchronous code blocks the single thread</li>
+              <li>All pending callbacks must wait</li>
+              <li>Request latency = lag + actual processing</li>
+            </ul>
+            <h4>Azure Diagnostic Tools</h4>
+            <ul>
+              <li>Application Insights → <strong>Performance</strong></li>
+              <li>App Service Diagnostics → <strong>Web App Slow</strong></li>
+              <li>Custom metrics with <code>perf_hooks</code></li>
+            </ul>
+            <h4>What to Look For</h4>
+            <ul>
+              <li>Event loop lag correlating with slow requests</li>
+              <li>All requests affected at same time</li>
+              <li>CPU may be low (blocking on sync I/O)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="header slow">🐢 Slow Requests</div>
+          <div class="body">
+            <p><strong>Symptom:</strong> Some requests take very long, latency monitor shows high values.</p>
+            <h4>What's Happening</h4>
+            <ul>
+              <li>Request handler intentionally delays</li>
+              <li>Simulates slow database, external API calls</li>
+              <li>With blocking version, affects other requests too</li>
+            </ul>
+            <h4>Azure Diagnostic Tools</h4>
+            <ul>
+              <li>Application Insights → <strong>End-to-end transaction</strong></li>
+              <li>App Service Diagnostics → <strong>Web App Slow</strong></li>
+              <li>Log Analytics → Request duration queries</li>
+            </ul>
+            <h4>What to Look For</h4>
+            <ul>
+              <li>Which endpoint is slow</li>
+              <li>Dependency timing breakdown</li>
+              <li>Whether other requests affected</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="header crash">💥 Application Crash</div>
+          <div class="body">
+            <p><strong>Symptom:</strong> App becomes unresponsive, restarts, or returns 502/503 errors.</p>
+            <h4>What's Happening</h4>
+            <ul>
+              <li>Unhandled exception crashes process</li>
+              <li>OOM killer terminates process</li>
+              <li>App Service may auto-restart</li>
+            </ul>
+            <h4>Azure Diagnostic Tools</h4>
+            <ul>
+              <li>App Service Diagnostics → <strong>Web App Restarted</strong></li>
+              <li>Application Insights → <strong>Failures</strong></li>
+              <li>Kudu → <strong>LogFiles</strong></li>
+            </ul>
+            <h4>What to Look For</h4>
+            <ul>
+              <li>Crash dump analysis</li>
+              <li>Exception stack trace in logs</li>
+              <li>Memory usage before crash</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Azure Tools -->
+    <section id="azure-tools" class="card">
+      <h2>🛠️ Azure Diagnostic Tools</h2>
+      <p>Key Azure tools for diagnosing Node.js performance issues:</p>
+
+      <div class="tool-grid">
+        <div class="tool-card">
+          <h4>App Service Diagnostics</h4>
+          <p>Built-in diagnostic reports in Azure Portal. Access via "Diagnose and solve problems".</p>
+          <p><strong>Best for:</strong> Quick health overview, CPU/memory analysis, crash investigation.</p>
+        </div>
+        <div class="tool-card">
+          <h4>Application Insights</h4>
+          <p>Full APM solution with request tracing, dependency tracking, and custom metrics.</p>
+          <p><strong>Best for:</strong> End-to-end tracing, performance trends, failure analysis.</p>
+        </div>
+        <div class="tool-card">
+          <h4>Kudu (SCM)</h4>
+          <p>Developer console at <code>yourapp.scm.azurewebsites.net</code></p>
+          <p><strong>Best for:</strong> Real-time debugging, log access, process management.</p>
+        </div>
+        <div class="tool-card">
+          <h4>Log Analytics</h4>
+          <p>Query-based log analysis with KQL.</p>
+          <p><strong>Best for:</strong> Historical analysis, custom queries, alerting.</p>
+        </div>
+        <div class="tool-card">
+          <h4>Azure Monitor Metrics</h4>
+          <p>Platform metrics for CPU, memory, requests, etc.</p>
+          <p><strong>Best for:</strong> Real-time monitoring, dashboards, alerts.</p>
+        </div>
+        <div class="tool-card">
+          <h4>Crash Dump Analysis</h4>
+          <p>Automatic or manual dump collection for crash investigation.</p>
+          <p><strong>Best for:</strong> Post-mortem crash analysis, memory leak investigation.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Diagnostic Workflow -->
+    <section id="diagnostic-workflow" class="card">
+      <h2>🔄 Diagnostic Workflow</h2>
+      <p>Follow this workflow when investigating a Node.js performance issue:</p>
+
+      <div class="flowchart">
+        <span class="step">Customer Report</span>
+        <span class="arrow">→</span>
+        <span class="step">Check Metrics</span>
+        <span class="arrow">→</span>
+        <span class="step">Identify Pattern</span>
+        <span class="arrow">→</span>
+        <span class="step">Deep Dive</span>
+        <span class="arrow">→</span>
+        <span class="step">Root Cause</span>
+      </div>
+
+      <h3>Step 1: Initial Assessment</h3>
+      <ol>
+        <li>Check App Service Overview for health status</li>
+        <li>Look at CPU, Memory, Request metrics in Azure Monitor</li>
+        <li>Note the timeframe of the issue</li>
+      </ol>
+
+      <h3>Step 2: Identify the Pattern</h3>
+      <table class="comparison-table">
+        <tr>
+          <th>If You See...</th>
+          <th>Likely Issue</th>
+          <th>Next Step</th>
+        </tr>
+        <tr>
+          <td>High CPU, normal response times</td>
+          <td>CPU-bound processing (expected or bug)</td>
+          <td>CPU profiling via Kudu</td>
+        </tr>
+        <tr>
+          <td>High CPU, slow responses</td>
+          <td>CPU starvation affecting requests</td>
+          <td>Identify hot code path</td>
+        </tr>
+        <tr>
+          <td>Normal CPU, slow ALL responses</td>
+          <td>Event loop blocking (sync-over-async)</td>
+          <td>Check event loop metrics, code review</td>
+        </tr>
+        <tr>
+          <td>Normal CPU, slow SOME responses</td>
+          <td>External dependency latency</td>
+          <td>Application Insights dependency view</td>
+        </tr>
+        <tr>
+          <td>Memory growing over time</td>
+          <td>Memory leak</td>
+          <td>Heap snapshot analysis</td>
+        </tr>
+        <tr>
+          <td>Sudden restarts, 502 errors</td>
+          <td>Crash (exception or OOM)</td>
+          <td>Crash dump, error logs</td>
+        </tr>
+      </table>
+
+      <h3>Step 3: Deep Dive Tools by Issue</h3>
+      <div class="alert-box success">
+        <strong>🔥 High CPU</strong>
+        <ol style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+          <li>Kudu Process Explorer → Identify process</li>
+          <li>App Service Diagnostics → CPU Drill Down</li>
+          <li>Profile with <code>node --prof</code> or <code>--inspect</code></li>
+        </ol>
+      </div>
+      <div class="alert-box success">
+        <strong>🧵 Event Loop Blocking</strong>
+        <ol style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+          <li>Check Application Insights for correlated slow requests</li>
+          <li>Look for sync operations in code (fs.readFileSync, etc.)</li>
+          <li>Add monitoring with <code>perf_hooks.monitorEventLoopDelay()</code></li>
+        </ol>
+      </div>
+      <div class="alert-box success">
+        <strong>📊 Memory Leak</strong>
+        <ol style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+          <li>Take heap snapshot via Kudu or remote debugging</li>
+          <li>Compare snapshots over time</li>
+          <li>Look for growing object counts</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Kudu Console -->
+    <section id="kudu-console" class="card">
+      <h2>🖥️ Kudu Console Commands</h2>
+      <p>Useful commands when connected to Kudu (SCM) console:</p>
+
+      <h3>Process Information</h3>
+      <pre><code># List Node.js processes
+ps aux | grep node
+
+# Show memory usage
+free -m
+
+# CPU and memory in real-time
+top -p $(pgrep -f node)</code></pre>
+
+      <h3>Profiling</h3>
+      <pre><code># Generate CPU profile (run this, reproduce issue, stop with Ctrl+C)
+# Profile saved as isolate-*.log
+node --prof /home/site/wwwroot/index.js
+
+# Process the profile
+node --prof-process isolate-*.log > profile.txt</code></pre>
+
+      <h3>Heap Snapshot</h3>
+      <pre><code># Find Node.js PID
+pgrep -f node
+
+# Send signal to generate heap snapshot
+kill -USR2 &lt;pid&gt;
+
+# Or connect with Chrome DevTools
+# 1. In Kudu, run: node --inspect=0.0.0.0:9229 /home/site/wwwroot/index.js
+# 2. Set up port forwarding
+# 3. Connect Chrome to chrome://inspect</code></pre>
+
+      <h3>Log Analysis</h3>
+      <pre><code># View recent application logs
+tail -100 /home/LogFiles/Application/*.log
+
+# Search for errors
+grep -i "error\|exception" /home/LogFiles/Application/*.log
+
+# Watch logs in real-time
+tail -f /home/LogFiles/Application/*.log</code></pre>
+    </section>
+
+    <!-- Application Insights -->
+    <section id="app-insights" class="card">
+      <h2>📊 Application Insights Queries</h2>
+      <p>Useful KQL queries for diagnosing Node.js issues:</p>
+
+      <h3>Slow Requests</h3>
+      <pre><code>requests
+| where timestamp > ago(1h)
+| where duration > 5000
+| summarize count() by bin(timestamp, 5m), name
+| render timechart</code></pre>
+
+      <h3>Failed Requests</h3>
+      <pre><code>requests
+| where timestamp > ago(1h)
+| where success == false
+| summarize count() by resultCode, name
+| order by count_ desc</code></pre>
+
+      <h3>Exception Breakdown</h3>
+      <pre><code>exceptions
+| where timestamp > ago(24h)
+| summarize count() by type, outerMessage
+| order by count_ desc</code></pre>
+
+      <h3>Dependency Latency</h3>
+      <pre><code>dependencies
+| where timestamp > ago(1h)
+| summarize avg(duration), percentile(duration, 95) by name
+| order by avg_duration desc</code></pre>
+
+      <h3>Custom Event Loop Metric (if instrumented)</h3>
+      <pre><code>customMetrics
+| where name == "EventLoopLag"
+| summarize avg(value), max(value) by bin(timestamp, 1m)
+| render timechart</code></pre>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Performance Problem Simulator - Educational Tool for Azure App Service Diagnostics</p>
+    <p>Created by <a href="https://speckit.org/" target="_blank">SpecKit</a> in collaboration with <a href="mailto:rhamlett@microsoft.com">Richard Hamlett</a></p>
+    <p id="build-info">Build: Loading...</p>
+  </footer>
+  <script>
+    // Load environment info for SKU badge
+    fetch('/api/health/environment')
+      .then(r => r.json())
+      .then(env => {
+        const badge = document.getElementById('sku-badge');
+        if (badge) badge.textContent = 'SKU: ' + env.sku;
+      })
+      .catch(() => {});
+    
+    // Load build info for footer
+    fetch('/api/health/build')
+      .then(r => r.json())
+      .then(build => {
+        const buildInfo = document.getElementById('build-info');
+        if (buildInfo) buildInfo.textContent = 'Build: ' + build.buildTime;
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>

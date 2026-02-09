@@ -7,6 +7,7 @@
  */
 
 import { monitorEventLoopDelay, IntervalHistogram } from 'perf_hooks';
+import * as os from 'os';
 import {
   SystemMetrics,
   CpuMetrics,
@@ -25,6 +26,11 @@ class MetricsServiceClass {
   private histogram: IntervalHistogram;
   private lastCpuUsage: NodeJS.CpuUsage | null = null;
   private lastCpuTime: number = Date.now();
+  
+  // Real-time heartbeat lag measurement
+  // This measures actual time for setImmediate to fire, showing real blocking
+  private heartbeatLagMs: number = 0;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     // Initialize event loop delay histogram with 10ms resolution
@@ -34,6 +40,28 @@ class MetricsServiceClass {
     // Initialize CPU tracking
     this.lastCpuUsage = process.cpuUsage();
     this.lastCpuTime = Date.now();
+    
+    // Start heartbeat measurement
+    this.startHeartbeat();
+  }
+  
+  /**
+   * Starts the heartbeat measurement loop.
+   * Schedules setImmediate callbacks and measures how long they take to fire.
+   * This provides real-time visibility into event loop blocking.
+   */
+  private startHeartbeat(): void {
+    const measureHeartbeat = () => {
+      const start = Date.now();
+      setImmediate(() => {
+        this.heartbeatLagMs = Date.now() - start;
+      });
+    };
+    
+    // Measure heartbeat every 100ms
+    this.heartbeatInterval = setInterval(measureHeartbeat, 100);
+    // Initial measurement
+    measureHeartbeat();
   }
 
   /**
@@ -76,6 +104,7 @@ class MetricsServiceClass {
       heapTotalMb: bytesToMb(memUsage.heapTotal),
       rssMb: bytesToMb(memUsage.rss),
       externalMb: bytesToMb(memUsage.external),
+      totalSystemMb: bytesToMb(os.totalmem()),
     };
   }
 
@@ -87,6 +116,7 @@ class MetricsServiceClass {
   getEventLoopMetrics(): EventLoopMetrics {
     return {
       lagMs: nsToMs(this.histogram.mean),
+      heartbeatLagMs: this.heartbeatLagMs,
       lagP99Ms: nsToMs(this.histogram.percentile(99)),
       minMs: nsToMs(this.histogram.min),
       maxMs: nsToMs(this.histogram.max),
@@ -100,6 +130,7 @@ class MetricsServiceClass {
    */
   getProcessMetrics(): ProcessMetrics {
     return {
+      pid: process.pid,
       // @ts-expect-error - _getActiveHandles and _getActiveRequests are internal Node.js APIs
       activeHandles: (process._getActiveHandles?.()?.length as number) ?? 0,
       // @ts-expect-error - _getActiveRequests is an internal Node.js API

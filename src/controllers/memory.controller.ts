@@ -23,7 +23,7 @@ export const memoryRouter = Router();
  * Allocates memory to simulate memory pressure.
  *
  * @route POST /api/simulations/memory
- * @body {number} sizeMb - Memory to allocate in megabytes (1-500)
+ * @body {number} sizeMb - Memory to allocate in megabytes (no limit)
  * @returns {SimulationResponse} Created allocation details
  */
 memoryRouter.post('/', (req: Request, res: Response, next: NextFunction) => {
@@ -60,34 +60,29 @@ memoryRouter.delete('/:id', (req: Request, res: Response, next: NextFunction) =>
     // Validate UUID format
     const id = validateUuid(req.params.id, 'id');
 
-    // Check if simulation exists
-    const simulation = SimulationTrackerService.getSimulation(id);
-    if (!simulation) {
-      throw new NotFoundError('Memory allocation not found');
+    // Try to release the memory
+    const result = MemoryPressureService.release(id);
+
+    if (result) {
+      // Memory was actually released
+      res.json({
+        id: result.simulation?.id ?? id,
+        type: 'MEMORY_PRESSURE',
+        message: result.sizeMb > 0 ? `Released ${result.sizeMb}MB of memory` : 'Released memory allocation',
+        status: result.simulation?.status ?? 'STOPPED',
+        stoppedAt: result.simulation?.stoppedAt?.toISOString(),
+        totalAllocatedMb: MemoryPressureService.getTotalAllocatedMb(),
+      });
+    } else {
+      // Nothing found to release - return success anyway (idempotent delete)
+      res.json({
+        id: id,
+        type: 'MEMORY_PRESSURE',
+        message: 'Memory allocation already released or not found',
+        status: 'STOPPED',
+        totalAllocatedMb: MemoryPressureService.getTotalAllocatedMb(),
+      });
     }
-
-    if (simulation.type !== 'MEMORY_PRESSURE') {
-      throw new NotFoundError('Not a memory allocation');
-    }
-
-    // Get size before releasing
-    const sizeMb = MemoryPressureService.getAllocationSize(id);
-
-    // Release the memory
-    const releasedSimulation = MemoryPressureService.release(id);
-
-    if (!releasedSimulation) {
-      throw new NotFoundError('Failed to release memory allocation');
-    }
-
-    res.json({
-      id: releasedSimulation.id,
-      type: releasedSimulation.type,
-      message: `Released ${sizeMb}MB of memory`,
-      status: releasedSimulation.status,
-      stoppedAt: releasedSimulation.stoppedAt?.toISOString(),
-      totalAllocatedMb: MemoryPressureService.getTotalAllocatedMb(),
-    });
   } catch (error) {
     next(error);
   }

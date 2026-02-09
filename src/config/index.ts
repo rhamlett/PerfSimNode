@@ -32,13 +32,13 @@ export const config: AppConfig = {
   port: parseIntEnv('PORT', 3000),
 
   /** Metrics collection/broadcast interval in milliseconds */
-  metricsIntervalMs: parseIntEnv('METRICS_INTERVAL_MS', 1000),
+  metricsIntervalMs: parseIntEnv('METRICS_INTERVAL_MS', 100),
 
-  /** Maximum allowed simulation duration in seconds */
-  maxSimulationDurationSeconds: parseIntEnv('MAX_SIMULATION_DURATION_SECONDS', 300),
+  /** Maximum allowed simulation duration in seconds (no practical limit) */
+  maxSimulationDurationSeconds: parseIntEnv('MAX_SIMULATION_DURATION_SECONDS', 86400),
 
-  /** Maximum single memory allocation in megabytes */
-  maxMemoryAllocationMb: parseIntEnv('MAX_MEMORY_ALLOCATION_MB', 500),
+  /** Maximum single memory allocation in megabytes (no practical limit) */
+  maxMemoryAllocationMb: parseIntEnv('MAX_MEMORY_ALLOCATION_MB', 65536),
 
   /** Maximum number of event log entries to retain (ring buffer) */
   eventLogMaxEntries: parseIntEnv('EVENT_LOG_MAX_ENTRIES', 100),

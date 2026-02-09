@@ -15,6 +15,46 @@ import { CrashService } from '../services/crash.service';
 export const crashRouter = Router();
 
 /**
+ * POST /api/simulations/crash/failfast
+ *
+ * Triggers a FailFast crash (process.abort / SIGABRT).
+ *
+ * WARNING: This will immediately terminate the Node.js process.
+ *
+ * @route POST /api/simulations/crash/failfast
+ * @returns {Object} Crash initiated message (may not be received)
+ */
+crashRouter.post('/failfast', (_req: Request, res: Response) => {
+  res.status(202).json({
+    message: 'FailFast initiated - process will terminate via SIGABRT',
+    warning: 'The process will terminate immediately. In Azure App Service, it will restart automatically.',
+    timestamp: new Date().toISOString(),
+  });
+
+  CrashService.crashWithFailFast();
+});
+
+/**
+ * POST /api/simulations/crash/stackoverflow
+ *
+ * Triggers a stack overflow crash via infinite recursion.
+ *
+ * WARNING: This will terminate the Node.js process.
+ *
+ * @route POST /api/simulations/crash/stackoverflow
+ * @returns {Object} Crash initiated message (may not be received)
+ */
+crashRouter.post('/stackoverflow', (_req: Request, res: Response) => {
+  res.status(202).json({
+    message: 'Stack overflow initiated - process will terminate via infinite recursion',
+    warning: 'The process will terminate. In Azure App Service, it will restart automatically.',
+    timestamp: new Date().toISOString(),
+  });
+
+  CrashService.crashWithStackOverflow();
+});
+
+/**
  * POST /api/simulations/crash/exception
  *
  * Triggers an unhandled exception that will crash the process.

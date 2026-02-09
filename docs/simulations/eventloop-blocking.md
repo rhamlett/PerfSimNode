@@ -4,6 +4,34 @@
 
 This simulation demonstrates a critical Node.js anti-pattern: blocking the event loop with synchronous operations. Understanding this helps engineers identify and diagnose blocked event loop scenarios.
 
+## Educational Features
+
+The dashboard provides real-time visualization of event loop blocking impact:
+
+### 1. Server Responsiveness Indicator
+- **Green dot + "Responsive"**: Server is healthy
+- **Red pulsing dot + "UNRESPONSIVE"**: Server is blocked
+- Shows duration of unresponsiveness in real-time
+
+### 2. Probe Visualization
+- Shows last 20 heartbeat probes (100ms intervals normally)
+- **Green dots**: Successful probes (< 150ms)
+- **Orange dots**: Degraded probes (150ms - 1s)
+- **Red dots**: Failed/timed out probes
+
+> **Note**: During Slow Request simulations, probe frequency is automatically reduced to 
+> 5000ms (1 probe every 5 seconds) to avoid noise in Node.js profiling diagnostics
+> (V8 CPU Profiler, Application Insights). A message is displayed during this time.
+
+### 3. Impact Analysis
+After blocking completes, shows:
+- Actual server block duration
+- Average latency of queued concurrent requests
+- Total round-trip time
+
+### 4. Real-Time Latency Chart
+Tracks actual probe response times, showing spikes during and after blocking.
+
 ## How It Works
 
 Node.js runs JavaScript in a single thread with an event loop. When synchronous (blocking) operations run, the event loop cannot process other events:
@@ -28,7 +56,7 @@ Content-Type: application/json
 ```
 
 **Parameters:**
-- `durationSeconds` (1-300): Duration to block in seconds
+- `durationSeconds` (1-60): Duration to block in seconds
 
 **Response (after blocking completes):**
 ```json
@@ -51,14 +79,15 @@ During event loop blocking:
 
 ## Diagnostic Exercises
 
-### Exercise 1: Observe Unresponsiveness
+### Exercise 1: Watch the Dashboard
 
 1. Open dashboard in browser
-2. Open another terminal
-3. Start 5-second blocking simulation
-4. Watch dashboard stop updating
-5. Try health check - it will wait
+2. Note the green "Responsive" indicator and probe dots
+3. Click "Block Event Loop" for 5 seconds
+4. **Watch the probe dots turn red**
+5. **See the indicator change to "UNRESPONSIVE"**
 6. Observe everything resume after blocking
+7. Check the Impact Analysis results
 
 ### Exercise 2: Concurrent Request Impact
 
