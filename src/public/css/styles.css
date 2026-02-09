@@ -1124,7 +1124,7 @@ button:disabled {
 }
 
 .event-log {
-  max-height: 300px;
+  max-height: 700px;
   overflow-y: auto;
   font-family: 'Cascadia Code', 'Consolas', monospace;
   font-size: 0.8125rem;
