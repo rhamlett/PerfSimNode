@@ -81,7 +81,8 @@ healthRouter.get('/build', (_req: Request, res: Response) => {
  * GET /api/health/probe
  *
  * Ultra-lightweight endpoint for heartbeat detection.
- * Used by client to detect event loop blocking.
+ * Note: This endpoint may be filtered by Azure AppLens.
+ * Use /api/metrics/probe for requests that need to appear in diagnostics.
  *
  * @route GET /api/health/probe
  * @returns {Object} Minimal response with server timestamp

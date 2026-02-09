@@ -31,3 +31,16 @@ metricsRouter.get('/', (_req: Request, res: Response) => {
     timestamp: metrics.timestamp.toISOString(),
   });
 });
+
+/**
+ * GET /api/metrics/probe
+ *
+ * Lightweight probe endpoint for latency monitoring.
+ * Returns minimal data but registered as real API traffic (not filtered like /health).
+ *
+ * @route GET /api/metrics/probe
+ * @returns {Object} Server timestamp for latency calculation
+ */
+metricsRouter.get('/probe', (_req: Request, res: Response) => {
+  res.json({ ts: Date.now() });
+});

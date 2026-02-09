@@ -151,7 +151,7 @@ function startHeartbeatProbe() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
       
-      const response = await fetch('/api/health/probe', { 
+      const response = await fetch('/api/metrics/probe', { 
         signal: controller.signal,
         cache: 'no-store'
       });
