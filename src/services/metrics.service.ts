@@ -8,7 +8,6 @@
 
 import { monitorEventLoopDelay, IntervalHistogram } from 'perf_hooks';
 import * as os from 'os';
-import * as fs from 'fs';
 import {
   SystemMetrics,
   CpuMetrics,
@@ -18,76 +17,8 @@ import {
 } from '../types';
 import { bytesToMb, nsToMs } from '../utils';
 
-// Marker value used by cgroups when memory is unlimited
-const CGROUP_UNLIMITED = 9223372036854771712;
-
-/**
- * Reads a cgroup file and returns its numeric value, or null if unavailable.
- */
-function readCgroupValue(path: string): number | null {
-  try {
-    if (fs.existsSync(path)) {
-      const content = fs.readFileSync(path, 'utf8').trim();
-      if (content === 'max') return null; // cgroup v2 unlimited marker
-      const value = parseInt(content, 10);
-      if (!isNaN(value) && value > 0 && value < CGROUP_UNLIMITED) {
-        return value;
-      }
-    }
-  } catch {
-    // Ignore read errors
-  }
-  return null;
-}
-
-/**
- * Detects the container memory limit by checking multiple sources.
- * Automatically works in Docker, Kubernetes, Azure App Service, etc.
- * 
- * @returns Object with limit in bytes and detection source
- */
-function detectContainerMemoryLimit(): { limit: number; source: string } {
-  const osTotalMem = os.totalmem();
-  
-  // Cgroup v2 paths (modern systems)
-  const cgroupV2Paths = [
-    '/sys/fs/cgroup/memory.max',
-    '/sys/fs/cgroup/memory.high',
-  ];
-  
-  // Cgroup v1 paths (older systems, including many Azure containers)
-  const cgroupV1Paths = [
-    '/sys/fs/cgroup/memory/memory.limit_in_bytes',
-    '/sys/fs/cgroup/memory/memory.soft_limit_in_bytes',
-  ];
-  
-  // Try cgroup v2 first
-  for (const path of cgroupV2Paths) {
-    const value = readCgroupValue(path);
-    if (value !== null) {
-      return { limit: value, source: `cgroup v2: ${path}` };
-    }
-  }
-  
-  // Try cgroup v1
-  for (const path of cgroupV1Paths) {
-    const value = readCgroupValue(path);
-    if (value !== null) {
-      return { limit: value, source: `cgroup v1: ${path}` };
-    }
-  }
-  
-  // Fall back to OS total memory
-  return { limit: osTotalMem, source: 'os.totalmem()' };
-}
-
-// Detect and cache the container memory limit at startup
-const memoryDetection = detectContainerMemoryLimit();
-const containerMemoryLimit = memoryDetection.limit;
-
-// Log detection result on startup
-console.log(`[Metrics] Memory limit detected: ${bytesToMb(containerMemoryLimit).toFixed(0)} MB (source: ${memoryDetection.source})`);
-console.log(`[Metrics] OS reports total: ${bytesToMb(os.totalmem()).toFixed(0)} MB`);
+// Log memory info on startup
+console.log(`[Metrics] Host memory available: ${bytesToMb(os.totalmem()).toFixed(0)} MB`);
 
 /**
  * Service for collecting system metrics.
@@ -175,7 +106,7 @@ class MetricsServiceClass {
       heapTotalMb: bytesToMb(memUsage.heapTotal),
       rssMb: bytesToMb(memUsage.rss),
       externalMb: bytesToMb(memUsage.external),
-      totalSystemMb: bytesToMb(containerMemoryLimit),
+      totalSystemMb: bytesToMb(os.totalmem()),
     };
   }
 
