@@ -7,6 +7,8 @@
  */
 
 import { Router, Request, Response } from 'express';
+import * as fs from 'fs';
+import * as os from 'os';
 import { SimulationTrackerService } from '../services/simulation-tracker.service';
 import { EventLogService } from '../services/event-log.service';
 import { MetricsService } from '../services/metrics.service';
@@ -108,5 +110,76 @@ adminRouter.get('/admin/events', (req: Request, res: Response) => {
     })),
     count: events.length,
     total: EventLogService.getCount(),
+  });
+});
+
+/**
+ * GET /api/admin/memory-debug
+ *
+ * Returns diagnostic info about memory detection for troubleshooting.
+ *
+ * @route GET /api/admin/memory-debug
+ * @returns {Object} Memory detection diagnostic info
+ */
+adminRouter.get('/admin/memory-debug', (_req: Request, res: Response) => {
+  const cgroupPaths = [
+    // cgroup v2 paths
+    '/sys/fs/cgroup/memory.max',
+    '/sys/fs/cgroup/memory.high',
+    '/sys/fs/cgroup/memory.current',
+    // cgroup v1 paths
+    '/sys/fs/cgroup/memory/memory.limit_in_bytes',
+    '/sys/fs/cgroup/memory/memory.soft_limit_in_bytes',
+    '/sys/fs/cgroup/memory/memory.usage_in_bytes',
+    // Alternative cgroup v1 paths (some containers)
+    '/sys/fs/cgroup/memory.limit_in_bytes',
+  ];
+
+  const results: Record<string, string | null> = {};
+  
+  for (const path of cgroupPaths) {
+    try {
+      if (fs.existsSync(path)) {
+        results[path] = fs.readFileSync(path, 'utf8').trim();
+      } else {
+        results[path] = null;
+      }
+    } catch (err) {
+      results[path] = `error: ${err instanceof Error ? err.message : 'unknown'}`;
+    }
+  }
+
+  // Check what directories exist
+  const cgroupDirs = [
+    '/sys/fs/cgroup',
+    '/sys/fs/cgroup/memory',
+  ];
+  
+  const dirContents: Record<string, string[] | string> = {};
+  for (const dir of cgroupDirs) {
+    try {
+      if (fs.existsSync(dir)) {
+        dirContents[dir] = fs.readdirSync(dir).slice(0, 50); // Limit to 50 entries
+      } else {
+        dirContents[dir] = 'does not exist';
+      }
+    } catch (err) {
+      dirContents[dir] = `error: ${err instanceof Error ? err.message : 'unknown'}`;
+    }
+  }
+
+  const metrics = MetricsService.getMetrics();
+
+  res.json({
+    osTotalmem: os.totalmem(),
+    osTotalmemMb: Math.round(os.totalmem() / 1024 / 1024),
+    osFreemem: os.freemem(),
+    osFreememMb: Math.round(os.freemem() / 1024 / 1024),
+    reportedTotalMb: metrics.memory.totalSystemMb,
+    cgroupFiles: results,
+    cgroupDirectories: dirContents,
+    processMemory: process.memoryUsage(),
+    platform: os.platform(),
+    release: os.release(),
   });
 });
