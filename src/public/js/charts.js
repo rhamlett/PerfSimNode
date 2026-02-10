@@ -694,6 +694,11 @@ function initCharts() {
               const value = context.raw;
               return value > 1000 ? 4 : 0; // Show point if > 1 second
             },
+            // Match hover radius to point radius to prevent orphaned hover dots
+            pointHoverRadius: (context) => {
+              const value = context.raw;
+              return value > 1000 ? 6 : 0;
+            },
             pointBackgroundColor: (context) => {
               const value = context.raw;
               return getInterpolatedLatencyColor(value);
