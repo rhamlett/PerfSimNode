@@ -7,6 +7,7 @@
  */
 
 import http from 'http';
+import { exec } from 'child_process';
 import { Server as SocketServer } from 'socket.io';
 import { createApp } from './app';
 import { config } from './config';
@@ -70,66 +71,41 @@ async function main(): Promise<void> {
       details: { port, metricsIntervalMs: config.metricsIntervalMs },
     });
 
-    // Server-side health probe every 100ms - generates real HTTP traffic for AppLens
-    // and broadcasts measured latency to connected dashboards
+    // Server-side health probe every 100ms - measures latency and broadcasts to dashboards
     const websiteHostname = process.env.WEBSITE_HOSTNAME;
     
     console.log(`[PerfSimNode] WEBSITE_HOSTNAME: ${websiteHostname || 'not set'}`);
-    console.log(`[PerfSimNode] App listening on port: ${port}`);
     
     let probeSuccessCount = 0;
     let probeErrorCount = 0;
     
-    // For Azure App Service traffic to appear in AppLens, requests must go through
-    // the front-end proxy. On Linux App Service, try HTTP to port 80 which goes
-    // through the middleware proxy.
-    
-    console.log(`[PerfSimNode] Attempting probe through internal middleware on port 80`);
-    
-    setInterval(() => {
-      const startTime = Date.now();
+    if (websiteHostname) {
+      // On Azure: Use curl to make external HTTP requests
+      // curl goes through the standard network stack and should appear in AppLens
+      const curlUrl = `https://${websiteHostname}/api/metrics/probe`;
+      console.log(`[PerfSimNode] Using curl for probes: ${curlUrl}`);
       
-      if (websiteHostname) {
-        // Try HTTP request to localhost:80 (Azure's internal middleware/proxy)
-        // This should go through the front-end and appear in AppLens
-        const requestOptions: http.RequestOptions = {
-          hostname: '127.0.0.1',
-          port: 80,  // Azure's internal HTTP proxy port
-          path: '/api/metrics/probe',
-          method: 'GET',
-          headers: {
-            'Host': websiteHostname,  // Required for proper routing
-            'User-Agent': 'PerfSimNode-Probe/1.0',
-            'Connection': 'close',
-            'X-Forwarded-Proto': 'https',  // Indicate this should be treated as HTTPS
-          },
-          timeout: 5000,
-        };
-        
-        const req = http.request(requestOptions, (res) => {
-          res.on('data', () => {}); // Consume response
-          res.on('end', () => {
+      setInterval(() => {
+        // Use curl with timing output - curl measures total request time
+        exec(`curl -s -o /dev/null -w "%{time_total}" "${curlUrl}"`, { timeout: 5000 }, (error, stdout) => {
+          if (error) {
+            probeErrorCount++;
+            if (probeErrorCount <= 5 || probeErrorCount % 100 === 0) {
+              console.error(`[PerfSimNode] Curl probe error #${probeErrorCount}: ${error.message}`);
+            }
+          } else {
             probeSuccessCount++;
-            const latencyMs = Date.now() - startTime;
+            // curl returns time in seconds with decimals, convert to ms
+            const curlTimeSeconds = parseFloat(stdout.trim());
+            const latencyMs = Math.round(curlTimeSeconds * 1000);
             io.emit('probeLatency', { latencyMs, timestamp: Date.now() });
-          });
-        });
-        
-        req.on('error', (err) => {
-          probeErrorCount++;
-          if (probeErrorCount <= 10 || probeErrorCount % 100 === 0) {
-            console.error(`[PerfSimNode] Probe error #${probeErrorCount}: ${err.message}`);
           }
-          // Emit error latency so UI shows connection issues
-          io.emit('probeLatency', { latencyMs: -1, timestamp: Date.now(), error: true });
         });
-        req.on('timeout', () => {
-          req.destroy();
-          probeErrorCount++;
-        });
-        req.end();
-      } else {
-        // Local: Use HTTP to app port directly
+      }, 100);
+    } else {
+      // Local: Use Node's http module directly
+      setInterval(() => {
+        const startTime = Date.now();
         const req = http.get(`http://localhost:${port}/api/metrics/probe`, (res) => {
           res.on('data', () => {});
           res.on('end', () => {
@@ -140,8 +116,8 @@ async function main(): Promise<void> {
         });
         req.on('error', () => {});
         req.on('timeout', () => req.destroy());
-      }
-    }, 100);
+      }, 100);
+    }
     
     // Log probe stats every 60 seconds
     setInterval(() => {
