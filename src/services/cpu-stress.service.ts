@@ -1,27 +1,28 @@
 /**
  * CPU Stress Service
  *
- * Simulates CPU stress using worker threads for multi-core utilization.
+ * Simulates CPU stress using child processes for guaranteed multi-core utilization.
+ * Uses child_process.fork() which spawns real OS processes on separate cores.
  *
  * @module services/cpu-stress
  */
 
-import { Worker } from 'worker_threads';
+import { fork, ChildProcess } from 'child_process';
 import { cpus } from 'os';
 import path from 'path';
 import { Simulation, CpuStressParams } from '../types';
 import { SimulationTrackerService } from './simulation-tracker.service';
 import { EventLogService } from './event-log.service';
 
-/** Active CPU stress workers by simulation ID */
-const activeWorkers: Map<string, Worker[]> = new Map();
+/** Active CPU stress processes by simulation ID */
+const activeProcesses: Map<string, ChildProcess[]> = new Map();
 const activeTimeouts: Map<string, NodeJS.Timeout> = new Map();
 
 /**
  * CPU Stress Service
  *
- * Uses worker threads to generate CPU load across multiple cores.
- * Spawns workers proportional to available CPUs and target load.
+ * Uses child_process.fork() to spawn separate OS processes.
+ * Each process runs on its own CPU core, guaranteed by the OS scheduler.
  */
 class CpuStressServiceClass {
   /**
@@ -47,8 +48,8 @@ class CpuStressServiceClass {
       details: { targetLoadPercent, durationSeconds },
     });
 
-    // Start the CPU burn workers
-    this.startCpuWorkers(simulation.id, targetLoadPercent, durationSeconds);
+    // Start the CPU burn processes
+    this.startCpuProcesses(simulation.id, targetLoadPercent, durationSeconds);
 
     return simulation;
   }
@@ -60,8 +61,8 @@ class CpuStressServiceClass {
    * @returns The stopped simulation or undefined if not found
    */
   stop(id: string): Simulation | undefined {
-    // Stop the CPU workers
-    this.stopCpuWorkers(id);
+    // Stop the CPU processes
+    this.stopCpuProcesses(id);
 
     // Update simulation status
     const simulation = SimulationTrackerService.stopSimulation(id);
@@ -77,67 +78,73 @@ class CpuStressServiceClass {
   }
 
   /**
-   * Starts CPU worker threads for a simulation.
+   * Starts CPU worker processes for a simulation.
    *
-   * Each worker burns 100% of one CPU core.
-   * Spawns aggressively to ensure CPU saturation regardless of reported cores.
+   * Uses child_process.fork() to spawn separate OS processes.
+   * Each process burns 100% of one CPU core.
    *
    * @param simulationId - Simulation ID
    * @param targetLoadPercent - Target CPU load percentage (1-100)
    * @param durationSeconds - Total duration in seconds
    */
-  private startCpuWorkers(
+  private startCpuProcesses(
     simulationId: string,
     targetLoadPercent: number,
     durationSeconds: number
   ): void {
     const numCpus = cpus().length;
     
-    // Spawn workers based on target percentage and actual CPU count
-    // For 100% on 2 cores: 2 workers
-    // For 50% on 2 cores: 1 worker
-    const numWorkers = Math.max(1, Math.round((targetLoadPercent / 100) * numCpus));
+    // Calculate workers: for 100% on 2 CPUs = 2 processes
+    // For 50% on 2 CPUs = 1 process
+    const numProcesses = Math.max(1, Math.round((targetLoadPercent / 100) * numCpus));
 
-    const workers: Worker[] = [];
+    const processes: ChildProcess[] = [];
     const workerPath = path.join(__dirname, 'cpu-worker.js');
-    let workersReady = 0;
+    let processesReady = 0;
+    let processErrors: string[] = [];
 
-    for (let i = 0; i < numWorkers; i++) {
+    for (let i = 0; i < numProcesses; i++) {
       try {
-        const worker = new Worker(workerPath);
+        const child = fork(workerPath, [], {
+          detached: false,
+          stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+        });
 
-        worker.on('message', (msg) => {
+        child.on('message', (msg) => {
           if (msg === 'ready') {
-            workersReady++;
+            processesReady++;
           }
         });
 
-        worker.on('error', (err) => {
-          process.stderr.write(`[CPU Stress] Worker ${i} error: ${err.message}\n`);
+        child.on('error', (err) => {
+          processErrors.push(`Process ${i}: ${err.message}`);
         });
 
-        worker.on('exit', (code) => {
-          if (code !== 0) {
-            process.stderr.write(`[CPU Stress] Worker ${i} exited with code ${code}\n`);
+        child.on('exit', (code) => {
+          if (code !== 0 && code !== null) {
+            processErrors.push(`Process ${i} exited with code ${code}`);
           }
         });
 
-        workers.push(worker);
+        processes.push(child);
       } catch (err) {
-        process.stderr.write(`[CPU Stress] Failed to spawn worker ${i}: ${err}\n`);
+        processErrors.push(`Failed to spawn process ${i}: ${err}`);
       }
     }
 
-    activeWorkers.set(simulationId, workers);
+    activeProcesses.set(simulationId, processes);
 
-    // Log worker status after brief delay
+    // Log status after brief delay
     setTimeout(() => {
-      process.stdout.write(`[CPU Stress] Started: target=${targetLoadPercent}%, cpus=${numCpus}, workers=${workers.length}, ready=${workersReady}\n`);
-    }, 500);
+      const status = processErrors.length > 0 
+        ? `ERRORS: ${processErrors.join('; ')}`
+        : `ready=${processesReady}`;
+      process.stdout.write(`[CPU Stress] fork() - target=${targetLoadPercent}%, cpus=${numCpus}, processes=${processes.length}, ${status}\n`);
+    }, 1000);
 
     // Set up auto-completion timeout
     const timeout = setTimeout(() => {
-      this.stopCpuWorkers(simulationId);
+      this.stopCpuProcesses(simulationId);
       const simulation = SimulationTrackerService.completeSimulation(simulationId);
       if (simulation) {
         EventLogService.info('SIMULATION_COMPLETED', 'CPU stress simulation completed', {
@@ -151,11 +158,11 @@ class CpuStressServiceClass {
   }
 
   /**
-   * Stops CPU worker threads for a simulation.
+   * Stops CPU worker processes for a simulation.
    *
    * @param simulationId - Simulation ID
    */
-  private stopCpuWorkers(simulationId: string): void {
+  private stopCpuProcesses(simulationId: string): void {
     // Clear the timeout
     const timeout = activeTimeouts.get(simulationId);
     if (timeout) {
@@ -163,21 +170,31 @@ class CpuStressServiceClass {
       activeTimeouts.delete(simulationId);
     }
 
-    // Terminate all workers
-    const workers = activeWorkers.get(simulationId);
-    if (workers) {
-      for (const worker of workers) {
+    // Terminate all processes
+    const processes = activeProcesses.get(simulationId);
+    if (processes) {
+      for (const child of processes) {
         try {
-          worker.postMessage('stop');
-          // Force terminate after 100ms if not stopped gracefully
+          // Send stop message
+          if (child.connected) {
+            child.send('stop');
+          }
+          // Force kill after 200ms if still running
           setTimeout(() => {
-            worker.terminate().catch(() => {});
-          }, 100);
+            if (!child.killed) {
+              child.kill('SIGKILL');
+            }
+          }, 200);
         } catch {
-          // Worker may already be terminated
+          // Process may already be terminated
+          try {
+            child.kill('SIGKILL');
+          } catch {
+            // Ignore
+          }
         }
       }
-      activeWorkers.delete(simulationId);
+      activeProcesses.delete(simulationId);
     }
   }
 
