@@ -18,11 +18,19 @@ import { config } from '../config';
 class EventLogServiceClass {
   private entries: EventLogEntry[] = [];
   private maxEntries: number;
+  private broadcaster: ((event: EventLogEntry) => void) | null = null;
 
   constructor() {
     this.maxEntries = config.eventLogMaxEntries;
   }
 
+  /**
+   * Sets a broadcaster function to emit events in real-time (e.g., via Socket.IO).
+   * @param fn - Function to call with each new event
+   */
+  setBroadcaster(fn: (event: EventLogEntry) => void): void {
+    this.broadcaster = fn;
+  }
   /**
    * Logs a new event.
    *
@@ -67,6 +75,11 @@ class EventLogServiceClass {
       console.warn(consoleMessage);
     } else {
       console.log(consoleMessage);
+    }
+
+    // Broadcast to connected clients if broadcaster is set
+    if (this.broadcaster) {
+      this.broadcaster(entry);
     }
 
     return entry;

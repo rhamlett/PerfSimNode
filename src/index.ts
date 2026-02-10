@@ -36,6 +36,19 @@ async function main(): Promise<void> {
     },
   });
 
+  // Set up event broadcasting via Socket.IO
+  EventLogService.setBroadcaster((event) => {
+    io.emit('event', {
+      id: event.id,
+      timestamp: event.timestamp.toISOString(),
+      level: event.level,
+      event: event.event,
+      message: event.message,
+      simulationId: event.simulationId,
+      simulationType: event.simulationType,
+    });
+  });
+
   // Handle WebSocket connections
   io.on('connection', (socket) => {
     console.log(`[Socket.IO] Client connected: ${socket.id}`);
@@ -75,57 +88,58 @@ async function main(): Promise<void> {
       details: { port, metricsIntervalMs: config.metricsIntervalMs },
     });
 
-    // Server-side health probe every 100ms - measures latency and broadcasts to dashboards
+    // Server-side health probes for latency monitoring
+    // Hybrid approach: native http for low-overhead dashboard updates, curl for AppLens visibility
     const websiteHostname = process.env.WEBSITE_HOSTNAME;
     
     console.log(`[PerfSimNode] WEBSITE_HOSTNAME: ${websiteHostname || 'not set'}`);
     
     let probeSuccessCount = 0;
     let probeErrorCount = 0;
+    let curlSuccessCount = 0;
+    let curlErrorCount = 0;
     
+    // Native HTTP probe every 250ms - low overhead, real-time dashboard updates
+    setInterval(() => {
+      const startTime = Date.now();
+      const req = http.get(`http://localhost:${port}/api/metrics/probe`, (res) => {
+        res.on('data', () => {});
+        res.on('end', () => {
+          probeSuccessCount++;
+          const latencyMs = Date.now() - startTime;
+          io.emit('probeLatency', { latencyMs, timestamp: Date.now() });
+        });
+      });
+      req.on('error', () => { probeErrorCount++; });
+      req.on('timeout', () => req.destroy());
+    }, 250);
+    
+    // Curl probe every 1s - for AppLens visibility (only on Azure)
     if (websiteHostname) {
-      // On Azure: Use curl to make external HTTP requests
-      // curl goes through the standard network stack and should appear in AppLens
       const curlUrl = `https://${websiteHostname}/api/metrics/probe`;
-      console.log(`[PerfSimNode] Using curl for probes: ${curlUrl}`);
+      console.log(`[PerfSimNode] Using hybrid probing: native http every 250ms, curl every 1s`);
+      console.log(`[PerfSimNode] Curl URL for AppLens: ${curlUrl}`);
       
       setInterval(() => {
-        // Use curl with timing output - curl measures total request time
-        exec(`curl -s -o /dev/null -w "%{time_total}" "${curlUrl}"`, { timeout: 5000 }, (error, stdout) => {
+        exec(`curl -s -o /dev/null -w "%{time_total}" "${curlUrl}"`, { timeout: 5000 }, (error) => {
           if (error) {
-            probeErrorCount++;
-            if (probeErrorCount <= 5 || probeErrorCount % 100 === 0) {
-              console.error(`[PerfSimNode] Curl probe error #${probeErrorCount}: ${error.message}`);
+            curlErrorCount++;
+            if (curlErrorCount <= 5 || curlErrorCount % 100 === 0) {
+              console.error(`[PerfSimNode] Curl probe error #${curlErrorCount}: ${error.message}`);
             }
           } else {
-            probeSuccessCount++;
-            // curl returns time in seconds with decimals, convert to ms
-            const curlTimeSeconds = parseFloat(stdout.trim());
-            const latencyMs = Math.round(curlTimeSeconds * 1000);
-            io.emit('probeLatency', { latencyMs, timestamp: Date.now() });
+            curlSuccessCount++;
           }
         });
-      }, 100);
+      }, 1000);
     } else {
-      // Local: Use Node's http module directly
-      setInterval(() => {
-        const startTime = Date.now();
-        const req = http.get(`http://localhost:${port}/api/metrics/probe`, (res) => {
-          res.on('data', () => {});
-          res.on('end', () => {
-            probeSuccessCount++;
-            const latencyMs = Date.now() - startTime;
-            io.emit('probeLatency', { latencyMs, timestamp: Date.now() });
-          });
-        });
-        req.on('error', () => {});
-        req.on('timeout', () => req.destroy());
-      }, 100);
+      console.log(`[PerfSimNode] Local mode: native http probes only (every 250ms)`);
     }
     
     // Log probe stats every 60 seconds
     setInterval(() => {
-      console.log(`[PerfSimNode] Probe stats - Success: ${probeSuccessCount}, Errors: ${probeErrorCount}`);
+      const curlStats = websiteHostname ? `, Curl: ${curlSuccessCount}/${curlErrorCount}` : '';
+      console.log(`[PerfSimNode] Probe stats - Native: ${probeSuccessCount}/${probeErrorCount}${curlStats}`);
     }, 60000);
   });
 }

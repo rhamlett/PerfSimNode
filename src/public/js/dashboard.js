@@ -112,8 +112,10 @@ let lastProcessId = null;
 
 /**
  * Adds an event to the log display.
+ * @param {Object} event - Event object with level, message, and optional timestamp
+ * @param {boolean} skipRender - If true, skip rendering (for batch operations)
  */
-function addEventToLog(event) {
+function addEventToLog(event, skipRender = false) {
   // Simple event format: { level, message } or full format with timestamp
   const logEntry = {
     timestamp: event.timestamp || new Date().toISOString(),
@@ -125,7 +127,9 @@ function addEventToLog(event) {
   if (eventLog.length > maxEventLogEntries) {
     eventLog.pop();
   }
-  renderEventLog();
+  if (!skipRender) {
+    renderEventLog();
+  }
 }
 
 /**
@@ -178,9 +182,29 @@ async function loadActiveSimulations() {
  * Clears the event log on page load.
  * Event log starts fresh each session to show only current session events.
  */
-function loadEventLog() {
-  // Clear the event log - starts fresh on page refresh
+async function loadEventLog() {
+  // Clear user-side events (keep server events from this session)
   eventLog.length = 0;
+  
+  try {
+    // Fetch recent server-side events (includes SERVER_STARTED, etc.)
+    const response = await fetch('/api/admin/events?limit=20');
+    if (response.ok) {
+      const data = await response.json();
+      // Events come newest-first from API, but we want oldest-first for display
+      const serverEvents = data.events.reverse();
+      for (const event of serverEvents) {
+        addEventToLog({
+          level: event.level || 'info',
+          message: event.message,
+          timestamp: event.timestamp
+        }, true); // Skip re-render until done
+      }
+    }
+  } catch (error) {
+    console.error('[Dashboard] Failed to load event log:', error);
+  }
+  
   renderEventLog();
 }
 
