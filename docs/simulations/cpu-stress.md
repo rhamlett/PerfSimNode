@@ -56,6 +56,37 @@ Unlike simple CPU burning in the main thread (which would block Node.js), this s
 - Child processes named similar to main process
 - CPU utilization matches target (approximately)
 
+## CPU Metric Measurement
+
+### High-Resolution Sampling
+
+The dashboard samples CPU metrics at **250ms intervals** using `os.cpus()` for system-wide measurement. This high-resolution approach reveals real system behavior but can show significant fluctuations even when idle:
+
+| Behavior | Cause |
+|----------|-------|
+| 0-90% spikes at idle | Short bursts of activity (GC, curl, I/O) within measurement window |
+| Rapid fluctuations | Container scheduling on shared infrastructure |
+| Brief CPU bursts | V8 garbage collection, JIT compilation |
+
+### Why Raw Data?
+
+Production monitoring tools (Azure Monitor, Prometheus) typically sample every 15-60 seconds and smooth the data. This dashboard intentionally shows **unsmoothed high-resolution data** to:
+
+1. **Reveal real system behavior** - See GC pauses, scheduling artifacts
+2. **Educational value** - Understand how Linux CPU measurement works
+3. **Detect brief anomalies** - Short blocking operations visible
+
+### Comparison to Production Tools
+
+| Tool | Sample Interval | Smoothing |
+|------|-----------------|-----------|
+| This Dashboard | 250ms | None (raw) |
+| Azure App Service Metrics | 1 minute | Averaged |
+| Application Insights | 1 minute | Aggregated |
+| Linux `top` | 3 seconds | Per-interval |
+
+> **Tip:** When diagnosing CPU issues, start a simulation and watch the **trend** rather than individual values. The important signal is sustained elevation, not momentary spikes.
+
 ## Node.js Characteristics
 
 ### Why This Matters

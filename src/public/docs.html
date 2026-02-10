@@ -213,6 +213,10 @@ Content-Type: application/json
         <li>Multiple <code>node</code> processes visible in <code>top</code>/<code>htop</code></li>
       </ul>
 
+      <div class="info-box">
+        <strong>📊 About CPU Metrics:</strong> The dashboard samples CPU at 250ms intervals using raw <code>os.cpus()</code> data. This high-resolution approach may show significant fluctuations even at idle due to GC, curl probes, and container scheduling. Focus on the <em>trend</em> during simulations, not individual spikes. Production tools (Azure Monitor) sample every 1 minute with averaging.
+      </div>
+
       <h3>Diagnostic Tools</h3>
       <ul>
         <li><code>top</code> / <code>htop</code> - View all node processes</li>
