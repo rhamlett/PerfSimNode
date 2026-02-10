@@ -7,8 +7,6 @@
  */
 
 import http from 'http';
-import https from 'https';
-import dns from 'dns';
 import { Server as SocketServer } from 'socket.io';
 import { createApp } from './app';
 import { config } from './config';
@@ -74,69 +72,41 @@ async function main(): Promise<void> {
 
     // Server-side health probe every 100ms - generates real HTTP traffic for AppLens
     // and broadcasts measured latency to connected dashboards
-    // On Azure, probe the public hostname so requests go through the front-end and appear in AppLens
     const websiteHostname = process.env.WEBSITE_HOSTNAME;
     
     console.log(`[PerfSimNode] WEBSITE_HOSTNAME: ${websiteHostname || 'not set'}`);
+    console.log(`[PerfSimNode] App listening on port: ${port}`);
     
     let probeSuccessCount = 0;
     let probeErrorCount = 0;
     
-    if (websiteHostname) {
-      // First, do a DNS lookup to see what IP we're resolving to
-      dns.resolve4(websiteHostname, (err, addresses) => {
-        console.log(`[PerfSimNode] DNS resolve4 for ${websiteHostname}:`, err ? err.message : addresses);
-      });
-      dns.lookup(websiteHostname, (err, address, family) => {
-        console.log(`[PerfSimNode] DNS lookup for ${websiteHostname}:`, err ? err.message : `${address} (IPv${family})`);
-      });
-    }
+    // For Azure App Service traffic to appear in AppLens, requests must go through
+    // the front-end proxy. On Linux App Service, try HTTP to port 80 which goes
+    // through the middleware proxy.
     
-    // On Azure, try to resolve DNS externally to get the ARR IP
-    // Use external DNS (Google's 8.8.8.8) to bypass any internal DNS routing
-    const externalResolver = new dns.Resolver();
-    externalResolver.setServers(['8.8.8.8', '8.8.4.4']);
-    
-    let resolvedIp: string | null = null;
-    
-    if (websiteHostname) {
-      externalResolver.resolve4(websiteHostname, (err, addresses) => {
-        if (!err && addresses.length > 0) {
-          resolvedIp = addresses[0];
-          console.log(`[PerfSimNode] External DNS resolved ${websiteHostname} to ${resolvedIp}`);
-        } else {
-          console.log(`[PerfSimNode] External DNS resolution failed: ${err?.message || 'no addresses'}`);
-        }
-      });
-    }
-    
-    const probeUrl = websiteHostname 
-      ? `https://${websiteHostname}/api/metrics/probe`
-      : `http://localhost:${port}/api/metrics/probe`;
-    
-    console.log(`[PerfSimNode] Probe URL: ${probeUrl}`);
+    console.log(`[PerfSimNode] Attempting probe through internal middleware on port 80`);
     
     setInterval(() => {
       const startTime = Date.now();
       
       if (websiteHostname) {
-        // On Azure: Use HTTPS with the resolved external IP if available
-        // This ensures traffic goes through ARR (Azure's front-end) and appears in AppLens
-        const requestOptions: https.RequestOptions = {
-          hostname: resolvedIp || websiteHostname, // Use external IP if resolved
-          port: 443,
+        // Try HTTP request to localhost:80 (Azure's internal middleware/proxy)
+        // This should go through the front-end and appear in AppLens
+        const requestOptions: http.RequestOptions = {
+          hostname: '127.0.0.1',
+          port: 80,  // Azure's internal HTTP proxy port
           path: '/api/metrics/probe',
           method: 'GET',
           headers: {
-            'Host': websiteHostname, // Required for proper routing and SSL
+            'Host': websiteHostname,  // Required for proper routing
             'User-Agent': 'PerfSimNode-Probe/1.0',
             'Connection': 'close',
+            'X-Forwarded-Proto': 'https',  // Indicate this should be treated as HTTPS
           },
-          // Disable connection reuse to ensure each request appears separately
-          agent: false,
+          timeout: 5000,
         };
         
-        const req = https.request(requestOptions, (res) => {
+        const req = http.request(requestOptions, (res) => {
           res.on('data', () => {}); // Consume response
           res.on('end', () => {
             probeSuccessCount++;
@@ -147,15 +117,19 @@ async function main(): Promise<void> {
         
         req.on('error', (err) => {
           probeErrorCount++;
-          if (probeErrorCount <= 5 || probeErrorCount % 100 === 0) {
+          if (probeErrorCount <= 10 || probeErrorCount % 100 === 0) {
             console.error(`[PerfSimNode] Probe error #${probeErrorCount}: ${err.message}`);
           }
+          // Emit error latency so UI shows connection issues
+          io.emit('probeLatency', { latencyMs: -1, timestamp: Date.now(), error: true });
         });
-        req.on('timeout', () => req.destroy());
-        req.setTimeout(5000);
+        req.on('timeout', () => {
+          req.destroy();
+          probeErrorCount++;
+        });
         req.end();
       } else {
-        // Local: Use HTTP
+        // Local: Use HTTP to app port directly
         const req = http.get(`http://localhost:${port}/api/metrics/probe`, (res) => {
           res.on('data', () => {});
           res.on('end', () => {
@@ -171,7 +145,7 @@ async function main(): Promise<void> {
     
     // Log probe stats every 60 seconds
     setInterval(() => {
-      console.log(`[PerfSimNode] Probe stats - Success: ${probeSuccessCount}, Errors: ${probeErrorCount}, ResolvedIP: ${resolvedIp || 'using hostname'}`);
+      console.log(`[PerfSimNode] Probe stats - Success: ${probeSuccessCount}, Errors: ${probeErrorCount}`);
     }, 60000);
   });
 }
