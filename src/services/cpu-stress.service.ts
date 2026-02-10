@@ -79,7 +79,8 @@ class CpuStressServiceClass {
   /**
    * Starts CPU worker threads for a simulation.
    *
-   * Spawns one worker per CPU core, each running at the target load percentage.
+   * Each worker burns 100% of one CPU core.
+   * Total CPU is controlled by number of workers: target% * cores = workers.
    *
    * @param simulationId - Simulation ID
    * @param targetLoadPercent - Target CPU load percentage (1-100)
@@ -92,23 +93,20 @@ class CpuStressServiceClass {
   ): void {
     const numCpus = cpus().length;
     
-    // Spawn one worker per CPU core, each running at target percentage
-    // This ensures even distribution across all cores
-    const numWorkers = numCpus;
-    const perWorkerLoad = targetLoadPercent;
+    // Each worker burns 100% of one core
+    // Number of workers = (target% / 100) * numCpus
+    // Round to nearest, minimum 1 worker
+    const numWorkers = Math.max(1, Math.round((targetLoadPercent / 100) * numCpus));
+    const expectedCpu = (numWorkers / numCpus) * 100;
 
-    console.log(`[CPU Stress] Spawning ${numWorkers} workers at ${perWorkerLoad}% each (${numCpus} CPUs detected)`);
+    console.log(`[CPU Stress] Target: ${targetLoadPercent}%, CPUs: ${numCpus}, Workers: ${numWorkers} (expected ~${expectedCpu.toFixed(0)}% actual CPU)`);
 
     const workers: Worker[] = [];
     const workerPath = path.join(__dirname, 'cpu-worker.js');
 
     for (let i = 0; i < numWorkers; i++) {
       try {
-        const worker = new Worker(workerPath, {
-          workerData: {
-            targetLoadPercent: perWorkerLoad,
-          },
-        });
+        const worker = new Worker(workerPath);
 
         worker.on('error', (err) => {
           console.error(`[CPU Stress] Worker error: ${err.message}`);
