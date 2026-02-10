@@ -79,8 +79,7 @@ class CpuStressServiceClass {
   /**
    * Starts CPU worker threads for a simulation.
    *
-   * Spawns multiple workers to utilize multiple CPU cores.
-   * Number of workers scales with target load percentage.
+   * Spawns one worker per CPU core, each running at the target load percentage.
    *
    * @param simulationId - Simulation ID
    * @param targetLoadPercent - Target CPU load percentage (1-100)
@@ -93,14 +92,12 @@ class CpuStressServiceClass {
   ): void {
     const numCpus = cpus().length;
     
-    // Calculate how many workers we need
-    // For 100% target on 4 cores, we need 4 workers at 100% each
-    // For 50% target on 4 cores, we could use 4 workers at 50% each, or 2 at 100%
-    // Using more workers at lower duty cycle gives smoother load distribution
-    const numWorkers = Math.max(1, Math.ceil(numCpus * (targetLoadPercent / 100)));
-    const perWorkerLoad = Math.min(100, (targetLoadPercent * numCpus) / numWorkers);
+    // Spawn one worker per CPU core, each running at target percentage
+    // This ensures even distribution across all cores
+    const numWorkers = numCpus;
+    const perWorkerLoad = targetLoadPercent;
 
-    console.log(`[CPU Stress] Spawning ${numWorkers} workers at ${perWorkerLoad.toFixed(0)}% each (${numCpus} CPUs detected)`);
+    console.log(`[CPU Stress] Spawning ${numWorkers} workers at ${perWorkerLoad}% each (${numCpus} CPUs detected)`);
 
     const workers: Worker[] = [];
     const workerPath = path.join(__dirname, 'cpu-worker.js');
@@ -110,7 +107,6 @@ class CpuStressServiceClass {
         const worker = new Worker(workerPath, {
           workerData: {
             targetLoadPercent: perWorkerLoad,
-            intervalMs: 100,
           },
         });
 

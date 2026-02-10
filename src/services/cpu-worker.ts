@@ -2,7 +2,7 @@
  * CPU Worker Thread
  *
  * Runs in a separate thread to burn CPU cycles.
- * Receives burn parameters via parentPort messages.
+ * Uses a tight synchronous loop for maximum CPU utilization.
  *
  * @module services/cpu-worker
  */
@@ -12,43 +12,11 @@ import { pbkdf2Sync } from 'crypto';
 
 interface WorkerConfig {
   targetLoadPercent: number;
-  intervalMs: number;
 }
 
-const config: WorkerConfig = workerData || { targetLoadPercent: 50, intervalMs: 100 };
+const config: WorkerConfig = workerData || { targetLoadPercent: 100 };
 
 let running = true;
-
-/**
- * Performs CPU-intensive work for approximately the specified duration.
- */
-function cpuBurn(durationMs: number): void {
-  const endTime = Date.now() + durationMs;
-  while (Date.now() < endTime) {
-    // Each call consumes ~1-2ms of CPU time
-    pbkdf2Sync('password', 'salt', 1000, 64, 'sha512');
-  }
-}
-
-/**
- * Main burn loop - runs continuously until stopped.
- */
-function burnLoop(): void {
-  const burnTimeMs = (config.targetLoadPercent / 100) * config.intervalMs;
-  const sleepTimeMs = config.intervalMs - burnTimeMs;
-
-  const tick = () => {
-    if (!running) return;
-
-    // Burn CPU
-    cpuBurn(burnTimeMs);
-
-    // Schedule next tick after sleep
-    setTimeout(tick, sleepTimeMs);
-  };
-
-  tick();
-}
 
 // Listen for messages from parent
 parentPort?.on('message', (msg: string) => {
@@ -58,6 +26,38 @@ parentPort?.on('message', (msg: string) => {
     process.exit(0);
   }
 });
+
+/**
+ * Main burn loop - synchronous tight loop for maximum CPU burn.
+ * Uses a duty cycle within each 10ms window.
+ */
+function burnLoop(): void {
+  const cycleMs = 10; // 10ms cycle for precision
+  const burnMs = (config.targetLoadPercent / 100) * cycleMs;
+  
+  while (running) {
+    const cycleStart = Date.now();
+    const burnEnd = cycleStart + burnMs;
+    
+    // Burn phase - tight loop with actual work
+    while (Date.now() < burnEnd && running) {
+      // Heavy crypto work - this actually burns CPU
+      pbkdf2Sync('password', 'salt', 500, 64, 'sha512');
+    }
+    
+    // Idle phase - busy wait to complete the cycle
+    // Using a loop instead of setTimeout for precision
+    const cycleEnd = cycleStart + cycleMs;
+    while (Date.now() < cycleEnd && running) {
+      // Yield briefly to prevent 100% when we should be idling
+      // Empty loop just checks time
+    }
+  }
+}
+
+// Notify parent we're ready and start burning
+parentPort?.postMessage('ready');
+burnLoop();
 
 // Start burning
 burnLoop();
