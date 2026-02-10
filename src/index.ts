@@ -69,6 +69,23 @@ async function main(): Promise<void> {
     EventLogService.info('SERVER_STARTED', `PerfSimNode server started on port ${port}`, {
       details: { port, metricsIntervalMs: config.metricsIntervalMs },
     });
+
+    // Server-side health probe every 100ms - generates real HTTP traffic for AppLens
+    // and broadcasts measured latency to connected dashboards
+    setInterval(() => {
+      const startTime = Date.now();
+      const req = http.get(`http://localhost:${port}/api/metrics/probe`, (res) => {
+        res.on('data', () => {}); // Consume response
+        res.on('end', () => {
+          const latencyMs = Date.now() - startTime;
+          io.emit('probeLatency', { latencyMs, timestamp: Date.now() });
+        });
+      });
+      req.on('error', () => {
+        // Server may be restarting, ignore
+      });
+      req.on('timeout', () => req.destroy());
+    }, 100);
   });
 }
 

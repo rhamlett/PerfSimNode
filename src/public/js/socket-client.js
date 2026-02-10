@@ -96,6 +96,13 @@ function initSocket() {
       onSimulationUpdate(simulation);
     }
   });
+
+  // Listen for probe latency measurements from server
+  socket.on('probeLatency', (data) => {
+    if (typeof onProbeLatency === 'function') {
+      onProbeLatency(data);
+    }
+  });
 }
 
 /**

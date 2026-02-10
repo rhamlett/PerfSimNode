@@ -202,14 +202,65 @@ function setProbeMode(mode) {
   }
   
   // Restart probe with new interval
-  startHeartbeatProbe();
-  
-  console.log(`[Probe] Mode changed to '${mode}' (interval: ${currentProbeIntervalMs}ms)`);
+  // Note: Probes are now server-side, this just updates the expected interval
+  console.log(`[Probe] Mode changed to '${mode}' (server interval: 100ms, reduced UI updates)`);
 }
 
 /**
- * Starts the server heartbeat probe system.
- * Detects when event loop is blocked by monitoring probe response times.
+ * Handles incoming probe latency data from the server.
+ * The server probes itself every 100ms and broadcasts the measured latency.
+ * This replaces client-side fetch probing for consistency with AppLens traffic.
+ * @param {Object} data - Probe data { latencyMs, timestamp }
+ */
+function onProbeLatency(data) {
+  const latency = data.latencyMs;
+  const probeTime = data.timestamp;
+  
+  // Record probe result
+  recordProbeResult(latency, true);
+  
+  // Update latency stats with actual probe latency
+  latencyStats.current = latency;
+  addLatencyEntry(latency);
+  if (latency > 30000) {
+    latencyStats.critical++;
+  }
+  
+  // Update latency chart data (throttled for display)
+  const now = Date.now();
+  if (now - lastLatencyChartUpdate >= LATENCY_CHART_UPDATE_INTERVAL_MS) {
+    addLatencyToChart(latency);
+    lastLatencyChartUpdate = now;
+  }
+  
+  // Mark server as responsive
+  if (!serverResponsiveness.isResponsive) {
+    // Calculate how long it was unresponsive
+    const unresponsiveDuration = Date.now() - serverResponsiveness.unresponsiveStartTime;
+    serverResponsiveness.totalUnresponsiveTime += unresponsiveDuration;
+    
+    // Log recovery
+    if (typeof addEventToLog === 'function') {
+      addEventToLog({
+        level: 'success',
+        message: `Server responsive again after ${(unresponsiveDuration / 1000).toFixed(1)}s unresponsive`
+      });
+    }
+  }
+  
+  serverResponsiveness.isResponsive = true;
+  serverResponsiveness.lastSuccessfulProbe = Date.now();
+  serverResponsiveness.consecutiveFailures = 0;
+  serverResponsiveness.unresponsiveStartTime = null;
+  serverResponsiveness.lastProbeTime = Date.now();
+  
+  updateResponsivenessUI();
+  updateLatencyDisplay();
+}
+
+/**
+ * Starts the server responsiveness monitoring.
+ * Checks if we're receiving probe updates from the server.
  */
 function startHeartbeatProbe() {
   // Clear any existing interval
@@ -217,71 +268,16 @@ function startHeartbeatProbe() {
     clearInterval(serverResponsiveness.probeInterval);
   }
   
-  serverResponsiveness.probeInterval = setInterval(async () => {
-    const probeStart = Date.now();
-    const timeout = probeMode === 'reduced' ? 2000 : PROBE_TIMEOUT_MS; // Longer timeout in reduced mode
+  // Monitor for missing probe updates (server may be down/unresponsive)
+  serverResponsiveness.probeInterval = setInterval(() => {
+    const timeSinceLastProbe = Date.now() - serverResponsiveness.lastProbeTime;
     
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
-      
-      const response = await fetch('/api/metrics/probe', { 
-        signal: controller.signal,
-        cache: 'no-store'
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        const probeEnd = Date.now();
-        const latency = probeEnd - probeStart;
-        
-        // Record probe result
-        recordProbeResult(latency, true);
-        
-        // Update latency stats with actual probe latency
-        latencyStats.current = latency;
-        addLatencyEntry(latency);
-        if (latency > 30000) {
-          latencyStats.critical++;
-        }
-        
-        // Update latency chart data (throttled to 1 update per second for 60s display)
-        const now = Date.now();
-        if (now - lastLatencyChartUpdate >= LATENCY_CHART_UPDATE_INTERVAL_MS) {
-          addLatencyToChart(latency);
-          lastLatencyChartUpdate = now;
-        }
-        
-        // Mark server as responsive
-        if (!serverResponsiveness.isResponsive) {
-          // Calculate how long it was unresponsive
-          const unresponsiveDuration = Date.now() - serverResponsiveness.unresponsiveStartTime;
-          serverResponsiveness.totalUnresponsiveTime += unresponsiveDuration;
-          
-          // Log recovery
-          if (typeof addEventToLog === 'function') {
-            addEventToLog({
-              level: 'success',
-              message: `Server responsive again after ${(unresponsiveDuration / 1000).toFixed(1)}s unresponsive`
-            });
-          }
-        }
-        
-        serverResponsiveness.isResponsive = true;
-        serverResponsiveness.lastSuccessfulProbe = Date.now();
-        serverResponsiveness.consecutiveFailures = 0;
-        serverResponsiveness.unresponsiveStartTime = null;
-        
-        updateResponsivenessUI();
-        updateLatencyDisplay();
-      }
-    } catch (error) {
-      // Probe failed or timed out
-      recordProbeResult(timeout, false);
+    // If no probe received in 500ms, server may be unresponsive
+    if (timeSinceLastProbe > 500) {
       serverResponsiveness.consecutiveFailures++;
+      recordProbeResult(timeSinceLastProbe, false);
       
-      // After 2 consecutive failures, mark as unresponsive
+      // After 2 consecutive misses, mark as unresponsive
       if (serverResponsiveness.consecutiveFailures >= 2 && serverResponsiveness.isResponsive) {
         serverResponsiveness.isResponsive = false;
         serverResponsiveness.unresponsiveStartTime = Date.now();
@@ -296,9 +292,7 @@ function startHeartbeatProbe() {
       
       updateResponsivenessUI();
     }
-    
-    serverResponsiveness.lastProbeTime = Date.now();
-  }, currentProbeIntervalMs);
+  }, 250); // Check 4x per second
 }
 
 /**
