@@ -401,6 +401,27 @@ section h2, section h3 {
   gap: 0.5rem;
 }
 
+.blocked-badge {
+  background: var(--color-critical);
+  color: white;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  animation: pulse-badge 1s ease-in-out infinite;
+  margin-left: 0.5rem;
+}
+
+.blocked-badge span {
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
 .latency-card h4 {
   font-size: 0.9rem;
   margin: 0.75rem 0 0.5rem;

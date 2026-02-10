@@ -375,22 +375,11 @@ function recordProbeResult(latency, success) {
 
 /**
  * Updates the probe visualization dots.
+ * Note: Probe visualization panel was removed - this is now a no-op.
+ * Keeping function to avoid breaking recordProbeResult calls.
  */
 function updateProbeVisualization() {
-  const container = document.getElementById('probe-visualization');
-  if (!container) return;
-  
-  container.innerHTML = serverResponsiveness.probeHistory.map(probe => {
-    let className = 'probe-dot';
-    if (!probe.success) {
-      className += ' failed';
-    } else if (probe.latency > 1000) {
-      className += ' slow';
-    } else if (probe.latency > 150) {
-      className += ' degraded';
-    }
-    return `<div class="${className}" title="${probe.latency}ms"></div>`;
-  }).join('');
+  // Removed - responsiveness is now shown via BLOCKED badge in latency title
 }
 
 /**
@@ -446,35 +435,23 @@ function recordSlowRequestLatency(latencyMs) {
 
 /**
  * Updates the server responsiveness UI elements.
+ * Shows/hides the BLOCKED badge in the latency monitor title.
  */
 function updateResponsivenessUI() {
-  const statusEl = document.getElementById('server-responsive-status');
-  const indicatorEl = document.getElementById('server-responsive-indicator');
-  const durationEl = document.getElementById('unresponsive-duration');
+  const blockedBadge = document.getElementById('blocked-badge');
+  const blockedDuration = document.getElementById('blocked-duration');
   
-  if (statusEl) {
+  if (blockedBadge) {
     if (serverResponsiveness.isResponsive) {
-      statusEl.textContent = 'Responsive';
-      statusEl.className = 'responsive-status ok';
+      blockedBadge.style.display = 'none';
     } else {
-      statusEl.textContent = 'UNRESPONSIVE';
-      statusEl.className = 'responsive-status blocked';
-    }
-  }
-  
-  if (indicatorEl) {
-    indicatorEl.className = serverResponsiveness.isResponsive 
-      ? 'responsive-indicator ok' 
-      : 'responsive-indicator blocked pulse';
-  }
-  
-  if (durationEl) {
-    if (!serverResponsiveness.isResponsive && serverResponsiveness.unresponsiveStartTime) {
-      const duration = (Date.now() - serverResponsiveness.unresponsiveStartTime) / 1000;
-      durationEl.textContent = `Blocked: ${duration.toFixed(1)}s`;
-      durationEl.style.display = 'block';
-    } else {
-      durationEl.style.display = 'none';
+      blockedBadge.style.display = 'inline';
+      
+      // Update duration if available
+      if (blockedDuration && serverResponsiveness.unresponsiveStartTime) {
+        const duration = (Date.now() - serverResponsiveness.unresponsiveStartTime) / 1000;
+        blockedDuration.textContent = `(${duration.toFixed(1)}s)`;
+      }
     }
   }
 }

@@ -80,7 +80,7 @@ class CpuStressServiceClass {
    * Starts CPU worker threads for a simulation.
    *
    * Each worker burns 100% of one CPU core.
-   * Total CPU is controlled by number of workers: target% * cores = workers.
+   * Spawns aggressively to ensure CPU saturation regardless of reported cores.
    *
    * @param simulationId - Simulation ID
    * @param targetLoadPercent - Target CPU load percentage (1-100)
@@ -91,15 +91,17 @@ class CpuStressServiceClass {
     targetLoadPercent: number,
     durationSeconds: number
   ): void {
-    const numCpus = cpus().length;
+    const reportedCpus = cpus().length;
     
-    // Each worker burns 100% of one core
-    // Number of workers = (target% / 100) * numCpus
-    // Round to nearest, minimum 1 worker
-    const numWorkers = Math.max(1, Math.round((targetLoadPercent / 100) * numCpus));
-    const expectedCpu = (numWorkers / numCpus) * 100;
+    // Azure App Service often reports fewer CPUs than available compute.
+    // Use minimum of 4 workers for high CPU targets to ensure saturation.
+    const effectiveCpus = Math.max(4, reportedCpus);
+    
+    // For 100% target: spawn all workers
+    // For lower targets: scale proportionally
+    const numWorkers = Math.max(1, Math.round((targetLoadPercent / 100) * effectiveCpus));
 
-    console.log(`[CPU Stress] Target: ${targetLoadPercent}%, CPUs: ${numCpus}, Workers: ${numWorkers} (expected ~${expectedCpu.toFixed(0)}% actual CPU)`);
+    console.log(`[CPU Stress] Target: ${targetLoadPercent}%, Reported CPUs: ${reportedCpus}, Effective CPUs: ${effectiveCpus}, Workers: ${numWorkers}`);
 
     const workers: Worker[] = [];
     const workerPath = path.join(__dirname, 'cpu-worker.js');

@@ -95,21 +95,8 @@
       <!-- Request Latency Monitor -->
       <section id="latency-section">
         <div class="latency-card">
-          <h3>⏱️ Request Latency Monitor</h3>
+          <h3>⏱️ Request Latency Monitor <span id="blocked-badge" class="blocked-badge" style="display: none;">🔴 BLOCKED <span id="blocked-duration"></span></span></h3>
           <p class="latency-description">Measures actual response time to a lightweight probe endpoint. Times include server processing and queue time.</p>
-          
-          <!-- Server Responsiveness Indicator -->
-          <div class="responsiveness-panel">
-            <div class="responsiveness-header">
-              <div id="server-responsive-indicator" class="responsive-indicator ok"></div>
-              <span id="server-responsive-status" class="responsive-status ok">Responsive</span>
-              <span id="unresponsive-duration" class="unresponsive-duration" style="display: none;"></span>
-            </div>
-            <div class="probe-visualization-container">
-              <span class="probe-label">Probe History (100ms, reduced during profiling):</span>
-              <div id="probe-visualization" class="probe-visualization"></div>
-            </div>
-          </div>
           
           <div class="latency-stats">
             <div class="latency-stat">
@@ -218,8 +205,7 @@
           <div class="eventloop-education">
             <strong>What to observe:</strong>
             <ul>
-              <li>Probe visualization dots turn red (failed) or orange (slow)</li>
-              <li>"Responsive" indicator changes to "UNRESPONSIVE"</li>
+              <li>"BLOCKED" badge appears in Request Latency Monitor</li>
               <li>Dashboard metrics stop updating during block</li>
               <li>Request latency spikes after server recovers</li>
             </ul>

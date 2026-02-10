@@ -2,13 +2,13 @@
  * CPU Worker Thread
  *
  * Runs in a separate thread burning CPU at 100%.
- * Total system CPU is controlled by number of workers spawned.
+ * Uses multiple CPU-intensive techniques for maximum burn.
  *
  * @module services/cpu-worker
  */
 
 import { parentPort } from 'worker_threads';
-import { createHash } from 'crypto';
+import { pbkdf2Sync } from 'crypto';
 
 let running = true;
 
@@ -21,17 +21,14 @@ parentPort?.on('message', (msg: string) => {
 });
 
 /**
- * Burns CPU continuously using crypto operations.
+ * Burns CPU continuously using PBKDF2 which is extremely CPU-intensive.
  * This is a tight loop that will use 100% of one CPU core.
  */
 function burnCpu(): void {
-  let counter = 0;
   while (running) {
-    // Use crypto hash which is CPU-intensive
-    createHash('sha256').update(`burn${counter++}`).digest();
-    
-    // Check for stop every 10000 iterations to stay responsive
-    if (counter % 10000 === 0 && !running) break;
+    // PBKDF2 is designed to be CPU-intensive - this is the gold standard for CPU burn
+    // 10000 iterations takes ~5-10ms and keeps the CPU fully busy
+    pbkdf2Sync('password', 'salt', 10000, 64, 'sha512');
   }
 }
 
