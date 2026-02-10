@@ -146,8 +146,41 @@ function getInterpolatedLatencyColor(latencyMs) {
 }
 
 /**
- * Creates a vertical gradient for the latency chart based on threshold values.
- * The gradient transitions from green (bottom/low latency) to red (top/high latency).
+ * Gets a smoothly interpolated RGBA color for a latency value (for gradient fills).
+ * @param {number} latencyMs - Latency value in milliseconds
+ * @param {number} alpha - Alpha value (0-1)
+ * @returns {string} - RGBA color string
+ */
+function getInterpolatedLatencyColorRGBA(latencyMs, alpha) {
+  let r, g, b;
+  
+  if (latencyMs <= 0) {
+    r = LATENCY_RGB.good.r; g = LATENCY_RGB.good.g; b = LATENCY_RGB.good.b;
+  } else if (latencyMs <= 150) {
+    const t = latencyMs / 150;
+    r = Math.round(LATENCY_RGB.good.r + (LATENCY_RGB.degraded.r - LATENCY_RGB.good.r) * t);
+    g = Math.round(LATENCY_RGB.good.g + (LATENCY_RGB.degraded.g - LATENCY_RGB.good.g) * t);
+    b = Math.round(LATENCY_RGB.good.b + (LATENCY_RGB.degraded.b - LATENCY_RGB.good.b) * t);
+  } else if (latencyMs <= 1000) {
+    const t = (latencyMs - 150) / (1000 - 150);
+    r = Math.round(LATENCY_RGB.degraded.r + (LATENCY_RGB.severe.r - LATENCY_RGB.degraded.r) * t);
+    g = Math.round(LATENCY_RGB.degraded.g + (LATENCY_RGB.severe.g - LATENCY_RGB.degraded.g) * t);
+    b = Math.round(LATENCY_RGB.degraded.b + (LATENCY_RGB.severe.b - LATENCY_RGB.degraded.b) * t);
+  } else if (latencyMs <= 30000) {
+    const t = (latencyMs - 1000) / (30000 - 1000);
+    r = Math.round(LATENCY_RGB.severe.r + (LATENCY_RGB.critical.r - LATENCY_RGB.severe.r) * t);
+    g = Math.round(LATENCY_RGB.severe.g + (LATENCY_RGB.critical.g - LATENCY_RGB.severe.g) * t);
+    b = Math.round(LATENCY_RGB.severe.b + (LATENCY_RGB.critical.b - LATENCY_RGB.severe.b) * t);
+  } else {
+    r = LATENCY_RGB.critical.r; g = LATENCY_RGB.critical.g; b = LATENCY_RGB.critical.b;
+  }
+  
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/**
+ * Creates a vertical gradient for the latency chart with smooth color blending.
+ * Adds many intermediate color stops for seamless transitions between thresholds.
  * @param {CanvasRenderingContext2D} ctx - Canvas context
  * @param {Object} chartArea - Chart area dimensions
  * @param {Object} scales - Chart scales
@@ -159,41 +192,17 @@ function createLatencyGradient(ctx, chartArea, scales) {
   const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
   const yMax = scales.y.max || 200;
   
-  // Add color stops based on where thresholds fall in the current scale
-  // Start with green at the bottom (0ms)
-  gradient.addColorStop(0, `${LATENCY_COLORS.good.color}, 0.3)`);
-  
-  // Calculate position of each threshold within the chart (0 = bottom, 1 = top)
-  const degradedPos = Math.min(LATENCY_COLORS.degraded.value / yMax, 1);
-  const severePos = Math.min(LATENCY_COLORS.severe.value / yMax, 1);
-  const criticalPos = Math.min(LATENCY_COLORS.critical.value / yMax, 1);
-  
-  // Add transitions based on thresholds visible in current scale
-  if (degradedPos < 1) {
-    // Green zone below degraded threshold
-    if (degradedPos > 0.05) {
-      gradient.addColorStop(Math.max(0.01, degradedPos - 0.05), `${LATENCY_COLORS.good.color}, 0.3)`);
-    }
-    gradient.addColorStop(degradedPos, `${LATENCY_COLORS.degraded.color}, 0.4)`);
-  }
-  
-  if (severePos < 1) {
-    gradient.addColorStop(severePos, `${LATENCY_COLORS.severe.color}, 0.5)`);
-  }
-  
-  if (criticalPos < 1) {
-    gradient.addColorStop(criticalPos, `${LATENCY_COLORS.critical.color}, 0.6)`);
-  }
-  
-  // Ensure we end at the top with the appropriate color
-  if (yMax > LATENCY_COLORS.critical.value) {
-    gradient.addColorStop(1, `${LATENCY_COLORS.critical.color}, 0.6)`);
-  } else if (yMax > LATENCY_COLORS.severe.value) {
-    gradient.addColorStop(1, `${LATENCY_COLORS.severe.color}, 0.5)`);
-  } else if (yMax > LATENCY_COLORS.degraded.value) {
-    gradient.addColorStop(1, `${LATENCY_COLORS.degraded.color}, 0.4)`);
-  } else {
-    gradient.addColorStop(1, `${LATENCY_COLORS.good.color}, 0.3)`);
+  // Add many color stops for smooth blending (20 stops from bottom to top)
+  const numStops = 20;
+  for (let i = 0; i <= numStops; i++) {
+    const position = i / numStops; // 0 = bottom, 1 = top
+    const latencyAtPosition = position * yMax;
+    
+    // Alpha increases slightly with latency for better visual distinction
+    const alpha = 0.25 + (position * 0.25); // 0.25 at bottom to 0.50 at top
+    
+    const color = getInterpolatedLatencyColorRGBA(latencyAtPosition, alpha);
+    gradient.addColorStop(position, color);
   }
   
   return gradient;
