@@ -101,7 +101,7 @@ class CpuStressServiceClass {
     // For lower targets: scale proportionally
     const numWorkers = Math.max(1, Math.round((targetLoadPercent / 100) * effectiveCpus));
 
-    console.log(`[CPU Stress] Target: ${targetLoadPercent}%, Reported CPUs: ${reportedCpus}, Effective CPUs: ${effectiveCpus}, Workers: ${numWorkers}`);
+    process.stdout.write(`[CPU Stress] Target: ${targetLoadPercent}%, Reported CPUs: ${reportedCpus}, Effective CPUs: ${effectiveCpus}, Workers: ${numWorkers}\n`);
 
     const workers: Worker[] = [];
     const workerPath = path.join(__dirname, 'cpu-worker.js');

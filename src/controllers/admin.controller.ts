@@ -187,6 +187,31 @@ adminRouter.get('/admin/memory-debug', (_req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/admin/system-info
+ *
+ * Returns system information including CPU count and model.
+ * Useful for diagnosing CPU stress simulation behavior.
+ *
+ * @route GET /api/admin/system-info
+ * @returns {Object} System information
+ */
+adminRouter.get('/admin/system-info', (_req: Request, res: Response) => {
+  const cpuInfo = os.cpus();
+  res.json({
+    cpuCount: cpuInfo.length,
+    cpuModel: cpuInfo[0]?.model || 'unknown',
+    cpuSpeed: cpuInfo[0]?.speed || 0,
+    platform: os.platform(),
+    arch: os.arch(),
+    totalMemory: os.totalmem(),
+    freeMemory: os.freemem(),
+    nodeVersion: process.version,
+    websiteHostname: process.env.WEBSITE_HOSTNAME || null,
+    websiteSku: process.env.WEBSITE_SKU || null,
+  });
+});
+
+/**
  * GET /api/admin/network-debug
  *
  * Diagnostic endpoint to understand network environment and HTTP routing on Azure.
