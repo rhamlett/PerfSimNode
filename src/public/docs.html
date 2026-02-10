@@ -180,30 +180,43 @@
 
     <section id="cpu-stress" class="docs-section">
       <h2>CPU Stress Simulation</h2>
-      <p>Generates high CPU usage by performing cryptographic operations (PBKDF2) in a controlled loop.</p>
+      <p>Generates high CPU usage using separate OS processes via <code>child_process.fork()</code>.</p>
 
       <h3>How It Works</h3>
-      <p>The simulation uses <code>crypto.pbkdf2Sync()</code> to perform CPU-intensive password hashing. The load percentage is achieved by burning CPU for a portion of each 100ms interval.</p>
+      <p>Unlike naive CPU burning in the main thread (which would block Node.js), this simulation spawns separate child processes that each run <code>crypto.pbkdf2Sync()</code> in a tight loop. The OS scheduler distributes these processes across CPU cores.</p>
+      
+      <div class="info-box">
+        <strong>💡 Node.js Insight:</strong> CPU-intensive work must be isolated from the main event loop. Child processes guarantee true multi-core utilization without blocking request handling.
+      </div>
 
       <h3>Usage</h3>
       <pre><code>POST /api/simulations/cpu
 Content-Type: application/json
 
 {
-  "targetLoadPercent": 80,
+  "targetLoadPercent": 75,
   "durationSeconds": 30
 }</code></pre>
 
       <h3>Parameters</h3>
       <table>
         <tr><th>Parameter</th><th>Range</th><th>Description</th></tr>
-        <tr><td>targetLoadPercent</td><td>1-100</td><td>Target CPU usage percentage</td></tr>
+        <tr><td>targetLoadPercent</td><td>1-100</td><td>Target CPU usage percentage (spawns proportional workers)</td></tr>
         <tr><td>durationSeconds</td><td>1-300</td><td>How long to run the simulation</td></tr>
       </table>
 
+      <h3>Expected Effects</h3>
+      <ul>
+        <li>CPU tile/chart increases to target percentage</li>
+        <li>Event loop lag stays LOW (work is in child processes)</li>
+        <li>Request latency may increase slightly due to CPU contention</li>
+        <li>Multiple <code>node</code> processes visible in <code>top</code>/<code>htop</code></li>
+      </ul>
+
       <h3>Diagnostic Tools</h3>
       <ul>
-        <li><code>top</code> / <code>htop</code> - View CPU usage in real-time</li>
+        <li><code>top</code> / <code>htop</code> - View all node processes</li>
+        <li><code>ps aux | grep node</code> - See child process tree</li>
         <li>Azure App Service Diagnostics → CPU drill-down</li>
         <li>Application Insights → Performance metrics</li>
       </ul>
@@ -211,10 +224,14 @@ Content-Type: application/json
 
     <section id="memory-pressure" class="docs-section">
       <h2>Memory Pressure Simulation</h2>
-      <p>Allocates and retains memory buffers to simulate memory leaks or high memory usage.</p>
+      <p>Allocates and retains memory buffers filled with random data to simulate memory leaks.</p>
 
       <h3>How It Works</h3>
-      <p>Uses <code>Buffer.alloc()</code> to allocate memory that is held until explicitly released. Multiple allocations can coexist (stacking behavior).</p>
+      <p>Uses <code>Buffer.alloc()</code> to allocate memory that is held until explicitly released. Buffers are filled with random data to prevent V8 optimization. Multiple allocations can coexist (stacking behavior).</p>
+
+      <div class="info-box">
+        <strong>💡 Node.js Insight:</strong> V8's garbage collector uses generational collection. Large allocations may cause longer GC pauses, visible as event loop lag spikes.
+      </div>
 
       <h3>Usage</h3>
       <pre><code># Allocate memory
@@ -230,25 +247,37 @@ DELETE /api/simulations/memory/{id}</code></pre>
         <tr><td>sizeMb</td><td>1-500</td><td>Memory to allocate in megabytes</td></tr>
       </table>
 
+      <h3>Expected Effects</h3>
+      <ul>
+        <li>Heap memory increases by allocation size</li>
+        <li>RSS memory increases proportionally</li>
+        <li>Brief event loop lag spikes during allocation (GC)</li>
+        <li>Saw-tooth pattern as GC runs between allocations</li>
+      </ul>
+
       <h3>Diagnostic Tools</h3>
       <ul>
-        <li><code>node --inspect</code> - Take heap snapshots</li>
+        <li><code>node --inspect</code> - Take heap snapshots via Chrome DevTools</li>
         <li>Azure App Service → Memory metrics</li>
-        <li>Application Insights → Memory tracking</li>
+        <li>Application Insights → customMetrics for heap stats</li>
         <li><code>process.memoryUsage()</code> - Programmatic access</li>
       </ul>
     </section>
 
     <section id="eventloop-blocking" class="docs-section">
       <h2>Event Loop Blocking Simulation</h2>
-      <p>Demonstrates how synchronous operations can block the Node.js event loop, making the server unresponsive.</p>
+      <p>Demonstrates how synchronous operations block the Node.js event loop, making the server completely unresponsive.</p>
 
       <div class="warning-box">
-        <strong>Warning:</strong> During this simulation, the server will be completely unresponsive to all requests. WebSocket connections may timeout.
+        <strong>⚠️ Warning:</strong> During this simulation, the server will be completely unresponsive to all requests. WebSocket connections may timeout. The dashboard will freeze.
       </div>
 
       <h3>How It Works</h3>
-      <p>Performs synchronous cryptographic operations that block the single-threaded event loop. All pending I/O, timers, and incoming requests are queued until the blocking completes.</p>
+      <p>Performs synchronous <code>crypto.pbkdf2Sync()</code> directly in the main thread. All pending I/O, timers, and incoming requests are queued until the blocking completes.</p>
+
+      <div class="info-box">
+        <strong>💡 Key Difference from CPU Stress:</strong> CPU stress uses child processes (server stays responsive). Event loop blocking runs in the main thread (server becomes unresponsive). Check the Event Loop Lag metric to distinguish them!
+      </div>
 
       <h3>Usage</h3>
       <pre><code>POST /api/simulations/eventloop
@@ -256,60 +285,92 @@ DELETE /api/simulations/memory/{id}</code></pre>
 
       <h3>Symptoms to Observe</h3>
       <ul>
-        <li>Event loop lag spikes in metrics</li>
-        <li>Requests timeout or take unexpectedly long</li>
-        <li>WebSocket heartbeats fail</li>
-        <li>Health checks fail during blocking</li>
+        <li>Event loop lag spikes to equal the blocking duration</li>
+        <li>All requests queue and complete together after unblock</li>
+        <li>WebSocket heartbeats fail (dashboard freezes)</li>
+        <li>Probe dots turn red during the block</li>
+        <li>Health checks fail/timeout</li>
       </ul>
 
       <h3>Diagnostic Tools</h3>
       <ul>
-        <li><code>perf_hooks.monitorEventLoopDelay()</code> - Measure lag</li>
+        <li><code>perf_hooks.monitorEventLoopDelay()</code> - Built into this app's metrics</li>
         <li>Clinic.js Doctor - Analyze event loop issues</li>
-        <li>0x - Flame graph profiling</li>
+        <li>0x - Flame graph profiling for synchronous hotspots</li>
       </ul>
     </section>
 
     <section id="slow-requests" class="docs-section">
       <h2>Slow Request Simulation</h2>
-      <p>Simulates slow HTTP responses using artificial delays.</p>
+      <p>Simulates slow HTTP responses using artificial delays - without blocking other requests.</p>
 
       <h3>How It Works</h3>
-      <p>Uses <code>setTimeout()</code> to delay the response for a configurable duration. Unlike event loop blocking, this doesn't affect other requests.</p>
+      <p>Uses <code>setTimeout()</code> to delay the response for a configurable duration. Unlike event loop blocking, this is non-blocking - other requests process normally.</p>
+
+      <div class="info-box">
+        <strong>💡 Key Difference:</strong> Slow requests affect only the requests to the slow endpoint. Health probes, WebSocket, and other API calls continue normally. This contrasts with event loop blocking where EVERYTHING is affected.
+      </div>
 
       <h3>Usage</h3>
       <pre><code># Using query parameter (easy browser testing)
 GET /api/simulations/slow?delaySeconds=10</code></pre>
+
+      <h3>Expected Effects</h3>
+      <ul>
+        <li>Slow endpoint takes configured delay time</li>
+        <li>Probe latency remains normal (probes use different endpoint)</li>
+        <li>Event loop lag stays near zero</li>
+        <li>Probe frequency reduces to 2500ms during testing (for cleaner diagnostics)</li>
+      </ul>
+
+      <h3>Dashboard Controls</h3>
+      <ul>
+        <li><strong>Delay:</strong> How long each request takes (1-300 seconds)</li>
+        <li><strong>Interval:</strong> Time between automated requests</li>
+        <li><strong>Max Requests:</strong> How many to send before stopping</li>
+      </ul>
 
       <h3>Use Cases</h3>
       <ul>
         <li>Testing timeout configurations</li>
         <li>Simulating slow external API calls</li>
         <li>Load balancer health check testing</li>
+        <li>Understanding blocking vs non-blocking behavior</li>
       </ul>
     </section>
 
     <section id="crash-simulation" class="docs-section">
       <h2>Crash Simulation</h2>
-      <p>Intentionally crashes the Node.js process for testing crash recovery.</p>
+      <p>Intentionally crashes the Node.js process for testing crash recovery and observing restart behavior.</p>
 
       <div class="warning-box">
-        <strong>Warning:</strong> These operations will terminate the process. In Azure App Service, the process will restart automatically.
+        <strong>⚠️ Warning:</strong> These operations will terminate the process. In Azure App Service, the process will restart automatically. Dashboard will disconnect and reconnect.
       </div>
 
-      <h3>Unhandled Exception</h3>
-      <pre><code>POST /api/simulations/crash/exception</code></pre>
-      <p>Throws an unhandled exception that terminates the process.</p>
+      <h3>Crash Types</h3>
+      <table>
+        <tr><th>Type</th><th>Endpoint</th><th>Method</th><th>Effect</th></tr>
+        <tr><td>FailFast</td><td><code>/crash/failfast</code></td><td><code>process.abort()</code></td><td>Immediate SIGABRT, core dump</td></tr>
+        <tr><td>Stack Overflow</td><td><code>/crash/stackoverflow</code></td><td>Infinite recursion</td><td>RangeError, call stack exceeded</td></tr>
+        <tr><td>Exception</td><td><code>/crash/exception</code></td><td><code>throw Error</code></td><td>Unhandled exception terminates</td></tr>
+        <tr><td>OOM</td><td><code>/crash/memory</code></td><td>Infinite allocation</td><td>Heap exhaustion, OOM kill</td></tr>
+      </table>
 
-      <h3>Memory Exhaustion (OOM)</h3>
-      <pre><code>POST /api/simulations/crash/memory</code></pre>
-      <p>Rapidly allocates memory until the process is killed by the OS.</p>
+      <h3>Expected Behavior</h3>
+      <ul>
+        <li>Process terminates immediately</li>
+        <li>Dashboard shows disconnection</li>
+        <li>Azure App Service auto-restarts process</li>
+        <li>After restart: new Process ID, cleared simulations, fresh metrics</li>
+        <li>Event Log shows: "🔄 APPLICATION RESTARTED! Process ID changed..."</li>
+      </ul>
 
       <h3>Diagnostic Tools</h3>
       <ul>
-        <li>Azure App Service → Diagnose and Solve Problems</li>
-        <li>Application Insights → Failures</li>
-        <li>Kudu → LogFiles</li>
+        <li>Azure App Service → Diagnose and Solve Problems → Application Crashes</li>
+        <li>Log Stream (real-time crash logs)</li>
+        <li>Kudu → LogFiles → Application</li>
+        <li>Application Insights → Failures blade</li>
       </ul>
     </section>
 
@@ -335,33 +396,53 @@ GET /api/simulations/slow?delaySeconds=10</code></pre>
     <section id="api-reference" class="docs-section">
       <h2>API Reference</h2>
       
-      <h3>Health Check</h3>
-      <pre><code>GET /api/health</code></pre>
-      <p>Returns service status and uptime.</p>
+      <h3>Health & Metrics</h3>
+      <table>
+        <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
+        <tr><td><code>/api/health</code></td><td>GET</td><td>Health check with uptime</td></tr>
+        <tr><td><code>/api/metrics/probe</code></td><td>GET</td><td>Lightweight probe for latency monitoring</td></tr>
+        <tr><td><code>/api/metrics</code></td><td>GET</td><td>Current system metrics (CPU, memory, event loop)</td></tr>
+      </table>
+      
+      <h3>Simulations</h3>
+      <table>
+        <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
+        <tr><td><code>/api/simulations</code></td><td>GET</td><td>List all active simulations</td></tr>
+        <tr><td><code>/api/simulations/cpu</code></td><td>POST</td><td>Start CPU stress (child processes)</td></tr>
+        <tr><td><code>/api/simulations/cpu/:id</code></td><td>DELETE</td><td>Stop CPU stress</td></tr>
+        <tr><td><code>/api/simulations/memory</code></td><td>POST</td><td>Allocate memory</td></tr>
+        <tr><td><code>/api/simulations/memory/:id</code></td><td>DELETE</td><td>Release memory</td></tr>
+        <tr><td><code>/api/simulations/eventloop</code></td><td>POST</td><td>Block event loop</td></tr>
+        <tr><td><code>/api/simulations/slow</code></td><td>GET</td><td>Slow request with delay</td></tr>
+      </table>
+      
+      <h3>Crash Endpoints</h3>
+      <table>
+        <tr><th>Endpoint</th><th>Method</th><th>Crash Type</th></tr>
+        <tr><td><code>/api/simulations/crash/failfast</code></td><td>POST</td><td>FailFast (SIGABRT)</td></tr>
+        <tr><td><code>/api/simulations/crash/stackoverflow</code></td><td>POST</td><td>Stack overflow</td></tr>
+        <tr><td><code>/api/simulations/crash/exception</code></td><td>POST</td><td>Unhandled exception</td></tr>
+        <tr><td><code>/api/simulations/crash/memory</code></td><td>POST</td><td>Memory exhaustion</td></tr>
+      </table>
+      
+      <h3>Admin</h3>
+      <table>
+        <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
+        <tr><td><code>/api/admin/status</code></td><td>GET</td><td>Admin status with configuration</td></tr>
+        <tr><td><code>/api/admin/events</code></td><td>GET</td><td>Event log (limit via ?limit=N)</td></tr>
+        <tr><td><code>/api/admin/system-info</code></td><td>GET</td><td>System info (CPUs, memory, SKU)</td></tr>
+      </table>
 
-      <h3>Metrics</h3>
-      <pre><code>GET /api/metrics</code></pre>
-      <p>Returns current system metrics (CPU, memory, event loop lag).</p>
-
-      <h3>List Active Simulations</h3>
-      <pre><code>GET /api/simulations</code></pre>
-      <p>Returns all currently active simulations.</p>
-
-      <h3>Admin Status</h3>
-      <pre><code>GET /api/admin/status</code></pre>
-      <p>Returns detailed status including configuration.</p>
-
-      <h3>Event Log</h3>
-      <pre><code>GET /api/admin/events?limit=50</code></pre>
-      <p>Returns recent event log entries.</p>
-
-      <h3>WebSocket Events</h3>
+      <h3>WebSocket Events (Socket.IO)</h3>
       <p>Connect via Socket.IO to receive real-time updates:</p>
-      <ul>
-        <li><code>metrics</code> - System metrics (every second)</li>
-        <li><code>event</code> - Simulation events</li>
-        <li><code>simulation</code> - Simulation status changes</li>
-      </ul>
+      <table>
+        <tr><th>Event</th><th>Frequency</th><th>Description</th></tr>
+        <tr><td><code>metrics</code></td><td>1000ms</td><td>System metrics (CPU, memory, event loop)</td></tr>
+        <tr><td><code>probeLatency</code></td><td>250ms / 2500ms</td><td>Request latency measurements</td></tr>
+        <tr><td><code>event</code></td><td>On occurrence</td><td>Simulation and system events</td></tr>
+        <tr><td><code>simulation</code></td><td>On status change</td><td>Simulation state updates</td></tr>
+      </table>
+      <p><em>Probe frequency automatically increases to 2500ms during slow request testing for cleaner diagnostics.</em></p>
     </section>
   </main>
 

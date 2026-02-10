@@ -8,12 +8,12 @@ An educational tool designed to help Azure support engineers practice diagnosing
 
 ## Features
 
-- **CPU Stress** - Generate high CPU usage at configurable percentages using cryptographic operations
+- **CPU Stress** - Generate high CPU usage using child processes (`child_process.fork()`)
 - **Memory Pressure** - Allocate and retain memory to simulate leaks with stacking behavior
 - **Event Loop Blocking** - Block the Node.js event loop with synchronous operations
-- **Slow Requests** - Simulate slow HTTP responses with configurable delays
-- **Crash Simulation** - Trigger unhandled exceptions or OOM conditions
-- **Real-time Dashboard** - Monitor metrics with live charts via WebSocket
+- **Slow Requests** - Simulate slow HTTP responses without blocking other requests
+- **Crash Simulation** - Trigger FailFast, stack overflow, unhandled exceptions, or OOM
+- **Real-time Dashboard** - Monitor metrics with live charts via WebSocket (Socket.IO)
 
 ## Quick Start
 
@@ -91,26 +91,55 @@ src/
         └── socket-client.js    # Socket.IO client
 ```
 
+## Node.js Architecture Characteristics
+
+Understanding these Node.js-specific behaviors is essential for diagnosing performance issues:
+
+### Single-Threaded Event Loop
+
+Node.js runs JavaScript on a **single thread**. All I/O operations are asynchronous, but CPU-intensive synchronous code blocks the entire event loop:
+
+- **Blocked event loop** = No requests processed, WebSocket heartbeats fail, health checks timeout
+- **High CPU in child processes** = May not affect latency (work is isolated)
+- **Memory pressure** = Triggers garbage collection pauses, increasing event loop lag
+
+### Process Model vs .NET Thread Pool
+
+| Aspect | Node.js | .NET Core |
+|--------|---------|-----------|
+| Concurrency Model | Single thread + async I/O | Thread pool (many threads) |
+| CPU-intensive work | Blocks all requests (unless in child process) | Affects individual threads |
+| Scaling approach | Cluster mode / child processes | More threads |
+| Memory per instance | Lower baseline (~30-50MB) | Higher baseline (~100-200MB) |
+
+### JavaScript V8 Engine
+
+- **JIT Compilation** - Code is optimized at runtime; initial requests may be slower
+- **Garbage Collection** - Automatic but can cause pauses (visible as event loop lag spikes)
+- **Heap Limit** - Default ~1.5GB on 64-bit; configurable via `--max-old-space-size`
+
 ## Simulations
 
 ### CPU Stress
 
-Generates high CPU usage by performing cryptographic operations (PBKDF2) in a controlled loop.
+**Implementation:** Uses `child_process.fork()` to spawn separate OS processes that run `crypto.pbkdf2Sync()` in a tight loop. This ensures actual CPU utilization without blocking the main event loop.
+
+**Key characteristic:** Server stays responsive during CPU stress - work is isolated in child processes.
 
 ```bash
 curl -X POST http://localhost:3000/api/simulations/cpu \
   -H "Content-Type: application/json" \
-  -d '{"targetLoadPercent": 80, "durationSeconds": 30}'
+  -d '{"targetLoadPercent": 75, "durationSeconds": 30}'
 ```
 
 | Parameter | Range | Description |
 |-----------|-------|-------------|
-| targetLoadPercent | 1-100 | Target CPU usage percentage |
+| targetLoadPercent | 1-100 | Target CPU usage (spawns proportional workers) |
 | durationSeconds | 1-300 | How long to run the simulation |
 
 ### Memory Pressure
 
-Allocates and retains memory buffers to simulate memory leaks. Multiple allocations can coexist (stacking behavior).
+**Implementation:** Allocates `Buffer` objects filled with random data, held until explicitly released. Multiple allocations stack.
 
 ```bash
 # Allocate memory
@@ -128,9 +157,11 @@ curl -X DELETE http://localhost:3000/api/simulations/memory/{id}
 
 ### Event Loop Blocking
 
-Performs synchronous cryptographic operations that block the single-threaded event loop. All pending I/O, timers, and incoming requests are queued until the blocking completes.
+**Implementation:** Performs synchronous `crypto.pbkdf2Sync()` directly in the main thread, blocking ALL async operations.
 
-> ⚠️ **Warning:** During this simulation, the server will be completely unresponsive to all requests. WebSocket connections may timeout.
+> ⚠️ **Warning:** Server becomes completely unresponsive. Dashboard freezes. WebSocket may disconnect.
+
+**Key insight:** Unlike CPU stress (child processes), this blocks THE thread. Event Loop Lag equals block duration.
 
 ```bash
 curl -X POST http://localhost:3000/api/simulations/eventloop \
@@ -139,17 +170,18 @@ curl -X POST http://localhost:3000/api/simulations/eventloop \
 ```
 
 **Symptoms to Observe:**
-- Event loop lag spikes in metrics
-- Requests timeout or take unexpectedly long
-- WebSocket heartbeats fail
-- Health checks fail during blocking
+- Event loop lag spikes to blocking duration
+- ALL requests queue and complete together after unblock
+- Probe dots turn red in dashboard
+- Dashboard metrics stop updating during block
 
 ### Slow Requests
 
-Simulates slow HTTP responses using `setTimeout()`. Unlike event loop blocking, this doesn't affect other requests.
+**Implementation:** Uses `setTimeout()` to delay responses. Non-blocking - other requests process normally.
+
+**Key difference from Event Loop Blocking:** Only the slow endpoint is affected. Health probes and other requests complete normally.
 
 ```bash
-# Using query parameter (easy browser testing)
 curl "http://localhost:3000/api/simulations/slow?delaySeconds=10"
 ```
 
@@ -157,7 +189,14 @@ curl "http://localhost:3000/api/simulations/slow?delaySeconds=10"
 
 Intentionally crashes the Node.js process for testing crash recovery.
 
-> ⚠️ **Warning:** These operations will terminate the process. In Azure App Service, the process will restart automatically.
+> ⚠️ **Warning:** These operations terminate the process. Azure App Service auto-restarts.
+
+| Type | Endpoint | Effect |
+|------|----------|--------|
+| FailFast | `/crash/failfast` | Immediate SIGABRT, core dump |
+| Stack Overflow | `/crash/stackoverflow` | Call stack exceeded |
+| Exception | `/crash/exception` | Unhandled exception |
+| OOM | `/crash/memory` | Memory exhaustion |
 
 ```bash
 # Unhandled exception
@@ -172,26 +211,35 @@ curl -X POST http://localhost:3000/api/simulations/crash/memory
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/health` | GET | Health check with uptime |
-| `/api/health/probe` | GET | Lightweight probe for latency monitoring |
+| `/api/metrics/probe` | GET | Lightweight probe for latency monitoring |
 | `/api/metrics` | GET | Current system metrics |
 | `/api/simulations` | GET | List active simulations |
-| `/api/simulations/cpu` | POST | Start CPU stress |
+| `/api/simulations/cpu` | POST | Start CPU stress (child processes) |
 | `/api/simulations/cpu/:id` | DELETE | Stop CPU stress |
 | `/api/simulations/memory` | POST | Allocate memory |
 | `/api/simulations/memory/:id` | DELETE | Release memory |
 | `/api/simulations/eventloop` | POST | Block event loop |
 | `/api/simulations/slow` | GET | Slow request |
-| `/api/simulations/crash/exception` | POST | Crash via exception |
-| `/api/simulations/crash/memory` | POST | Crash via OOM |
+| `/api/simulations/crash/failfast` | POST | FailFast (SIGABRT) |
+| `/api/simulations/crash/stackoverflow` | POST | Stack overflow |
+| `/api/simulations/crash/exception` | POST | Unhandled exception |
+| `/api/simulations/crash/memory` | POST | Memory exhaustion |
 | `/api/admin/status` | GET | Admin status |
 | `/api/admin/events` | GET | Event log |
+| `/api/admin/system-info` | GET | System info (CPUs, memory, SKU) |
 
-### WebSocket Events
+### WebSocket Events (Socket.IO)
 
 Connect via Socket.IO to receive real-time updates:
-- `metrics` - System metrics (every second)
-- `event` - Simulation events
-- `simulation` - Simulation status changes
+
+| Event | Frequency | Description |
+|-------|-----------|-------------|
+| `metrics` | 1000ms | System metrics (CPU, memory, event loop) |
+| `probeLatency` | 250ms / 2500ms | Request latency measurements |
+| `event` | On occurrence | Simulation and system events |
+| `simulation` | On status change | Simulation state updates |
+
+*Probe frequency automatically increases to 2500ms during slow request testing for cleaner diagnostics.*
 
 ## Configuration
 

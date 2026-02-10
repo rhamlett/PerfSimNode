@@ -134,10 +134,14 @@ function addEventToLog(event, skipRender = false) {
 
 /**
  * Renders the event log with UTC timestamps matching Azure diagnostics.
+ * Always sorts by timestamp descending to ensure correct order.
  */
 function renderEventLog() {
   const container = document.getElementById('event-log');
   if (!container) return;
+
+  // Sort by timestamp descending (newest first) before rendering
+  eventLog.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   container.innerHTML = eventLog
     .map((event) => {
@@ -191,19 +195,22 @@ async function loadEventLog() {
     const response = await fetch('/api/admin/events?limit=20');
     if (response.ok) {
       const data = await response.json();
-      // Events come newest-first from API, but we want oldest-first for display
-      const serverEvents = data.events.reverse();
-      for (const event of serverEvents) {
+      // Add all server events (skip render during batch)
+      for (const event of data.events) {
         addEventToLog({
           level: event.level || 'info',
           message: event.message,
           timestamp: event.timestamp
-        }, true); // Skip re-render until done
+        }, true);
       }
     }
   } catch (error) {
     console.error('[Dashboard] Failed to load event log:', error);
   }
+  
+  // Sort by timestamp descending (newest first) to handle race conditions
+  // where broadcast events arrive during the async fetch
+  eventLog.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   
   renderEventLog();
 }

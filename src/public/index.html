@@ -160,8 +160,8 @@
       <div class="panel-content">
         <!-- CPU Stress -->
         <div class="control-section cpu-section">
-          <h3>🔥 CPU Stress <span class="info-icon" title="On single-core systems (like P0V3), any target >50% will use 1 worker = ~100% CPU. Fine-grained control requires multiple cores. Consider upgrading to P1V3 (2 vCPUs) or higher for precise targeting.">ℹ️</span></h3>
-          <p class="control-description">Creates parallel spin loops to max out all CPU cores.</p>
+          <h3>🔥 CPU Stress <span class="info-icon" title="Uses child_process.fork() to spawn separate OS processes. Each process runs 100% on a CPU core. For 75% on 2 cores: spawns 1-2 processes.">ℹ️</span></h3>
+          <p class="control-description">Spawns child processes running crypto.pbkdf2Sync(). Server stays responsive - work is isolated from the event loop.</p>
           <form id="cpu-form">
             <label>
               Duration (s):
@@ -183,8 +183,8 @@
 
         <!-- Memory Pressure -->
         <div class="control-section memory-section">
-          <h3>📊 Memory Pressure</h3>
-          <p class="control-description">Allocates pinned memory blocks to increase working set.</p>
+          <h3>📊 Memory Pressure <span class="info-icon" title="Memory is held until released. Multiple allocations stack. Watch for GC pauses (brief event loop lag spikes).">ℹ️</span></h3>
+          <p class="control-description">Allocates Buffer blocks filled with random data. Multiple allocations stack - mimics gradual memory leak.</p>
           <form id="memory-form">
             <label>
               Size (MB):
@@ -200,8 +200,8 @@
 
         <!-- Event Loop Blocking -->
         <div class="control-section eventloop-section">
-          <h3>🧵 Event Loop Blocking</h3>
-          <p class="control-description">Blocks Node.js event loop with synchronous crypto operations. Watch the probe dots turn red!</p>
+          <h3>🧵 Event Loop Blocking <span class="info-icon" title="Unlike CPU Stress (child processes), this runs IN the main thread. Server becomes completely unresponsive!">⚠️</span></h3>
+          <p class="control-description">Runs synchronous crypto in the main thread - blocks ALL requests, WebSocket, probes. Dashboard will freeze!</p>
           <div class="eventloop-education">
             <strong>What to observe:</strong>
             <ul>
@@ -222,8 +222,8 @@
 
         <!-- Slow Requests -->
         <div class="control-section slow-section">
-          <h3>🐌 Slow Requests</h3>
-          <p class="control-description">Generates requests using sync-over-async patterns. Ideal for profiler diagnosis.</p>
+          <h3>🐌 Slow Requests <span class="info-icon" title="Uses setTimeout() - non-blocking. Other requests process normally. Compare with Event Loop Blocking!">ℹ️</span></h3>
+          <p class="control-description">Non-blocking delays via setTimeout(). Other requests unaffected - probe latency stays normal. Probe frequency reduces to 2500ms during test.</p>
           <div class="slow-note">
             ⚠️ Note: Requests exceeding 30 seconds total time (queue + execution) are flagged as critical
           </div>
@@ -250,8 +250,8 @@
 
         <!-- Crash Simulation -->
         <div class="control-section crash-section">
-          <h3>💥 Application Crash</h3>
-          <p class="control-description">Triggers a fatal crash for crash dump analysis.</p>
+          <h3>💥 Application Crash <span class="info-icon" title="Process terminates immediately. Azure App Service auto-restarts. Watch for Process ID change in Event Log.">⚠️</span></h3>
+          <p class="control-description">Terminates the Node.js process. Azure auto-restarts - observe the recovery and new Process ID in Event Log.</p>
           <form id="crash-form">
             <label>
               Crash Type:

@@ -398,24 +398,27 @@
         <div class="scenario-card">
           <div class="header cpu">🔥 High CPU Usage</div>
           <div class="body">
-            <p><strong>Symptom:</strong> CPU metric pinned high, requests may still complete but slower.</p>
+            <p><strong>Symptom:</strong> CPU metric pinned high, requests may still complete normally (event loop not blocked).</p>
             <h4>What's Happening</h4>
             <ul>
-              <li>Simulation runs CPU-intensive crypto (PBKDF2)</li>
-              <li>Synchronous operations keep CPU busy</li>
-              <li>Event loop still runs between operations</li>
+              <li>Simulation spawns child processes via <code>fork()</code></li>
+              <li>Each child runs CPU-intensive crypto (PBKDF2)</li>
+              <li>Work is isolated from main event loop - server stays responsive</li>
+              <li>Multiple <code>node</code> processes visible in <code>top</code></li>
             </ul>
+            <h4>Key Insight</h4>
+            <p><em>CPU stress ≠ Event loop blocking!</em> High CPU in child processes doesn't block the server. Watch the Event Loop Lag - it stays low even with high CPU.</p>
             <h4>Azure Diagnostic Tools</h4>
             <ul>
               <li>App Service Diagnostics → <strong>CPU Drill Down</strong></li>
               <li>Application Insights → <strong>Performance</strong></li>
-              <li>Kudu → <strong>Process Explorer</strong></li>
+              <li>Kudu SSH → <code>top</code>, <code>ps aux | grep node</code></li>
             </ul>
             <h4>What to Look For</h4>
             <ul>
-              <li>Which process is consuming CPU</li>
-              <li>CPU profiler to find hot code paths</li>
-              <li>Correlation with specific requests</li>
+              <li>Which process(es) consuming CPU</li>
+              <li>Parent/child process relationship</li>
+              <li>Event loop lag should remain LOW</li>
             </ul>
           </div>
         </div>
@@ -448,24 +451,27 @@
         <div class="scenario-card">
           <div class="header eventloop">🧵 Event Loop Blocking</div>
           <div class="body">
-            <p><strong>Symptom:</strong> Event Loop Lag spikes, ALL requests become slow simultaneously.</p>
+            <p><strong>Symptom:</strong> Event Loop Lag spikes, ALL requests queue, dashboard freezes.</p>
             <h4>What's Happening</h4>
             <ul>
-              <li>Synchronous code blocks the single thread</li>
+              <li>Synchronous crypto runs IN the main thread</li>
               <li>All pending callbacks must wait</li>
-              <li>Request latency = lag + actual processing</li>
+              <li>Request latency = blocking duration + normal processing</li>
+              <li><strong>Key difference from CPU stress:</strong> Server is unresponsive!</li>
             </ul>
+            <h4>How to Identify</h4>
+            <p><em>Check Event Loop Lag!</em> If it equals the slowdown duration, the event loop is blocked. CPU stress shows high CPU but LOW event loop lag.</p>
             <h4>Azure Diagnostic Tools</h4>
             <ul>
               <li>Application Insights → <strong>Performance</strong></li>
               <li>App Service Diagnostics → <strong>Web App Slow</strong></li>
-              <li>Custom metrics with <code>perf_hooks</code></li>
+              <li>Dashboard → Probe dots turn red during block</li>
             </ul>
             <h4>What to Look For</h4>
             <ul>
-              <li>Event loop lag correlating with slow requests</li>
-              <li>All requests affected at same time</li>
-              <li>CPU may be low (blocking on sync I/O)</li>
+              <li>Event loop lag = blocking duration</li>
+              <li>ALL requests affected simultaneously</li>
+              <li>CPU may be high OR low (depends on blocking work)</li>
             </ul>
           </div>
         </div>
@@ -473,24 +479,27 @@
         <div class="scenario-card">
           <div class="header slow">🐢 Slow Requests</div>
           <div class="body">
-            <p><strong>Symptom:</strong> Some requests take very long, latency monitor shows high values.</p>
+            <p><strong>Symptom:</strong> Specific endpoint takes long time, but other endpoints are NORMAL.</p>
             <h4>What's Happening</h4>
             <ul>
-              <li>Request handler intentionally delays</li>
+              <li>Request handler uses <code>setTimeout()</code> for delay</li>
+              <li>Non-blocking: event loop continues processing</li>
               <li>Simulates slow database, external API calls</li>
-              <li>With blocking version, affects other requests too</li>
+              <li><strong>Key difference from Event Loop Blocking:</strong> Only slow endpoint affected!</li>
             </ul>
+            <h4>How to Identify</h4>
+            <p><em>Check if OTHER requests are affected.</em> Slow requests: only slow endpoint is slow. Event loop blocking: EVERYTHING is slow.</p>
             <h4>Azure Diagnostic Tools</h4>
             <ul>
               <li>Application Insights → <strong>End-to-end transaction</strong></li>
-              <li>App Service Diagnostics → <strong>Web App Slow</strong></li>
-              <li>Log Analytics → Request duration queries</li>
+              <li>Dashboard → Probe latency stays GREEN/normal</li>
+              <li>Log Analytics → Request duration by endpoint</li>
             </ul>
             <h4>What to Look For</h4>
             <ul>
-              <li>Which endpoint is slow</li>
+              <li>Which specific endpoint is slow</li>
               <li>Dependency timing breakdown</li>
-              <li>Whether other requests affected</li>
+              <li>Event loop lag stays LOW</li>
             </ul>
           </div>
         </div>
