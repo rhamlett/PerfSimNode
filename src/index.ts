@@ -7,6 +7,7 @@
  */
 
 import http from 'http';
+import https from 'https';
 import { Server as SocketServer } from 'socket.io';
 import { createApp } from './app';
 import { config } from './config';
@@ -72,20 +73,42 @@ async function main(): Promise<void> {
 
     // Server-side health probe every 100ms - generates real HTTP traffic for AppLens
     // and broadcasts measured latency to connected dashboards
+    // On Azure, probe the public hostname so requests go through the front-end and appear in AppLens
+    const websiteHostname = process.env.WEBSITE_HOSTNAME;
+    const probeUrl = websiteHostname 
+      ? `https://${websiteHostname}/api/metrics/probe`
+      : `http://localhost:${port}/api/metrics/probe`;
+    const httpModule = websiteHostname ? https : http;
+    
+    console.log(`[PerfSimNode] Probe URL: ${probeUrl}`);
+    console.log(`[PerfSimNode] WEBSITE_HOSTNAME: ${websiteHostname || 'not set'}`);
+    
+    let probeSuccessCount = 0;
+    let probeErrorCount = 0;
+    
     setInterval(() => {
       const startTime = Date.now();
-      const req = http.get(`http://localhost:${port}/api/metrics/probe`, (res) => {
+      const req = httpModule.get(probeUrl, (res) => {
         res.on('data', () => {}); // Consume response
         res.on('end', () => {
+          probeSuccessCount++;
           const latencyMs = Date.now() - startTime;
           io.emit('probeLatency', { latencyMs, timestamp: Date.now() });
         });
       });
-      req.on('error', () => {
-        // Server may be restarting, ignore
+      req.on('error', (err) => {
+        probeErrorCount++;
+        if (probeErrorCount <= 5 || probeErrorCount % 100 === 0) {
+          console.error(`[PerfSimNode] Probe error #${probeErrorCount}: ${err.message}`);
+        }
       });
       req.on('timeout', () => req.destroy());
     }, 100);
+    
+    // Log probe stats every 60 seconds
+    setInterval(() => {
+      console.log(`[PerfSimNode] Probe stats - Success: ${probeSuccessCount}, Errors: ${probeErrorCount}`);
+    }, 60000);
   });
 }
 

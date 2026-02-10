@@ -175,41 +175,13 @@ async function loadActiveSimulations() {
 }
 
 /**
- * Loads event log from the server, merging with existing local events.
+ * Clears the event log on page load.
+ * Event log starts fresh each session to show only current session events.
  */
-async function loadEventLog() {
-  try {
-    const response = await fetch('/api/admin/events?limit=50');
-    const data = await response.json();
-
-    // Preserve existing local events and merge with server events
-    const existingLocalEvents = [...eventLog];
-    const serverEvents = data.events || [];
-    
-    // Merge: server events first (older), then local events (newer)
-    // Deduplicate by checking if message already exists within same second
-    const mergedEvents = [...serverEvents];
-    for (const localEvent of existingLocalEvents) {
-      const localTime = new Date(localEvent.timestamp).getTime();
-      const isDuplicate = mergedEvents.some(serverEvent => {
-        const serverTime = new Date(serverEvent.timestamp).getTime();
-        return Math.abs(serverTime - localTime) < 1000 && 
-               serverEvent.message === localEvent.message;
-      });
-      if (!isDuplicate) {
-        mergedEvents.push(localEvent);
-      }
-    }
-    
-    // Sort by timestamp descending (newest first) and limit
-    mergedEvents.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    
-    eventLog.length = 0;
-    eventLog.push(...mergedEvents.slice(0, maxEventLogEntries));
-    renderEventLog();
-  } catch (error) {
-    console.error('[Dashboard] Failed to load event log:', error);
-  }
+function loadEventLog() {
+  // Clear the event log - starts fresh on page refresh
+  eventLog.length = 0;
+  renderEventLog();
 }
 
 /**
