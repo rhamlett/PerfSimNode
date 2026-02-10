@@ -9,6 +9,8 @@
 import { Router, Request, Response } from 'express';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as dns from 'dns';
+import * as https from 'https';
 import { SimulationTrackerService } from '../services/simulation-tracker.service';
 import { EventLogService } from '../services/event-log.service';
 import { MetricsService } from '../services/metrics.service';
@@ -182,4 +184,132 @@ adminRouter.get('/admin/memory-debug', (_req: Request, res: Response) => {
     platform: os.platform(),
     release: os.release(),
   });
+});
+
+/**
+ * GET /api/admin/network-debug
+ *
+ * Diagnostic endpoint to understand network environment and HTTP routing on Azure.
+ * Helps debug why self-requests may not appear in AppLens.
+ *
+ * @route GET /api/admin/network-debug
+ * @returns {Object} Network diagnostic information
+ */
+adminRouter.get('/admin/network-debug', async (_req: Request, res: Response) => {
+  const websiteHostname = process.env.WEBSITE_HOSTNAME;
+  const results: Record<string, unknown> = {};
+
+  // Collect Azure environment variables
+  results.azureEnvVars = {
+    WEBSITE_HOSTNAME: process.env.WEBSITE_HOSTNAME,
+    WEBSITE_SITE_NAME: process.env.WEBSITE_SITE_NAME,
+    WEBSITE_INSTANCE_ID: process.env.WEBSITE_INSTANCE_ID,
+    WEBSITE_SKU: process.env.WEBSITE_SKU,
+    REGION_NAME: process.env.REGION_NAME,
+    HTTP_PROXY: process.env.HTTP_PROXY,
+    HTTPS_PROXY: process.env.HTTPS_PROXY,
+    NO_PROXY: process.env.NO_PROXY,
+    http_proxy: process.env.http_proxy,
+    https_proxy: process.env.https_proxy,
+    WEBSITE_PRIVATE_IP: process.env.WEBSITE_PRIVATE_IP,
+    WEBSITE_PRIVATE_PORTS: process.env.WEBSITE_PRIVATE_PORTS,
+    REMOTEDEBUGGINGPORT: process.env.REMOTEDEBUGGINGPORT,
+    APPSVC_TUNNEL_PORT: process.env.APPSVC_TUNNEL_PORT,
+  };
+
+  // DNS lookup for the hostname
+  if (websiteHostname) {
+    try {
+      const addresses = await new Promise<string[]>((resolve, reject) => {
+        dns.resolve4(websiteHostname, (err, addrs) => {
+          if (err) reject(err);
+          else resolve(addrs);
+        });
+      });
+      results.dnsLookup = { hostname: websiteHostname, addresses };
+    } catch (err) {
+      results.dnsLookup = { hostname: websiteHostname, error: err instanceof Error ? err.message : 'unknown' };
+    }
+
+    // Also try dns.lookup (uses OS resolver)
+    try {
+      const lookupResult = await new Promise<{ address: string; family: number }>((resolve, reject) => {
+        dns.lookup(websiteHostname, (err, address, family) => {
+          if (err) reject(err);
+          else resolve({ address, family });
+        });
+      });
+      results.osLookup = { hostname: websiteHostname, ...lookupResult };
+    } catch (err) {
+      results.osLookup = { hostname: websiteHostname, error: err instanceof Error ? err.message : 'unknown' };
+    }
+  }
+
+  // Network interfaces
+  results.networkInterfaces = os.networkInterfaces();
+
+  // Test an HTTPS request with various options
+  if (websiteHostname) {
+    const testUrl = `https://${websiteHostname}/api/metrics/probe`;
+    
+    // Test 1: Default HTTPS request
+    try {
+      const startTime = Date.now();
+      const testResult = await new Promise<{ statusCode: number; headers: Record<string, unknown>; latencyMs: number; localAddress?: string; remoteAddress?: string }>((resolve, reject) => {
+        const req = https.get(testUrl, { 
+          headers: { 'User-Agent': 'PerfSimNode-NetworkDebug/1.0' }
+        }, (response) => {
+          response.on('data', () => {});
+          response.on('end', () => {
+            resolve({
+              statusCode: response.statusCode || 0,
+              headers: response.headers as Record<string, unknown>,
+              latencyMs: Date.now() - startTime,
+              localAddress: req.socket?.localAddress,
+              remoteAddress: req.socket?.remoteAddress,
+            });
+          });
+        });
+        req.on('error', reject);
+        req.setTimeout(5000, () => {
+          req.destroy();
+          reject(new Error('Timeout'));
+        });
+      });
+      results.httpsTest = { url: testUrl, ...testResult };
+    } catch (err) {
+      results.httpsTest = { url: testUrl, error: err instanceof Error ? err.message : 'unknown' };
+    }
+
+    // Test 2: HTTPS with agent: false (no connection pooling)
+    try {
+      const startTime = Date.now();
+      const testResult = await new Promise<{ statusCode: number; latencyMs: number; localAddress?: string; remoteAddress?: string }>((resolve, reject) => {
+        const req = https.get(testUrl, { 
+          agent: false,
+          headers: { 'User-Agent': 'PerfSimNode-NetworkDebug-NoPool/1.0' }
+        }, (response) => {
+          response.on('data', () => {});
+          response.on('end', () => {
+            resolve({
+              statusCode: response.statusCode || 0,
+              latencyMs: Date.now() - startTime,
+              localAddress: req.socket?.localAddress,
+              remoteAddress: req.socket?.remoteAddress,
+            });
+          });
+        });
+        req.on('error', reject);
+        req.setTimeout(5000, () => {
+          req.destroy();
+          reject(new Error('Timeout'));
+        });
+      });
+      results.httpsTestNoPool = { url: testUrl, ...testResult };
+    } catch (err) {
+      results.httpsTestNoPool = { url: testUrl, error: err instanceof Error ? err.message : 'unknown' };
+    }
+  }
+
+  res.json(results);
 });
