@@ -11,6 +11,7 @@ import './instrumentation';
 
 import http from 'http';
 import { exec } from 'child_process';
+import { cpus } from 'os';
 import { Server as SocketServer } from 'socket.io';
 import { createApp } from './app';
 import { config } from './config';
@@ -65,10 +66,12 @@ async function main(): Promise<void> {
 
   // Start server
   server.listen(port, () => {
+    const cpuInfo = cpus();
     console.log(`[PerfSimNode] Server running on http://localhost:${port}`);
     console.log(`[PerfSimNode] Dashboard: http://localhost:${port}`);
     console.log(`[PerfSimNode] API Health: http://localhost:${port}/api/health`);
     console.log(`[PerfSimNode] Metrics broadcast interval: ${config.metricsIntervalMs}ms`);
+    console.log(`[PerfSimNode] CPU cores reported: ${cpuInfo.length} (${cpuInfo[0]?.model || 'unknown'})`);
 
     EventLogService.info('SERVER_STARTED', `PerfSimNode server started on port ${port}`, {
       details: { port, metricsIntervalMs: config.metricsIntervalMs },
