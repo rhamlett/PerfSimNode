@@ -95,7 +95,7 @@
       <!-- Request Latency Monitor -->
       <section id="latency-section">
         <div class="latency-card">
-          <h3>⏱️ Request Latency Monitor <span id="blocked-badge" class="blocked-badge" style="display: none;">🔴 BLOCKED <span id="blocked-duration"></span></span></h3>
+          <h3>⏱️ Request Latency Monitor <span id="probe-visualization" class="probe-visualization-inline" title="Probe history: Green=good (<150ms), Yellow=degraded (150ms-1s), Orange=slow (>1s), Red=failed/timeout"></span></h3>
           <p class="latency-description">Measures actual response time to a lightweight probe endpoint. Times include server processing and queue time.</p>
           
           <div class="latency-stats">
@@ -205,7 +205,7 @@
           <div class="eventloop-education">
             <strong>What to observe:</strong>
             <ul>
-              <li>"BLOCKED" badge appears in Request Latency Monitor</li>
+              <li>Probe dots turn red (failed) in the Request Latency Monitor</li>
               <li>Dashboard metrics stop updating during block</li>
               <li>Request latency spikes after server recovers</li>
             </ul>

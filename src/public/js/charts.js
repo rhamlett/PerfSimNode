@@ -375,11 +375,26 @@ function recordProbeResult(latency, success) {
 
 /**
  * Updates the probe visualization dots.
- * Note: Probe visualization panel was removed - this is now a no-op.
- * Keeping function to avoid breaking recordProbeResult calls.
+ * Shows last 30 probe results as colored dots inline with the title.
  */
 function updateProbeVisualization() {
-  // Removed - responsiveness is now shown via BLOCKED badge in latency title
+  const container = document.getElementById('probe-visualization');
+  if (!container) return;
+  
+  // Show last 30 probes
+  const recentProbes = serverResponsiveness.probeHistory.slice(-30);
+  
+  container.innerHTML = recentProbes.map(probe => {
+    let className = 'probe-dot-inline';
+    if (!probe.success) {
+      className += ' failed';
+    } else if (probe.latency > 1000) {
+      className += ' slow';
+    } else if (probe.latency > 150) {
+      className += ' degraded';
+    }
+    return `<span class="${className}"></span>`;
+  }).join('');
 }
 
 /**
@@ -435,25 +450,11 @@ function recordSlowRequestLatency(latencyMs) {
 
 /**
  * Updates the server responsiveness UI elements.
- * Shows/hides the BLOCKED badge in the latency monitor title.
+ * The probe dots visualization now shows responsiveness status.
  */
 function updateResponsivenessUI() {
-  const blockedBadge = document.getElementById('blocked-badge');
-  const blockedDuration = document.getElementById('blocked-duration');
-  
-  if (blockedBadge) {
-    if (serverResponsiveness.isResponsive) {
-      blockedBadge.style.display = 'none';
-    } else {
-      blockedBadge.style.display = 'inline';
-      
-      // Update duration if available
-      if (blockedDuration && serverResponsiveness.unresponsiveStartTime) {
-        const duration = (Date.now() - serverResponsiveness.unresponsiveStartTime) / 1000;
-        blockedDuration.textContent = `(${duration.toFixed(1)}s)`;
-      }
-    }
-  }
+  // Probe visualization dots now show responsiveness status
+  // No separate badge needed - red dots indicate failures
 }
 
 // Update unresponsive duration display continuously when blocked

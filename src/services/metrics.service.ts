@@ -21,14 +21,21 @@ import { bytesToMb, nsToMs } from '../utils';
 console.log(`[Metrics] Host memory available: ${bytesToMb(os.totalmem()).toFixed(0)} MB`);
 
 /**
+ * Snapshot of CPU times for calculating usage between intervals.
+ */
+interface CpuSnapshot {
+  idle: number;
+  total: number;
+}
+
+/**
  * Service for collecting system metrics.
  *
  * Tracks CPU usage, memory consumption, event loop lag, and process stats.
  */
 class MetricsServiceClass {
   private histogram: IntervalHistogram;
-  private lastCpuUsage: NodeJS.CpuUsage | null = null;
-  private lastCpuTime: number = Date.now();
+  private lastCpuSnapshot: CpuSnapshot | null = null;
   
   // Real-time heartbeat lag measurement
   // This measures actual time for setImmediate to fire, showing real blocking
@@ -39,12 +46,28 @@ class MetricsServiceClass {
     this.histogram = monitorEventLoopDelay({ resolution: 10 });
     this.histogram.enable();
 
-    // Initialize CPU tracking
-    this.lastCpuUsage = process.cpuUsage();
-    this.lastCpuTime = Date.now();
+    // Initialize system-wide CPU tracking
+    this.lastCpuSnapshot = this.getCpuSnapshot();
     
     // Start heartbeat measurement
     this.startHeartbeat();
+  }
+  
+  /**
+   * Gets a snapshot of system-wide CPU times.
+   * Uses os.cpus() to capture all CPU activity including child processes.
+   */
+  private getCpuSnapshot(): CpuSnapshot {
+    const cpus = os.cpus();
+    let idle = 0;
+    let total = 0;
+    
+    for (const cpu of cpus) {
+      idle += cpu.times.idle;
+      total += cpu.times.user + cpu.times.nice + cpu.times.sys + cpu.times.idle + cpu.times.irq;
+    }
+    
+    return { idle, total };
   }
   
   /**
@@ -67,29 +90,36 @@ class MetricsServiceClass {
   }
 
   /**
-   * Collects current CPU metrics.
+   * Collects current CPU metrics using system-wide measurement.
+   * This captures CPU usage from all processes including forked workers.
    *
    * @returns CPU usage metrics
    */
   getCpuMetrics(): CpuMetrics {
-    const currentUsage = process.cpuUsage(this.lastCpuUsage ?? undefined);
-    const currentTime = Date.now();
-    const elapsedMs = currentTime - this.lastCpuTime;
+    const currentSnapshot = this.getCpuSnapshot();
+    
+    let usagePercent = 0;
+    
+    if (this.lastCpuSnapshot) {
+      const idleDiff = currentSnapshot.idle - this.lastCpuSnapshot.idle;
+      const totalDiff = currentSnapshot.total - this.lastCpuSnapshot.total;
+      
+      if (totalDiff > 0) {
+        // CPU usage = (1 - idle/total) * 100
+        usagePercent = ((totalDiff - idleDiff) / totalDiff) * 100;
+      }
+    }
+    
+    // Update snapshot for next call
+    this.lastCpuSnapshot = currentSnapshot;
 
-    // Calculate CPU percentage (user + system time vs elapsed time)
-    // cpuUsage values are in microseconds
-    const totalCpuMicros = currentUsage.user + currentUsage.system;
-    const elapsedMicros = elapsedMs * 1000;
-    const usagePercent = elapsedMicros > 0 ? (totalCpuMicros / elapsedMicros) * 100 : 0;
-
-    // Update tracking for next call
-    this.lastCpuUsage = process.cpuUsage();
-    this.lastCpuTime = currentTime;
+    // Also get process-level stats for the user/system breakdown
+    const processUsage = process.cpuUsage();
 
     return {
       usagePercent: Math.min(100, Math.round(usagePercent * 100) / 100),
-      user: currentUsage.user,
-      system: currentUsage.system,
+      user: processUsage.user,
+      system: processUsage.system,
     };
   }
 

@@ -634,6 +634,41 @@ section h2, section h3 {
   background: var(--color-danger);
 }
 
+/* Inline probe visualization for title bar */
+.probe-visualization-inline {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  cursor: help;
+}
+
+.probe-dot-inline {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-success);
+}
+
+.probe-dot-inline.degraded {
+  background: var(--color-warning);
+}
+
+.probe-dot-inline.slow {
+  background: #ff6600;
+}
+
+.probe-dot-inline.failed {
+  background: var(--color-danger);
+  animation: pulse-dot 0.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.2); }
+}
+
 /* --------------------------------------------------------------------------
    Event Loop Education
    -------------------------------------------------------------------------- */
