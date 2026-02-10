@@ -1,23 +1,27 @@
 /**
  * CPU Stress Service
  *
- * Simulates CPU stress using crypto operations.
+ * Simulates CPU stress using worker threads for multi-core utilization.
  *
  * @module services/cpu-stress
  */
 
-import { pbkdf2Sync } from 'crypto';
+import { Worker } from 'worker_threads';
+import { cpus } from 'os';
+import path from 'path';
 import { Simulation, CpuStressParams } from '../types';
 import { SimulationTrackerService } from './simulation-tracker.service';
 import { EventLogService } from './event-log.service';
 
-/** Active CPU stress interval timers by simulation ID */
-const activeIntervals: Map<string, NodeJS.Timeout> = new Map();
+/** Active CPU stress workers by simulation ID */
+const activeWorkers: Map<string, Worker[]> = new Map();
+const activeTimeouts: Map<string, NodeJS.Timeout> = new Map();
 
 /**
  * CPU Stress Service
  *
- * Uses crypto.pbkdf2Sync to generate CPU load in controlled bursts.
+ * Uses worker threads to generate CPU load across multiple cores.
+ * Spawns workers proportional to available CPUs and target load.
  */
 class CpuStressServiceClass {
   /**
@@ -43,8 +47,8 @@ class CpuStressServiceClass {
       details: { targetLoadPercent, durationSeconds },
     });
 
-    // Start the CPU burn loop
-    this.startCpuBurn(simulation.id, targetLoadPercent, durationSeconds);
+    // Start the CPU burn workers
+    this.startCpuWorkers(simulation.id, targetLoadPercent, durationSeconds);
 
     return simulation;
   }
@@ -56,8 +60,8 @@ class CpuStressServiceClass {
    * @returns The stopped simulation or undefined if not found
    */
   stop(id: string): Simulation | undefined {
-    // Stop the CPU burn interval
-    this.stopCpuBurn(id);
+    // Stop the CPU workers
+    this.stopCpuWorkers(id);
 
     // Update simulation status
     const simulation = SimulationTrackerService.stopSimulation(id);
@@ -73,78 +77,104 @@ class CpuStressServiceClass {
   }
 
   /**
-   * Starts the CPU burn loop for a simulation.
+   * Starts CPU worker threads for a simulation.
    *
-   * The loop runs based on target load percentage:
-   * - Burn CPU for (targetLoad / 100) * interval
-   * - Sleep for remaining interval time
+   * Spawns multiple workers to utilize multiple CPU cores.
+   * Number of workers scales with target load percentage.
    *
    * @param simulationId - Simulation ID
    * @param targetLoadPercent - Target CPU load percentage (1-100)
    * @param durationSeconds - Total duration in seconds
    */
-  private startCpuBurn(
+  private startCpuWorkers(
     simulationId: string,
     targetLoadPercent: number,
     durationSeconds: number
   ): void {
-    const intervalMs = 100; // Run every 100ms
-    const burnTimeMs = (targetLoadPercent / 100) * intervalMs;
-    const endTime = Date.now() + durationSeconds * 1000;
+    const numCpus = cpus().length;
+    
+    // Calculate how many workers we need
+    // For 100% target on 4 cores, we need 4 workers at 100% each
+    // For 50% target on 4 cores, we could use 4 workers at 50% each, or 2 at 100%
+    // Using more workers at lower duty cycle gives smoother load distribution
+    const numWorkers = Math.max(1, Math.ceil(numCpus * (targetLoadPercent / 100)));
+    const perWorkerLoad = Math.min(100, (targetLoadPercent * numCpus) / numWorkers);
 
-    const interval = setInterval(() => {
-      // Check if simulation should end
-      if (Date.now() >= endTime) {
-        this.stopCpuBurn(simulationId);
-        const simulation = SimulationTrackerService.completeSimulation(simulationId);
-        if (simulation) {
-          EventLogService.info('SIMULATION_COMPLETED', 'CPU stress simulation completed', {
-            simulationId,
-            simulationType: 'CPU_STRESS',
-          });
-        }
-        return;
+    console.log(`[CPU Stress] Spawning ${numWorkers} workers at ${perWorkerLoad.toFixed(0)}% each (${numCpus} CPUs detected)`);
+
+    const workers: Worker[] = [];
+    const workerPath = path.join(__dirname, 'cpu-worker.js');
+
+    for (let i = 0; i < numWorkers; i++) {
+      try {
+        const worker = new Worker(workerPath, {
+          workerData: {
+            targetLoadPercent: perWorkerLoad,
+            intervalMs: 100,
+          },
+        });
+
+        worker.on('error', (err) => {
+          console.error(`[CPU Stress] Worker error: ${err.message}`);
+        });
+
+        worker.on('exit', (code) => {
+          if (code !== 0) {
+            console.log(`[CPU Stress] Worker exited with code ${code}`);
+          }
+        });
+
+        workers.push(worker);
+      } catch (err) {
+        console.error(`[CPU Stress] Failed to spawn worker: ${err}`);
       }
+    }
 
-      // Check if simulation still exists and is active
-      const simulation = SimulationTrackerService.getSimulation(simulationId);
-      if (!simulation || simulation.status !== 'ACTIVE') {
-        this.stopCpuBurn(simulationId);
-        return;
+    activeWorkers.set(simulationId, workers);
+
+    // Set up auto-completion timeout
+    const timeout = setTimeout(() => {
+      this.stopCpuWorkers(simulationId);
+      const simulation = SimulationTrackerService.completeSimulation(simulationId);
+      if (simulation) {
+        EventLogService.info('SIMULATION_COMPLETED', 'CPU stress simulation completed', {
+          simulationId,
+          simulationType: 'CPU_STRESS',
+        });
       }
+    }, durationSeconds * 1000);
 
-      // Burn CPU for the calculated time
-      this.cpuBurn(burnTimeMs);
-    }, intervalMs);
-
-    activeIntervals.set(simulationId, interval);
+    activeTimeouts.set(simulationId, timeout);
   }
 
   /**
-   * Stops the CPU burn loop for a simulation.
+   * Stops CPU worker threads for a simulation.
    *
    * @param simulationId - Simulation ID
    */
-  private stopCpuBurn(simulationId: string): void {
-    const interval = activeIntervals.get(simulationId);
-    if (interval) {
-      clearInterval(interval);
-      activeIntervals.delete(simulationId);
+  private stopCpuWorkers(simulationId: string): void {
+    // Clear the timeout
+    const timeout = activeTimeouts.get(simulationId);
+    if (timeout) {
+      clearTimeout(timeout);
+      activeTimeouts.delete(simulationId);
     }
-  }
 
-  /**
-   * Performs CPU-intensive work for approximately the specified duration.
-   *
-   * Uses PBKDF2 with calibrated iterations to consume CPU.
-   *
-   * @param durationMs - Duration to burn CPU in milliseconds
-   */
-  private cpuBurn(durationMs: number): void {
-    const endTime = Date.now() + durationMs;
-    while (Date.now() < endTime) {
-      // Each call consumes ~1-2ms of CPU time
-      pbkdf2Sync('password', 'salt', 1000, 64, 'sha512');
+    // Terminate all workers
+    const workers = activeWorkers.get(simulationId);
+    if (workers) {
+      for (const worker of workers) {
+        try {
+          worker.postMessage('stop');
+          // Force terminate after 100ms if not stopped gracefully
+          setTimeout(() => {
+            worker.terminate().catch(() => {});
+          }, 100);
+        } catch {
+          // Worker may already be terminated
+        }
+      }
+      activeWorkers.delete(simulationId);
     }
   }
 
