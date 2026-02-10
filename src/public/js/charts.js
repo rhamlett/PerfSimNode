@@ -262,9 +262,13 @@ function setProbeMode(mode) {
     }
   }
   
-  // Restart probe with new interval
-  // Note: Probes are now server-side, this just updates the expected interval
-  console.log(`[Probe] Mode changed to '${mode}' (server interval: 100ms, reduced UI updates)`);
+  // Tell server to change probe interval via Socket.IO
+  if (typeof socket !== 'undefined' && socket && socket.connected) {
+    socket.emit('setProbeMode', mode);
+    console.log(`[Probe] Mode changed to '${mode}' - server notified (interval: ${mode === 'reduced' ? '2500ms' : '250ms'})`);
+  } else {
+    console.log(`[Probe] Mode changed to '${mode}' but socket not connected`);
+  }
 }
 
 /**

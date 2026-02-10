@@ -63,7 +63,17 @@ async function main(): Promise<void> {
         details: { socketId: socket.id, reason },
       });
     });
+
+    // Handle probe mode changes from clients
+    socket.on('setProbeMode', (mode: 'normal' | 'reduced') => {
+      probeMode = mode;
+      console.log(`[PerfSimNode] Probe mode set to: ${mode} (interval: ${mode === 'reduced' ? '2500ms' : '250ms'})`);
+    });
   });
+
+  // Dynamic probe interval: 250ms normal, 2500ms during slow request testing
+  let probeMode: 'normal' | 'reduced' = 'normal';
+  const getProbeInterval = () => probeMode === 'reduced' ? 2500 : 250;
 
   // Broadcast metrics at configured interval
   setInterval(() => {
@@ -99,25 +109,31 @@ async function main(): Promise<void> {
     let curlSuccessCount = 0;
     let curlErrorCount = 0;
     
-    // Native HTTP probe every 250ms - low overhead, real-time dashboard updates
-    setInterval(() => {
-      const startTime = Date.now();
-      const req = http.get(`http://localhost:${port}/api/metrics/probe`, (res) => {
-        res.on('data', () => {});
-        res.on('end', () => {
-          probeSuccessCount++;
-          const latencyMs = Date.now() - startTime;
-          io.emit('probeLatency', { latencyMs, timestamp: Date.now() });
+    // Native HTTP probe with dynamic interval - uses setTimeout for interval flexibility
+    const scheduleProbe = () => {
+      setTimeout(() => {
+        const startTime = Date.now();
+        const req = http.get(`http://localhost:${port}/api/metrics/probe`, (res) => {
+          res.on('data', () => {});
+          res.on('end', () => {
+            probeSuccessCount++;
+            const latencyMs = Date.now() - startTime;
+            io.emit('probeLatency', { latencyMs, timestamp: Date.now() });
+          });
         });
-      });
-      req.on('error', () => { probeErrorCount++; });
-      req.on('timeout', () => req.destroy());
-    }, 250);
+        req.on('error', () => { probeErrorCount++; });
+        req.on('timeout', () => req.destroy());
+        
+        // Schedule next probe with current interval
+        scheduleProbe();
+      }, getProbeInterval());
+    };
+    scheduleProbe();
     
     // Curl probe every 1s - for AppLens visibility (only on Azure)
     if (websiteHostname) {
       const curlUrl = `https://${websiteHostname}/api/metrics/probe`;
-      console.log(`[PerfSimNode] Using hybrid probing: native http every 250ms, curl every 1s`);
+      console.log(`[PerfSimNode] Using hybrid probing: native http (250ms/2500ms dynamic), curl every 1s`);
       console.log(`[PerfSimNode] Curl URL for AppLens: ${curlUrl}`);
       
       setInterval(() => {
@@ -133,7 +149,7 @@ async function main(): Promise<void> {
         });
       }, 1000);
     } else {
-      console.log(`[PerfSimNode] Local mode: native http probes only (every 250ms)`);
+      console.log(`[PerfSimNode] Local mode: native http probes only (250ms/2500ms dynamic)`);
     }
     
     // Log probe stats every 60 seconds
