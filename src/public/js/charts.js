@@ -91,6 +91,60 @@ const LATENCY_COLORS = {
   critical: { value: 30000, color: 'rgba(209, 52, 56' } // Red - critical (30s+)
 };
 
+// RGB values for smooth color interpolation
+const LATENCY_RGB = {
+  good:     { r: 16,  g: 124, b: 16  }, // Green
+  degraded: { r: 255, g: 185, b: 0   }, // Yellow
+  severe:   { r: 255, g: 140, b: 0   }, // Orange
+  critical: { r: 209, g: 52,  b: 56  }  // Red
+};
+
+/**
+ * Interpolates between two RGB colors.
+ * @param {Object} color1 - Start color {r, g, b}
+ * @param {Object} color2 - End color {r, g, b}
+ * @param {number} t - Interpolation factor (0-1)
+ * @returns {string} - RGB color string
+ */
+function lerpColor(color1, color2, t) {
+  t = Math.max(0, Math.min(1, t)); // Clamp to 0-1
+  const r = Math.round(color1.r + (color2.r - color1.r) * t);
+  const g = Math.round(color1.g + (color2.g - color1.g) * t);
+  const b = Math.round(color1.b + (color2.b - color1.b) * t);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+/**
+ * Gets a smoothly interpolated color for a latency value.
+ * Blends between threshold colors based on where the value falls.
+ * @param {number} latencyMs - Latency value in milliseconds
+ * @returns {string} - RGB color string
+ */
+function getInterpolatedLatencyColor(latencyMs) {
+  if (latencyMs <= 0) return lerpColor(LATENCY_RGB.good, LATENCY_RGB.good, 0);
+  
+  // 0-150ms: green → yellow
+  if (latencyMs <= 150) {
+    const t = latencyMs / 150;
+    return lerpColor(LATENCY_RGB.good, LATENCY_RGB.degraded, t);
+  }
+  
+  // 150-1000ms: yellow → orange
+  if (latencyMs <= 1000) {
+    const t = (latencyMs - 150) / (1000 - 150);
+    return lerpColor(LATENCY_RGB.degraded, LATENCY_RGB.severe, t);
+  }
+  
+  // 1000-30000ms: orange → red
+  if (latencyMs <= 30000) {
+    const t = (latencyMs - 1000) / (30000 - 1000);
+    return lerpColor(LATENCY_RGB.severe, LATENCY_RGB.critical, t);
+  }
+  
+  // >30000ms: solid red
+  return lerpColor(LATENCY_RGB.critical, LATENCY_RGB.critical, 1);
+}
+
 /**
  * Creates a vertical gradient for the latency chart based on threshold values.
  * The gradient transitions from green (bottom/low latency) to red (top/high latency).
@@ -147,14 +201,12 @@ function createLatencyGradient(ctx, chartArea, scales) {
 
 /**
  * Gets the border color for the latency line based on current max value.
+ * Uses smooth interpolation between threshold colors.
  * @param {number} maxValue - Maximum latency value in the dataset
  * @returns {string} - CSS color string
  */
 function getLatencyBorderColor(maxValue) {
-  if (maxValue > 30000) return '#d13438';  // Critical: red
-  if (maxValue > 1000) return '#ff8c00';   // Severe: orange
-  if (maxValue > 150) return '#ffb900';    // Degraded: yellow
-  return '#107c10';                         // Good: green
+  return getInterpolatedLatencyColor(maxValue);
 }
 
 // Server responsiveness tracking
@@ -627,17 +679,14 @@ function initCharts() {
           {
             label: 'Latency (ms)',
             data: latencyChartData.values,
-            // Segment-based border color - each line segment colored by its data value
+            // Segment-based border color - smooth gradient based on data value
             segment: {
               borderColor: (ctx) => {
-                // Use the higher of the two endpoint values for the segment color
+                // Use the higher of the two endpoint values for smooth color blending
                 const p0 = ctx.p0.parsed.y;
                 const p1 = ctx.p1.parsed.y;
                 const value = Math.max(p0, p1);
-                if (value > 30000) return '#d13438';  // Critical: red
-                if (value > 1000) return '#ff8c00';   // Severe: orange
-                if (value > 150) return '#ffb900';    // Degraded: yellow
-                return '#107c10';                      // Good: green
+                return getInterpolatedLatencyColor(value);
               },
             },
             borderColor: '#107c10', // Default/fallback
@@ -656,10 +705,7 @@ function initCharts() {
             },
             pointBackgroundColor: (context) => {
               const value = context.raw;
-              if (value > 30000) return '#d13438'; // Critical: red
-              if (value > 1000) return '#ff8c00';  // Severe: orange
-              if (value > 150) return '#ffb900';   // Degraded: yellow
-              return '#107c10';                     // Normal: green
+              return getInterpolatedLatencyColor(value);
             },
           },
         ],
