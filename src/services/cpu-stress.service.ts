@@ -91,42 +91,49 @@ class CpuStressServiceClass {
     targetLoadPercent: number,
     durationSeconds: number
   ): void {
-    const reportedCpus = cpus().length;
+    const numCpus = cpus().length;
     
-    // Azure App Service often reports fewer CPUs than available compute.
-    // Use minimum of 4 workers for high CPU targets to ensure saturation.
-    const effectiveCpus = Math.max(4, reportedCpus);
-    
-    // For 100% target: spawn all workers
-    // For lower targets: scale proportionally
-    const numWorkers = Math.max(1, Math.round((targetLoadPercent / 100) * effectiveCpus));
-
-    process.stdout.write(`[CPU Stress] Target: ${targetLoadPercent}%, Reported CPUs: ${reportedCpus}, Effective CPUs: ${effectiveCpus}, Workers: ${numWorkers}\n`);
+    // Spawn workers based on target percentage and actual CPU count
+    // For 100% on 2 cores: 2 workers
+    // For 50% on 2 cores: 1 worker
+    const numWorkers = Math.max(1, Math.round((targetLoadPercent / 100) * numCpus));
 
     const workers: Worker[] = [];
     const workerPath = path.join(__dirname, 'cpu-worker.js');
+    let workersReady = 0;
 
     for (let i = 0; i < numWorkers; i++) {
       try {
         const worker = new Worker(workerPath);
 
+        worker.on('message', (msg) => {
+          if (msg === 'ready') {
+            workersReady++;
+          }
+        });
+
         worker.on('error', (err) => {
-          console.error(`[CPU Stress] Worker error: ${err.message}`);
+          process.stderr.write(`[CPU Stress] Worker ${i} error: ${err.message}\n`);
         });
 
         worker.on('exit', (code) => {
           if (code !== 0) {
-            console.log(`[CPU Stress] Worker exited with code ${code}`);
+            process.stderr.write(`[CPU Stress] Worker ${i} exited with code ${code}\n`);
           }
         });
 
         workers.push(worker);
       } catch (err) {
-        console.error(`[CPU Stress] Failed to spawn worker: ${err}`);
+        process.stderr.write(`[CPU Stress] Failed to spawn worker ${i}: ${err}\n`);
       }
     }
 
     activeWorkers.set(simulationId, workers);
+
+    // Log worker status after brief delay
+    setTimeout(() => {
+      process.stdout.write(`[CPU Stress] Started: target=${targetLoadPercent}%, cpus=${numCpus}, workers=${workers.length}, ready=${workersReady}\n`);
+    }, 500);
 
     // Set up auto-completion timeout
     const timeout = setTimeout(() => {
