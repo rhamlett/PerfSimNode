@@ -6,6 +6,9 @@
  * @module index
  */
 
+// Initialize Azure Monitor OpenTelemetry FIRST - before any other imports
+import './instrumentation';
+
 import http from 'http';
 import { exec } from 'child_process';
 import { Server as SocketServer } from 'socket.io';
