@@ -12,9 +12,10 @@ import { Request, Response, NextFunction } from 'express';
  * Request logging middleware.
  *
  * Logs method, URL, and response time for each request.
- * Skips logging internal probe requests (marked with X-Internal-Probe header)
- * to reduce log noise. These are the native HTTP probes for dashboard latency.
- * Curl probes (which appear in AppLens) and all other requests are logged.
+ * Skips logging internal probe requests to reduce log noise:
+ * - Native HTTP probes (marked with X-Internal-Probe header)
+ * - Any localhost requests to /api/metrics/probe
+ * Curl probes (which go through external HTTPS) appear in AppLens.
  *
  * @param req - Express request
  * @param res - Express response
@@ -24,8 +25,11 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
   const startTime = Date.now();
   
   // Skip logging for internal probe requests (native HTTP probes for dashboard)
-  // unless they error - curl probes will still be logged for AppLens visibility
+  // Check both the header AND the path+source to catch all internal probes
   const isInternalProbe = req.headers['x-internal-probe'] === 'true';
+  const isProbeEndpoint = req.originalUrl === '/api/metrics/probe';
+  const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+  const isInternalProbeRequest = isInternalProbe || (isProbeEndpoint && isLocalhost);
 
   // Log when response finishes
   res.on('finish', () => {
@@ -34,7 +38,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
     const timestamp = new Date().toISOString();
     
     // Skip internal probe logs unless error
-    if (isInternalProbe && !isError) {
+    if (isInternalProbeRequest && !isError) {
       return;
     }
 
