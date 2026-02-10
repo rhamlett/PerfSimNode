@@ -113,7 +113,12 @@ async function main(): Promise<void> {
     const scheduleProbe = () => {
       setTimeout(() => {
         const startTime = Date.now();
-        const req = http.get(`http://localhost:${port}/api/metrics/probe`, (res) => {
+        const req = http.get({
+          hostname: 'localhost',
+          port: port,
+          path: '/api/metrics/probe',
+          headers: { 'X-Internal-Probe': 'true' }
+        }, (res) => {
           res.on('data', () => {});
           res.on('end', () => {
             probeSuccessCount++;
