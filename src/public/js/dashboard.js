@@ -534,11 +534,21 @@ async function blockEventLoop(durationSeconds) {
   } catch (error) {
     console.error('[Dashboard] Event loop blocking failed:', error);
     
+    const errorMessage = error.message || String(error);
+    
+    addEventToLog({
+      timestamp: new Date().toISOString(),
+      level: 'danger',
+      event: 'SIMULATION_FAILED',
+      message: `❌ Event loop block failed: ${errorMessage}`,
+    });
+    
     if (impactEl) {
       impactEl.innerHTML = `
         <div class="impact-result" style="border-left-color: var(--color-danger);">
           <strong>❌ Request failed</strong><br>
-          The request may have timed out during blocking.
+          ${errorMessage}<br>
+          <small>Check browser console (F12) for details.</small>
         </div>
       `;
     }
