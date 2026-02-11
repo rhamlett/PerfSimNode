@@ -70,9 +70,9 @@ async function main(): Promise<void> {
     });
   });
 
-  // Dynamic probe interval: 250ms normal, 2500ms during slow request testing
+  // Dynamic probe interval: 100ms normal, 2500ms during slow request testing
   let probeMode: 'normal' | 'reduced' = 'normal';
-  const getProbeInterval = () => probeMode === 'reduced' ? 2500 : 250;
+  const getProbeInterval = () => probeMode === 'reduced' ? 2500 : 100;
 
   // Broadcast metrics at configured interval
   setInterval(() => {
