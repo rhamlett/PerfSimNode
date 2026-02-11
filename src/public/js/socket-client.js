@@ -17,10 +17,15 @@ function initSocket() {
   const statusEl = document.getElementById('connection-status');
 
   socket = io({
+    // Use WebSocket directly, skip long-polling
+    transports: ['websocket'],
+    // Reconnection settings
     reconnection: true,
     reconnectionAttempts: maxReconnectAttempts,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
+    // Match server timeout settings
+    timeout: 60000,
   });
 
   socket.on('connect', () => {

@@ -34,6 +34,11 @@ async function main(): Promise<void> {
       origin: '*',
       methods: ['GET', 'POST'],
     },
+    // Use WebSocket directly, skip long-polling upgrade dance
+    transports: ['websocket'],
+    // Increase timeouts for stability during simulations
+    pingTimeout: 60000,    // 60s before considering connection dead
+    pingInterval: 25000,   // 25s between keep-alive pings
   });
 
   // Set up event broadcasting via Socket.IO
@@ -51,17 +56,11 @@ async function main(): Promise<void> {
 
   // Handle WebSocket connections
   io.on('connection', (socket) => {
+    // Log to console only (not to event log - reduces noise for users)
     console.log(`[Socket.IO] Client connected: ${socket.id}`);
-
-    EventLogService.info('CLIENT_CONNECTED', `WebSocket client connected`, {
-      details: { socketId: socket.id },
-    });
 
     socket.on('disconnect', (reason) => {
       console.log(`[Socket.IO] Client disconnected: ${socket.id} (${reason})`);
-      EventLogService.info('CLIENT_DISCONNECTED', `WebSocket client disconnected`, {
-        details: { socketId: socket.id, reason },
-      });
     });
 
     // Handle probe mode changes from clients
