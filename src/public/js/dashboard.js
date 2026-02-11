@@ -833,6 +833,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Close panel when clicking outside of it
+  document.addEventListener('click', (e) => {
+    if (sidePanel && sidePanel.classList.contains('open')) {
+      // Check if click is outside the panel and not on the toggle button
+      const isClickInsidePanel = sidePanel.contains(e.target);
+      const isClickOnToggle = togglePanelBtn && togglePanelBtn.contains(e.target);
+      
+      if (!isClickInsidePanel && !isClickOnToggle) {
+        sidePanel.classList.remove('open');
+        document.body.classList.remove('panel-open');
+      }
+    }
+  });
+
   // CPU Form
   const cpuForm = document.getElementById('cpu-form');
   if (cpuForm) {
