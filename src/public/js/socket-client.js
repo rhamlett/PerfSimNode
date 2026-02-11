@@ -35,11 +35,6 @@ function initSocket() {
     statusEl.className = 'status-connected';
     console.log('[Socket] Connected to server');
 
-    // Log connection to event log
-    if (typeof addEventToLog === 'function') {
-      addEventToLog({ level: 'success', message: 'Connected to metrics hub' });
-    }
-
     // Notify dashboard of connection
     if (typeof onSocketConnected === 'function') {
       onSocketConnected();

@@ -189,6 +189,11 @@ async function loadActiveSimulations() {
 async function loadEventLog() {
   // Clear all events - start fresh each browser session
   eventLog.length = 0;
+  
+  // Add startup messages
+  addEventToLog({ level: 'success', message: 'Connected to metrics hub' }, true);
+  addEventToLog({ level: 'info', message: 'Dashboard initialized' }, true);
+  
   renderEventLog();
 }
 
@@ -898,9 +903,6 @@ document.addEventListener('DOMContentLoaded', () => {
       setInterval(pollMetrics, 1000);
     }
   }, 2000);
-
-  // Log dashboard initialization
-  addEventToLog({ level: 'info', message: 'Dashboard initialized' });
   
   // Load environment info for SKU badge
   loadEnvironmentInfo();
