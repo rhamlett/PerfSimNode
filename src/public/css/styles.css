@@ -958,7 +958,8 @@ section h2, section h3 {
   width: 140px;
 }
 
-.control-section select.crash-select {
+.control-section select.crash-select,
+.control-section select.blocking-pattern-select {
   width: 200px;
 }
 
