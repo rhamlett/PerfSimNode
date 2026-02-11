@@ -262,12 +262,20 @@ Connect via Socket.IO to receive real-time updates:
 
 ## Azure Deployment
 
-The application is designed for Azure App Service Linux:
+The application is designed for Azure App Service Linux with GitHub Actions OIDC deployment.
 
-1. Create an App Service with Node.js 20 LTS or later
+**Quick Start:**
+1. Create an App Service with **Node.js 24 LTS** and **Linux**
 2. Enable WebSockets in Configuration → General settings
-3. Deploy via Git, GitHub Actions, or ZIP deploy
-4. Access the dashboard at your App Service URL
+3. Set up GitHub OIDC authentication (no secrets needed!)
+4. Push to `main` branch to deploy
+
+**📖 See [docs/azure-deployment.md](docs/azure-deployment.md) for the complete step-by-step guide** covering:
+- App Service creation (Portal and CLI)
+- Azure AD App Registration for GitHub OIDC
+- Federated credentials configuration
+- GitHub secrets setup
+- Troubleshooting
 
 ### Diagnostics
 
