@@ -306,11 +306,11 @@
     <nav class="diag-nav">
       <ul>
         <li><a href="#understanding-metrics">Understanding Metrics</a></li>
-        <li><a href="#nodejs-vs-dotnet">Node.js vs .NET</a></li>
         <li><a href="#diagnostic-scenarios">Diagnostic Scenarios</a></li>
         <li><a href="#azure-tools">Azure Tools</a></li>
         <li><a href="#diagnostic-workflow">Diagnostic Workflow</a></li>
         <li><a href="#kudu-console">Kudu Console</a></li>
+        <li><a href="#v8-profiling">V8 Profiling</a></li>
         <li><a href="#app-insights">Application Insights</a></li>
       </ul>
     </nav>
@@ -356,78 +356,8 @@
 
       <div class="alert-box info">
         <strong>💡 Key Insight: Event Loop Lag</strong>
-        Unlike .NET's thread pool (which has multiple threads that can be exhausted), Node.js has a <em>single-threaded event loop</em>. When you see high Event Loop Lag, it means the main thread is blocked—equivalent to ALL threads being busy in a .NET thread pool. This is why a single blocking operation can affect ALL requests.
+        Node.js uses a <em>single-threaded event loop</em>. When you see high Event Loop Lag, it means the main thread is blocked and ALL pending callbacks must wait—this is why a single blocking operation can affect ALL requests simultaneously.
       </div>
-    </section>
-
-    <!-- Node.js vs .NET Comparison -->
-    <section id="nodejs-vs-dotnet" class="card">
-      <h2>⚖️ Node.js vs .NET: Understanding the Difference</h2>
-      <p>If you're familiar with diagnosing .NET applications, here's how Node.js differs:</p>
-
-      <table class="comparison-table">
-        <tr>
-          <th>Aspect</th>
-          <th>.NET (Thread Pool)</th>
-          <th>Node.js (Event Loop)</th>
-        </tr>
-        <tr>
-          <td><strong>Concurrency Model</strong></td>
-          <td>Multiple threads in a pool (default: 1 per core)</td>
-          <td>Single thread with async I/O</td>
-        </tr>
-        <tr>
-          <td><strong>Sync-over-Async Impact</strong></td>
-          <td>Blocks ONE thread; others can still serve requests</td>
-          <td>Blocks THE thread; ALL requests must wait</td>
-        </tr>
-        <tr>
-          <td><strong>Key Metric for Blocking</strong></td>
-          <td>Thread Pool Active Threads / Queue Length</td>
-          <td>Event Loop Lag</td>
-        </tr>
-        <tr>
-          <td><strong>What Gets Starved</strong></td>
-          <td>Thread pool exhaustion = requests queue</td>
-          <td>Event loop blocked = all callbacks queue</td>
-        </tr>
-        <tr>
-          <td><strong>Recovery</strong></td>
-          <td>Automatic as threads free up</td>
-          <td>Only when blocking code completes</td>
-        </tr>
-        <tr>
-          <td><strong>Scaling</strong></td>
-          <td>More threads (up to limit)</td>
-          <td>Cluster mode (multiple processes)</td>
-        </tr>
-      </table>
-
-      <h3>Why "Event Loop Lag" Replaces "Thread Pool Metrics"</h3>
-      <p>In .NET, you watch the thread pool to see if sync-over-async is starving threads. In Node.js:</p>
-      <ul>
-        <li><strong>Thread Pool</strong> → Not applicable (only 1 main thread for JS)</li>
-        <li><strong>Queue Length</strong> → Replaced by <strong>Event Loop Lag</strong> (shows how long callbacks wait)</li>
-      </ul>
-
-      <div class="alert-box warning">
-        <strong>⚠️ Same Anti-Pattern, Different Symptom</strong>
-        The "sync-over-async" anti-pattern causes the same underlying problem in both runtimes—blocking I/O that should be asynchronous. But the symptoms differ:
-        <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
-          <li>.NET: Thread pool saturation, queued work items growing</li>
-          <li>Node.js: Event loop lag spikes, ALL requests slow simultaneously</li>
-        </ul>
-      </div>
-
-      <h3>Node.js Does Have a Thread Pool (libuv)</h3>
-      <p>Node.js uses a background thread pool (libuv, default 4 threads) for:</p>
-      <ul>
-        <li>File system operations</li>
-        <li>DNS lookups</li>
-        <li>Some crypto operations</li>
-        <li>Compression</li>
-      </ul>
-      <p>However, this is separate from the main event loop. Exhausting the libuv pool slows I/O operations but doesn't block the event loop directly.</p>
     </section>
 
     <!-- Diagnostic Scenarios -->
@@ -745,6 +675,133 @@ grep -i "error\|exception" /home/LogFiles/Application/*.log
 
 # Watch logs in real-time
 tail -f /home/LogFiles/Application/*.log</code></pre>
+    </section>
+
+    <!-- V8 Profiling -->
+    <section id="v8-profiling" class="card">
+      <h2>🔬 V8 Profiling</h2>
+      <p>V8 is the JavaScript engine that powers Node.js. It includes built-in profiling tools that help identify performance bottlenecks, memory leaks, and CPU-intensive code paths.</p>
+
+      <h3>What is V8 Profiling?</h3>
+      <p>V8 profiling captures detailed information about your application's runtime behavior:</p>
+      <ul>
+        <li><strong>CPU Profiling</strong> — Records which functions consume the most CPU time, helping identify hot code paths and optimization opportunities</li>
+        <li><strong>Heap Snapshots</strong> — Captures the state of memory at a point in time, showing all allocated objects and their references</li>
+        <li><strong>Heap Timeline</strong> — Tracks memory allocation over time to identify leaks and excessive garbage collection</li>
+      </ul>
+
+      <h3>Method 1: Command-Line Profiling (--prof)</h3>
+      <p>The <code>--prof</code> flag generates a detailed CPU profile that shows time spent in each function.</p>
+
+      <h4>Step 1: Run with Profiling Enabled</h4>
+      <pre><code># Start your app with profiling
+node --prof app.js
+
+# Reproduce the performance issue, then stop the app (Ctrl+C)
+# This creates an isolate-*.log file in the current directory</code></pre>
+
+      <h4>Step 2: Process the Profile</h4>
+      <pre><code># Convert the V8 log to human-readable format
+node --prof-process isolate-0x*.log > profile.txt</code></pre>
+
+      <h4>Step 3: Read the Results</h4>
+      <p>The processed profile shows a breakdown like this:</p>
+      <pre><code>[Summary]:
+   ticks  total  nonlib   name
+   5234   75.2%   78.1%  JavaScript
+   1023   14.7%   15.3%  C++
+    445    6.4%    6.6%  GC
+    258    3.7%          Shared libraries
+
+[JavaScript]:
+   ticks  total  nonlib   name
+   3102   44.6%   46.3%  pbkdf2Sync
+    892   12.8%   13.3%  JSON.parse
+    ...</code></pre>
+      <p>Look for functions with high tick counts—these are your CPU hotspots.</p>
+
+      <h3>Method 2: Chrome DevTools (--inspect)</h3>
+      <p>For interactive profiling with a visual interface, use the Chrome DevTools inspector.</p>
+
+      <h4>Step 1: Start with Inspector</h4>
+      <pre><code># Local development
+node --inspect app.js
+
+# Allow remote connections (e.g., from Azure)
+node --inspect=0.0.0.0:9229 app.js</code></pre>
+
+      <h4>Step 2: Connect Chrome DevTools</h4>
+      <ol>
+        <li>Open Chrome and navigate to <code>chrome://inspect</code></li>
+        <li>Click "Configure..." and add <code>localhost:9229</code> (or your remote host)</li>
+        <li>Your Node.js process appears under "Remote Target"—click "inspect"</li>
+      </ol>
+
+      <h4>Step 3: Capture a CPU Profile</h4>
+      <ol>
+        <li>Go to the <strong>Profiler</strong> tab (or Performance tab)</li>
+        <li>Click <strong>Start</strong></li>
+        <li>Reproduce the performance issue</li>
+        <li>Click <strong>Stop</strong></li>
+        <li>Analyze the flame chart—wide bars indicate slow functions</li>
+      </ol>
+
+      <h4>Step 4: Take a Heap Snapshot</h4>
+      <ol>
+        <li>Go to the <strong>Memory</strong> tab</li>
+        <li>Select "Heap snapshot" and click <strong>Take snapshot</strong></li>
+        <li>Explore the "Summary" view to see object counts and sizes</li>
+        <li>Compare multiple snapshots to identify memory leaks</li>
+      </ol>
+
+      <h3>Method 3: Programmatic Heap Snapshots</h3>
+      <p>Generate heap snapshots from within your code or via signals:</p>
+      <pre><code>// In your application code
+const v8 = require('v8');
+const fs = require('fs');
+
+function takeHeapSnapshot() {
+  const filename = `heap-${Date.now()}.heapsnapshot`;
+  const stream = fs.createWriteStream(filename);
+  v8.writeHeapSnapshot(filename);
+  console.log(`Heap snapshot written to ${filename}`);
+}
+
+// Trigger on SIGUSR2 signal
+process.on('SIGUSR2', takeHeapSnapshot);</code></pre>
+      <p>Then trigger with: <code>kill -USR2 &lt;pid&gt;</code></p>
+
+      <h3>Reading Heap Snapshots</h3>
+      <p>Open <code>.heapsnapshot</code> files in Chrome DevTools:</p>
+      <ol>
+        <li>Open Chrome DevTools (F12)</li>
+        <li>Go to <strong>Memory</strong> tab</li>
+        <li>Click <strong>Load</strong> and select your <code>.heapsnapshot</code> file</li>
+      </ol>
+      <p>Key views to analyze:</p>
+      <ul>
+        <li><strong>Summary</strong> — Objects grouped by constructor name. Look for unexpectedly large counts.</li>
+        <li><strong>Comparison</strong> — Diff two snapshots to see what was allocated between them.</li>
+        <li><strong>Containment</strong> — Shows the object hierarchy (what's holding references to what).</li>
+        <li><strong>Retainers</strong> — For any object, shows WHY it's still in memory (the reference chain to GC roots).</li>
+      </ul>
+
+      <h3>Azure-Specific Considerations</h3>
+      <ul>
+        <li><strong>Kudu SSH</strong> — Run profiling commands directly via <code>yourapp.scm.azurewebsites.net</code></li>
+        <li><strong>Port Forwarding</strong> — For remote <code>--inspect</code>, you'll need to configure port forwarding through Azure CLI or VS Code</li>
+        <li><strong>File Download</strong> — Use Kudu's file browser or <code>az webapp log download</code> to retrieve profile files</li>
+        <li><strong>Production Impact</strong> — Profiling adds overhead; use on staging or capture briefly in production</li>
+      </ul>
+
+      <div class="alert-box info">
+        <strong>💡 Quick Reference</strong>
+        <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+          <li><strong>CPU slow?</strong> → Use <code>--prof</code> or Profiler tab to find hot functions</li>
+          <li><strong>Memory growing?</strong> → Take heap snapshots and compare over time</li>
+          <li><strong>Event loop blocked?</strong> → CPU profile during the block shows what's running</li>
+        </ul>
+      </div>
     </section>
 
     <!-- Application Insights -->
