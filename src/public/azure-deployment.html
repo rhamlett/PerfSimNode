@@ -162,7 +162,6 @@
     <nav>
       <a href="/" class="btn-panel-toggle">🎮 Dashboard</a>
     </nav>
-    <div class="status-indicator">● Connected</div>
   </header>
 
   <!-- Sidebar Drawer Navigation -->
@@ -572,6 +571,15 @@ echo "AZURE_SUBSCRIPTION_ID=$SUB_ID"</code></pre>
   </footer>
 
   <script>
+    // Load environment info for SKU badge
+    fetch('/api/health/environment')
+      .then(r => r.json())
+      .then(env => {
+        const badge = document.getElementById('sku-badge');
+        if (badge) badge.textContent = 'SKU: ' + env.sku;
+      })
+      .catch(() => {});
+
     // Sidebar drawer toggle
     const hamburgerBtn = document.getElementById('hamburger-btn');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
