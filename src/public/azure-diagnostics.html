@@ -384,12 +384,14 @@
               <li>App Service Diagnostics → <strong>CPU Drill Down</strong></li>
               <li>Application Insights → <strong>Performance</strong></li>
               <li>Kudu SSH → <code>top</code>, <code>ps aux | grep node</code></li>
+              <li><a href="#v8-profiling">V8 Profiling</a> → <code>--prof</code> to identify hot functions</li>
             </ul>
             <h4>What to Look For</h4>
             <ul>
               <li>Which process(es) consuming CPU</li>
               <li>Parent/child process relationship</li>
               <li>Event loop lag should remain LOW</li>
+              <li>V8 profile output showing high-tick functions</li>
             </ul>
           </div>
         </div>
@@ -409,10 +411,12 @@
               <li>App Service Diagnostics → <strong>Memory Analysis</strong></li>
               <li>Application Insights → <strong>Metrics</strong></li>
               <li>Kudu → <strong>Process Explorer</strong></li>
+              <li><a href="#v8-profiling">V8 Profiling</a> → Heap snapshots via Chrome DevTools</li>
             </ul>
             <h4>What to Look For</h4>
             <ul>
-              <li>Heap snapshots to find retained objects</li>
+              <li>Heap snapshots to find retained objects (use Retainers view)</li>
+              <li>Compare snapshots over time to identify growing allocations</li>
               <li>Memory growth pattern (leak vs. normal usage)</li>
               <li>Correlation with specific operations</li>
             </ul>
@@ -436,13 +440,15 @@
             <ul>
               <li>Application Insights → <strong>Performance</strong></li>
               <li>App Service Diagnostics → <strong>Web App Slow</strong></li>
-              <li>Dashboard → Probe dots turn red during block</li>
+              <li>Azure Monitor → <strong>Metrics</strong> for request latency spikes</li>
+              <li><a href="#v8-profiling">V8 Profiling</a> → CPU profile during block shows blocking code</li>
             </ul>
             <h4>What to Look For</h4>
             <ul>
               <li>Event loop lag = blocking duration</li>
               <li>ALL requests affected simultaneously</li>
               <li>CPU may be high OR low (depends on blocking work)</li>
+              <li>V8 profile identifies the synchronous function (e.g., <code>pbkdf2Sync</code>)</li>
             </ul>
           </div>
         </div>
@@ -463,7 +469,7 @@
             <h4>Azure Diagnostic Tools</h4>
             <ul>
               <li>Application Insights → <strong>End-to-end transaction</strong></li>
-              <li>Dashboard → Probe latency stays GREEN/normal</li>
+              <li>Application Insights → <strong>Dependency tracking</strong></li>
               <li>Log Analytics → Request duration by endpoint</li>
             </ul>
             <h4>What to Look For</h4>
@@ -490,12 +496,13 @@
               <li>App Service Diagnostics → <strong>Web App Restarted</strong></li>
               <li>Application Insights → <strong>Failures</strong></li>
               <li>Kudu → <strong>LogFiles</strong></li>
+              <li><a href="#v8-profiling">V8 Profiling</a> → Heap snapshot before crash to identify cause</li>
             </ul>
             <h4>What to Look For</h4>
             <ul>
               <li>Crash dump analysis</li>
               <li>Exception stack trace in logs</li>
-              <li>Memory usage before crash</li>
+              <li>Memory usage before crash (heap snapshot comparison)</li>
             </ul>
           </div>
         </div>
