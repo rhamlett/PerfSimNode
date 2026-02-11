@@ -32,7 +32,7 @@ export const config: AppConfig = {
   port: parseIntEnv('PORT', 3000),
 
   /** Metrics collection/broadcast interval in milliseconds */
-  metricsIntervalMs: parseIntEnv('METRICS_INTERVAL_MS', 100),
+  metricsIntervalMs: parseIntEnv('METRICS_INTERVAL_MS', 250),
 
   /** Maximum allowed simulation duration in seconds (no practical limit) */
   maxSimulationDurationSeconds: parseIntEnv('MAX_SIMULATION_DURATION_SECONDS', 86400),
