@@ -11,7 +11,7 @@ An educational tool designed to help Azure support engineers practice diagnosing
 - **CPU Stress** - Generate high CPU usage using child processes (`child_process.fork()`)
 - **Memory Pressure** - Allocate and retain memory to simulate leaks with stacking behavior
 - **Event Loop Blocking** - Block the Node.js event loop with synchronous operations
-- **Slow Requests** - Simulate slow HTTP responses without blocking other requests
+- **Slow Requests** - Multiple blocking patterns: setTimeout, libuv thread pool saturation, worker threads
 - **Crash Simulation** - Trigger FailFast, stack overflow, unhandled exceptions, or OOM
 - **Real-time Dashboard** - Monitor metrics with live charts via WebSocket (Socket.IO)
 
@@ -177,12 +177,22 @@ curl -X POST http://localhost:3000/api/simulations/eventloop \
 
 ### Slow Requests
 
-**Implementation:** Uses `setTimeout()` to delay responses. Non-blocking - other requests process normally.
+**Implementation:** Three blocking patterns available:
+- `setTimeout` - Non-blocking delay (server stays responsive)
+- `libuv` - Saturates libuv thread pool (affects fs/dns operations)
+- `worker` - Spawns blocking worker threads (similar to .NET ThreadPool)
 
-**Key difference from Event Loop Blocking:** Only the slow endpoint is affected. Health probes and other requests complete normally.
+**Key difference from Event Loop Blocking:** With non-blocking patterns, only the slow endpoint is affected. Health probes and other requests complete normally.
 
 ```bash
+# Non-blocking (default)
 curl "http://localhost:3000/api/simulations/slow?delaySeconds=10"
+
+# libuv thread pool saturation
+curl "http://localhost:3000/api/simulations/slow?delaySeconds=10&blockingPattern=libuv"
+
+# Worker thread blocking
+curl "http://localhost:3000/api/simulations/slow?delaySeconds=10&blockingPattern=worker"
 ```
 
 ### Crash Simulation

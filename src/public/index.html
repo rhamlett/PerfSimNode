@@ -125,7 +125,10 @@
           </div>
           <h4>📊 Response Latency Over Time</h4>
           <div id="probe-reduced-message" class="probe-reduced-message" style="display: none;"></div>
-          <canvas id="latency-chart"></canvas>
+          <div class="latency-chart-container">
+            <canvas id="latency-chart"></canvas>
+            <div id="slow-status" class="slow-status"></div>
+          </div>
         </div>
       </section>
 
@@ -222,12 +225,20 @@
 
         <!-- Slow Requests -->
         <div class="control-section slow-section">
-          <h3>🐌 Slow Requests <span class="info-icon" title="Uses setTimeout() - non-blocking. Other requests process normally. Compare with Event Loop Blocking!">ℹ️</span></h3>
-          <p class="control-description">Non-blocking delays via setTimeout(). Other requests unaffected - probe latency stays normal. Probe frequency reduces to 2500ms during test.</p>
+          <h3>🐌 Slow Requests <span class="info-icon" title="Simulates slow responses with different blocking patterns">ℹ️</span></h3>
+          <p class="control-description">Simulates slow HTTP responses. Choose a blocking pattern to observe different resource contention behaviors.</p>
           <div class="slow-note">
             ⚠️ Note: Requests exceeding 30 seconds total time (queue + execution) are flagged as critical
           </div>
           <form id="slow-form">
+            <label>
+              Blocking Pattern:
+              <select name="blockingPattern" class="blocking-pattern-select">
+                <option value="setTimeout">setTimeout (non-blocking)</option>
+                <option value="libuv">libuv Thread Pool Saturation</option>
+                <option value="worker">Worker Thread Blocking</option>
+              </select>
+            </label>
             <label>
               Request Execution Time (s) <span class="info-icon" title="Time for each request">ⓘ</span>:
               <input type="number" name="delaySeconds" value="25" min="1" max="300">
@@ -245,7 +256,6 @@
               <button type="button" id="stop-slow-requests" class="btn-stop">⬛ Stop</button>
             </div>
           </form>
-          <div id="slow-status"></div>
         </div>
 
         <!-- Crash Simulation -->

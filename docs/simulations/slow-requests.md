@@ -1,28 +1,70 @@
 # Slow Request Simulation
 
-Simulates slow HTTP responses to practice diagnosing latency issues that don't involve CPU or event loop blocking.
+Simulates slow HTTP responses using various blocking patterns to practice diagnosing latency issues and resource contention.
 
-## How It Works
+## Blocking Patterns
 
-Uses `setTimeout()` to delay the HTTP response:
+PerfSimNode offers three blocking patterns, each simulating different real-world scenarios:
+
+### 1. setTimeout (Non-Blocking)
+
+Uses JavaScript's `setTimeout()` to delay the HTTP response.
 
 ```javascript
-// Simplified implementation
-app.get('/api/simulations/slow', async (req, res) => {
-  const delaySeconds = parseInt(req.query.delaySeconds) || 10;
-  
-  await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
-  
-  res.json({ message: 'Slow response completed', delay: delaySeconds });
+await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+```
+
+**Characteristics:**
+- Server remains fully responsive to other requests
+- No resource contention
+- Probe latency stays normal
+- Event loop not blocked
+
+**Use case:** Simulating slow external API calls where Node.js is just waiting.
+
+### 2. libuv Thread Pool Saturation
+
+Saturates the libuv thread pool (default: 4 threads) with synchronous crypto operations.
+
+```javascript
+// Blocks libuv threads with CPU-intensive sync work
+pbkdf2Sync('password', 'salt', 10000, 64, 'sha512');
+```
+
+**Characteristics:**
+- Blocks the libuv thread pool used by fs, dns, crypto
+- Other file system operations queue up
+- DNS lookups become slow
+- Similar to .NET ThreadPool exhaustion
+
+**Use case:** Simulating scenarios where blocking I/O operations saturate the thread pool.
+
+**Real-world parallel:** This is analogous to .NET ThreadPool starvation, where sync-over-async patterns block ThreadPool threads causing all work items to queue.
+
+### 3. Worker Thread Blocking
+
+Spawns Node.js Worker Threads that perform CPU-intensive blocking work.
+
+```javascript
+// Worker thread with blocking loop
+const worker = new Worker('./slow-request-worker.js', {
+  workerData: { durationMs }
 });
 ```
 
-**Key characteristic:** The server remains fully responsive to other requests. This contrasts with event loop blocking.
+**Characteristics:**
+- Creates actual OS threads
+- Each request blocks a worker thread
+- Closest parallel to .NET ThreadPool work items
+- Thread count visible in process metrics
+
+**Use case:** Simulating CPU-bound work in worker threads, similar to .NET ThreadPool blocking patterns.
 
 ## Dashboard Controls
 
 | Control | Range | Description |
 |---------|-------|-------------|
+| Blocking Pattern | dropdown | setTimeout, libuv, or worker |
 | Delay (seconds) | 1-300 | How long each request takes |
 | Interval (seconds) | 1-60 | Time between automated requests |
 | Max Requests | 1-100 | Total requests to send |
@@ -32,81 +74,65 @@ app.get('/api/simulations/slow', async (req, res) => {
 - **Start Slow Requests** - Begins sending requests at configured interval
 - **Stop** - Cancels remaining requests (in-flight requests complete normally)
 
-### Automated vs Manual
+## Expected Effects by Pattern
 
-**Dashboard automation:**
-- Sends multiple requests over time
-- Shows progress (completed/total)
-- Useful for sustained slow request simulation
-
-**Manual (API/curl):**
-- Single request at a time
-- Direct control over timing
-
-## Expected Effects
-
-### Metrics
+### setTimeout (Non-Blocking)
 
 | Metric | Expected Change | Why |
 |--------|-----------------|-----|
 | Event Loop Lag | **No change** | setTimeout doesn't block |
 | CPU | Minimal | No compute work |
-| Memory | Minimal | Just holding request context |
-| Request Latency (to slow endpoint) | Equals delay | By design |
-| Request Latency (to probe) | **No change** | Other requests unaffected |
+| Probe Latency | **No change** | Other requests unaffected |
 
-### Key Insight
+### libuv Thread Pool Saturation
 
-This is the **critical difference** from event loop blocking:
+| Metric | Expected Change | Why |
+|--------|-----------------|-----|
+| Event Loop Lag | May increase slightly | Event loop waits for libuv callbacks |
+| File operations | **Slow down** | Thread pool saturated |
+| DNS lookups | **Slow down** | Also use libuv threads |
+| Probe Latency | Mostly normal | HTTP doesn't use libuv pool |
 
-| Request Type | Event Loop Block | Slow Request |
-|--------------|------------------|--------------|
-| Slow endpoint | Blocked | Takes configured delay |
-| Health probe | Blocked | **Normal latency** |
-| Metrics websocket | Disconnects | **Continues normally** |
-| Dashboard | Freezes | **Updates normally** |
+### Worker Thread Blocking
 
-### Dashboard Behavior
+| Metric | Expected Change | Why |
+|--------|-----------------|-----|
+| Event Loop Lag | **No change** | Workers are separate threads |
+| CPU | Increases | Workers doing CPU work |
+| Thread count | Increases | New worker threads created |
+| Probe Latency | **No change** | Main thread unaffected |
 
-- Probe dots remain green (probes succeed)
-- Event loop lag stays low
-- Charts continue updating
-- Event log shows slow request progress
-- **Probe frequency reduces to 2500ms** during simulation (for cleaner V8 profiler data)
+## Comparison: Node.js vs .NET
 
-## Real-World Scenarios
+| .NET Pattern | Node.js Equivalent | Resource Affected |
+|--------------|-------------------|-------------------|
+| ThreadPool.QueueUserWorkItem with blocking | Worker Thread Blocking | Worker threads/CPU |
+| Sync database call on ThreadPool | libuv Thread Pool Saturation | libuv threads (fs/dns/crypto) |
+| async/await with Task.Delay | setTimeout (non-blocking) | None (just timer) |
 
-Slow requests in production typically indicate:
+## API Reference
 
-### External Dependencies
-```javascript
-// Slow database query
-const results = await db.query('SELECT * FROM huge_table');
+### Slow Request
 
-// Slow third-party API
-const response = await fetch('https://slow-api.example.com/data');
+```http
+GET /api/simulations/slow?delaySeconds=10&blockingPattern=libuv
 ```
 
-### Resource Contention
-```javascript
-// Waiting for connection pool
-const connection = await pool.getConnection();  // May wait if pool exhausted
-```
+**Parameters:**
+- `delaySeconds` (number): How long to delay (default: 5)
+- `blockingPattern` (string): `setTimeout`, `libuv`, or `worker` (default: setTimeout)
 
-### Distributed Transactions
-```javascript
-// Multi-service coordination
-await Promise.all([
-  serviceA.commit(),
-  serviceB.commit(),
-  serviceC.commit()  // Slowest service determines total time
-]);
-```
-
-### File System Operations
-```javascript
-// Large file operations (async but still slow)
-await fs.promises.readFile('10gb-file.dat');
+**Response:** (Arrives after delay)
+```json
+{
+  "id": "slow_abc123",
+  "type": "SLOW_REQUEST",
+  "status": "COMPLETED",
+  "requestedDelaySeconds": 10,
+  "blockingPattern": "libuv",
+  "actualDurationMs": 10003,
+  "timestamp": "2026-02-10T20:00:10.000Z"
+}
 ```
 
 ## Diagnostic Workflow
@@ -117,144 +143,79 @@ Verify normal latency before starting:
 - Probe dots are green
 - Current latency: ~10-50ms
 
-### 2. Start Slow Request Simulation
+### 2. Test Each Pattern
 
-Via dashboard:
-1. Set delay to 30 seconds
-2. Set interval to 5 seconds  
-3. Set max requests to 5
-4. Click "Start Slow Requests"
-
-Or via API:
+**setTimeout (reference):**
 ```bash
-curl "http://localhost:3000/api/simulations/slow?delaySeconds=30"
+curl "http://localhost:3000/api/simulations/slow?delaySeconds=10&blockingPattern=setTimeout"
 ```
+- Health probe stays fast
+- No resource contention
 
-### 3. Observe During Simulation
-
-**Dashboard:**
-- Probe latency STILL low (green dots)
-- Event loop lag STILL near zero
-- Slow request progress shown
-
-**Concurrent requests:**
+**libuv saturation:**
 ```bash
-# This returns immediately, proving server isn't blocked
-time curl http://localhost:3000/api/health
-# real: 0.05s (not 30s!)
+# Terminal 1: Start slow request
+curl "http://localhost:3000/api/simulations/slow?delaySeconds=30&blockingPattern=libuv"
 
-# The slow endpoint does take 30s
-time curl "http://localhost:3000/api/simulations/slow?delaySeconds=30"
-# real: 30.05s
+# Terminal 2: Try file operation (will be slow if thread pool saturated)
+# Watch for slower fs operations in other parts of your app
 ```
 
-### 4. Compare with Event Loop Blocking
-
-Run the same test with event loop blocking:
+**Worker thread blocking:**
 ```bash
-curl -X POST http://localhost:3000/api/simulations/eventloop \
-  -H "Content-Type: application/json" \
-  -d '{"durationSeconds": 10}'
+curl "http://localhost:3000/api/simulations/slow?delaySeconds=30&blockingPattern=worker"
+```
+- Watch thread count increase
+- CPU usage increases
+
+### 3. Concurrent Requests
+
+Send multiple requests to observe queuing behavior:
+```bash
+# Send 4 concurrent libuv requests (saturates default thread pool)
+for i in {1..4}; do
+  curl "http://localhost:3000/api/simulations/slow?delaySeconds=10&blockingPattern=libuv" &
+done
+wait
 ```
 
-Notice:
-- Health check **also** takes 10 seconds
-- Dashboard **freezes**
-- Probe dots turn **red**
+## Environment Variable
 
-## API Reference
-
-### Slow Request
-
-```http
-GET /api/simulations/slow?delaySeconds=10
+Control libuv thread pool size:
+```bash
+# Increase libuv thread pool before starting Node.js
+UV_THREADPOOL_SIZE=8 npm start
 ```
 
-**Response:** (Arrives after delay)
-```json
-{
-  "id": "slow_abc123",
-  "type": "SLOW_REQUEST",
-  "status": "COMPLETED",
-  "delaySeconds": 10,
-  "actualDelayMs": 10003,
-  "timestamp": "2026-02-10T20:00:10.000Z"
-}
-```
+Default is 4 threads. Maximum is 1024.
 
 ## Azure Diagnostics
 
-### Identifying Slow Requests in Production
+### Identifying Thread Pool Issues
 
 **Application Insights:**
 ```kusto
-// Find slow requests by endpoint
-requests
-| where timestamp > ago(1h)
-| summarize 
-    count(),
-    avg(duration),
-    percentile(duration, 95),
-    percentile(duration, 99)
-by name
-| order by percentile_duration_99 desc
-
-// Dependency analysis - find slow external calls
-dependencies
-| where timestamp > ago(1h)
-| where duration > 5000  // > 5 seconds
-| summarize count() by target, name
+// Find slow requests by blocking pattern (if logged)
+traces
+| where message contains "libuv" or message contains "worker"
+| summarize count() by message
 | order by count_ desc
 ```
 
-### Troubleshooting Pattern
+### Key Pattern Recognition
 
-1. **Identify:** Which endpoints are slow?
-2. **Correlate:** Are external dependencies slow?
-3. **Check:** Connection pool exhaustion?
-4. **Verify:** Is it isolated (slow request) or global (event loop block)?
-
-### Key Question: Isolated or Global?
-
-| Symptom | Isolated (Slow Request) | Global (Event Loop Block) |
-|---------|-------------------------|---------------------------|
-| Health probes | Normal | Fail |
-| Other endpoints | Normal latency | Same high latency |
-| Multiple instances | Only some affected | All affected simultaneously |
+| Symptom | Likely Pattern |
+|---------|---------------|
+| fs operations slow, HTTP fast | libuv saturation |
+| High CPU, low event loop lag | Worker or CPU stress |
+| All requests slow equally | Event loop blocking |
+| Only specific endpoints slow | Application logic issue |
 
 ## Probe Frequency Note
 
-During slow request testing, probe frequency automatically changes:
+During slow request testing, probe frequency automatically reduces:
 
 | Mode | Interval | Reason |
 |------|----------|--------|
 | Normal | 250ms | Real-time dashboard updates |
-| During slow requests | 2500ms | Reduces noise for V8 profiler/Application Insights |
-
-The dashboard shows a yellow banner: *"Latency probes reduced during Slow Request testing..."*
-
-This helps when capturing CPU profiles or Application Insights data - fewer probe requests means cleaner diagnostic data focused on the actual application workload.
-
-## Troubleshooting
-
-### Requests complete faster than configured delay
-
-1. Request was aborted/cancelled
-2. Check server logs for errors
-3. Verify delay parameter is being read correctly
-
-### Dashboard shows high latency during slow requests
-
-This might indicate:
-1. You're measuring the slow endpoint itself (expected)
-2. System under actual load (not just simulation)
-3. Bug in measuring - probe endpoint should be unaffected
-
-### Session shows fewer completed than started
-
-Normal if:
-- Stopped simulation early
-- Browser/connection timeout before completion
-- Requests cancelled by closing browser
-
-Check Event Log for actual completion status.
+| During slow requests | 2500ms | Reduces noise for profiler/diagnostics |

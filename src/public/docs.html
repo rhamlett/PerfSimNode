@@ -306,29 +306,55 @@ DELETE /api/simulations/memory/{id}</code></pre>
 
     <section id="slow-requests" class="docs-section">
       <h2>Slow Request Simulation</h2>
-      <p>Simulates slow HTTP responses using artificial delays - without blocking other requests.</p>
+      <p>Simulates slow HTTP responses using multiple blocking patterns to observe different resource contention behaviors.</p>
 
-      <h3>How It Works</h3>
-      <p>Uses <code>setTimeout()</code> to delay the response for a configurable duration. Unlike event loop blocking, this is non-blocking - other requests process normally.</p>
+      <h3>Blocking Patterns</h3>
+      <table>
+        <tr><th>Pattern</th><th>Description</th><th>Affected Resources</th></tr>
+        <tr><td><code>setTimeout</code></td><td>Non-blocking delay (default)</td><td>None - server stays responsive</td></tr>
+        <tr><td><code>libuv</code></td><td>Saturates libuv thread pool</td><td>fs, dns, crypto operations queue up</td></tr>
+        <tr><td><code>worker</code></td><td>Spawns blocking worker threads</td><td>CPU, similar to .NET ThreadPool</td></tr>
+      </table>
 
       <div class="info-box">
-        <strong>💡 Key Difference:</strong> Slow requests affect only the requests to the slow endpoint. Health probes, WebSocket, and other API calls continue normally. This contrasts with event loop blocking where EVERYTHING is affected.
+        <strong>💡 .NET Parallel:</strong> The <code>libuv</code> and <code>worker</code> patterns simulate thread pool starvation similar to sync-over-async blocking patterns in .NET that exhaust ThreadPool threads.
       </div>
 
       <h3>Usage</h3>
-      <pre><code># Using query parameter (easy browser testing)
-GET /api/simulations/slow?delaySeconds=10</code></pre>
+      <pre><code># Non-blocking (default)
+GET /api/simulations/slow?delaySeconds=10
 
-      <h3>Expected Effects</h3>
+# libuv thread pool saturation
+GET /api/simulations/slow?delaySeconds=10&blockingPattern=libuv
+
+# Worker thread blocking
+GET /api/simulations/slow?delaySeconds=10&blockingPattern=worker</code></pre>
+
+      <h3>Expected Effects by Pattern</h3>
+      <h4>setTimeout (Non-Blocking)</h4>
       <ul>
         <li>Slow endpoint takes configured delay time</li>
-        <li>Probe latency remains normal (probes use different endpoint)</li>
+        <li>Probe latency remains normal</li>
         <li>Event loop lag stays near zero</li>
-        <li>Probe frequency reduces to 2500ms during testing (for cleaner diagnostics)</li>
+      </ul>
+
+      <h4>libuv Thread Pool Saturation</h4>
+      <ul>
+        <li>File system operations slow down</li>
+        <li>DNS lookups become slow</li>
+        <li>HTTP requests still process normally</li>
+      </ul>
+
+      <h4>Worker Thread Blocking</h4>
+      <ul>
+        <li>CPU usage increases</li>
+        <li>Thread count increases</li>
+        <li>Main event loop unaffected</li>
       </ul>
 
       <h3>Dashboard Controls</h3>
       <ul>
+        <li><strong>Blocking Pattern:</strong> setTimeout, libuv, or worker</li>
         <li><strong>Delay:</strong> How long each request takes (1-300 seconds)</li>
         <li><strong>Interval:</strong> Time between automated requests</li>
         <li><strong>Max Requests:</strong> How many to send before stopping</li>
@@ -337,9 +363,9 @@ GET /api/simulations/slow?delaySeconds=10</code></pre>
       <h3>Use Cases</h3>
       <ul>
         <li>Testing timeout configurations</li>
-        <li>Simulating slow external API calls</li>
-        <li>Load balancer health check testing</li>
+        <li>Simulating thread pool starvation</li>
         <li>Understanding blocking vs non-blocking behavior</li>
+        <li>Comparing Node.js concurrency model to .NET</li>
       </ul>
     </section>
 

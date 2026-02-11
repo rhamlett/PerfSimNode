@@ -72,11 +72,21 @@ export interface EventLoopBlockingParams {
 }
 
 /**
+ * Blocking patterns for slow request simulation.
+ * - setTimeout: Non-blocking delay (default) - server remains responsive
+ * - libuv: Saturates libuv thread pool with sync crypto - affects fs/dns operations
+ * - worker: Spawns worker threads that block - similar to .NET ThreadPool blocking
+ */
+export type SlowRequestBlockingPattern = 'setTimeout' | 'libuv' | 'worker';
+
+/**
  * Parameters for slow request simulation.
  */
 export interface SlowRequestParams {
   /** Response delay in seconds (1-300) */
   delaySeconds: number;
+  /** Blocking pattern to use (default: setTimeout) */
+  blockingPattern?: SlowRequestBlockingPattern;
 }
 
 /**

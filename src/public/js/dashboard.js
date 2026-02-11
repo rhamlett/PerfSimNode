@@ -187,31 +187,8 @@ async function loadActiveSimulations() {
  * Event log starts fresh each session to show only current session events.
  */
 async function loadEventLog() {
-  // Clear user-side events (keep server events from this session)
+  // Clear all events - start fresh each browser session
   eventLog.length = 0;
-  
-  try {
-    // Fetch recent server-side events (includes SERVER_STARTED, etc.)
-    const response = await fetch('/api/admin/events?limit=20');
-    if (response.ok) {
-      const data = await response.json();
-      // Add all server events (skip render during batch)
-      for (const event of data.events) {
-        addEventToLog({
-          level: event.level || 'info',
-          message: event.message,
-          timestamp: event.timestamp
-        }, true);
-      }
-    }
-  } catch (error) {
-    console.error('[Dashboard] Failed to load event log:', error);
-  }
-  
-  // Sort by timestamp descending (newest first) to handle race conditions
-  // where broadcast events arrive during the async fetch
-  eventLog.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  
   renderEventLog();
 }
 
@@ -562,10 +539,22 @@ let slowRequestAbortController = null;
 let slowRequestIntervalId = null;
 
 /**
+ * Gets a human-readable description of the blocking pattern.
+ */
+function getPatternDescription(pattern) {
+  switch (pattern) {
+    case 'libuv': return 'libuv thread pool saturation';
+    case 'worker': return 'worker thread blocking';
+    case 'setTimeout':
+    default: return 'non-blocking setTimeout';
+  }
+}
+
+/**
  * Sends slow requests with the specified parameters.
  * Requests are fired at the specified interval rate, allowing them to overlap.
  */
-async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests) {
+async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, blockingPattern = 'setTimeout') {
   const statusEl = document.getElementById('slow-status');
   
   slowRequestRunning = true;
@@ -576,11 +565,13 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests) {
     setProbeMode('reduced');
   }
   
+  const patternDesc = getPatternDescription(blockingPattern);
+  
   // Log simulation start
   addEventToLog({
     timestamp: new Date().toISOString(),
     level: 'info',
-    message: `🐌 Starting Slow Request simulation: ${maxRequests} requests × ${delaySeconds}s delay @ ${intervalSeconds}s intervals`
+    message: `🐌 Starting Slow Request simulation: ${maxRequests} requests × ${delaySeconds}s delay @ ${intervalSeconds}s intervals (${patternDesc})`
   });
   
   let sentRequests = 0;
@@ -606,12 +597,12 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests) {
     addEventToLog({
       timestamp: new Date().toISOString(),
       level: 'info',
-      message: `🐌 Request ${requestNum}/${maxRequests} started (${delaySeconds}s delay)`
+      message: `🐌 Request ${requestNum}/${maxRequests} started (${delaySeconds}s delay, ${patternDesc})`
     });
     
     updateStatus();
     
-    const requestPromise = fetch(`/api/simulations/slow?delaySeconds=${delaySeconds}`, {
+    const requestPromise = fetch(`/api/simulations/slow?delaySeconds=${delaySeconds}&blockingPattern=${blockingPattern}`, {
       signal: slowRequestAbortController.signal
     })
       .then(response => response.json())
@@ -693,7 +684,7 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests) {
   
   if (statusEl && !statusEl.textContent.includes('Stopped')) {
     const avgLatency = completedRequests > 0 ? (totalLatency / completedRequests / 1000).toFixed(1) : 0;
-    statusEl.textContent = `Finished: ${completedRequests}/${maxRequests} (avg: ${avgLatency}s)`;
+    statusEl.textContent = '';
     statusEl.className = 'slow-status';
     
     // Log completion summary
@@ -873,7 +864,8 @@ document.addEventListener('DOMContentLoaded', () => {
       sendSlowRequests(
         parseInt(formData.get('delaySeconds')),
         parseInt(formData.get('intervalSeconds')),
-        parseInt(formData.get('maxRequests'))
+        parseInt(formData.get('maxRequests')),
+        formData.get('blockingPattern') || 'setTimeout'
       );
     });
   }

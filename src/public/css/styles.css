@@ -428,6 +428,18 @@ section h2, section h3 {
   color: var(--color-text-muted);
 }
 
+.latency-chart-container {
+  position: relative;
+}
+
+.latency-chart-container .slow-status {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
 .latency-description {
   font-size: 0.8rem;
   color: var(--color-text-muted);
@@ -912,9 +924,9 @@ section h2, section h3 {
 }
 
 .slow-status.active {
-  color: #ff8c00;
-  border-left: 3px solid #ff8c00;
-  background: rgba(255, 140, 0, 0.1);
+  color: #a85900;
+  border: 2px solid #ff8c00;
+  background: rgba(255, 255, 255, 0.95);
 }
 
 /* Form Controls in Panel */
