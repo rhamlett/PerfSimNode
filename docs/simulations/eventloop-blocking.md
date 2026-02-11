@@ -87,6 +87,44 @@ During this time, **nothing else can execute**:
 
 **Key insight:** If any callback runs too long, the loop cannot advance. Everything waits.
 
+### What Happens to Timers and Probes?
+
+A common question: if the event loop is blocked for 15 seconds, and probes run every 250ms, shouldn't there be 60 probe requests queued up?
+
+**No.** Here's why:
+
+The probe mechanism uses `setTimeout` to schedule the next probe only *after* the current one completes:
+
+```javascript
+const scheduleProbe = () => {
+  setTimeout(() => {
+    // Make HTTP request...
+    // When done, schedule the next probe
+    scheduleProbe();
+  }, 250);
+};
+```
+
+During an event loop block:
+
+1. **One `setTimeout` is pending** - Its 250ms timer counts down, then the callback enters the event loop queue
+2. **The callback waits** - Since the main thread is stuck in a `while` loop doing `pbkdf2Sync`, the callback cannot execute
+3. **No new probes are scheduled** - Because scheduling happens inside the callback that's waiting
+4. **Only ~3 requests appear** in your latency chart:
+   - The probe that was "in flight" when blocking started
+   - The pending probe that executes immediately after unblocking
+   - Any curl probes (run in child processes, but response handling also waits)
+
+This is fundamentally different from a model where timers "pile up" - **Node.js does not queue multiple instances of the same `setTimeout` callback**. Only one is ever pending at a time.
+
+This behavior perfectly illustrates why blocking the event loop is so dangerous:
+- **All timers stop** - Not just delayed, but *frozen*
+- **All I/O pauses** - No network, no file system, nothing
+- **Health checks fail** - External monitors see the server as dead
+- **No work-around** - You can't "background" recovery; the whole process is stuck
+
+This is the core reason Node.js performance best practices emphasize: *never block the event loop*.
+
 ### Comparison: CPU Stress vs Event Loop Block
 
 | Aspect | CPU Stress | Event Loop Block |
