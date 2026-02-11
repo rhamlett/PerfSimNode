@@ -506,6 +506,13 @@ async function blockEventLoop(durationSeconds) {
     // Calculate impact metrics
     const avgConcurrentLatency = concurrentResults.reduce((sum, r) => sum + r.duration, 0) / concurrentResults.length;
     
+    // Record each concurrent request latency to the chart so spikes are visible
+    for (const result of concurrentResults) {
+      if (typeof recordSlowRequestLatency === 'function') {
+        recordSlowRequestLatency(result.duration);
+      }
+    }
+    
     addEventToLog({
       timestamp: new Date().toISOString(),
       level: 'info',
