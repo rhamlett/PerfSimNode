@@ -860,7 +860,7 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
       <p>The soft limit creates a degradation curve where response times increase as concurrent requests exceed the threshold. The degradation formula is:</p>
       <pre><code>additionalDelay = max(0, concurrent - softLimit) &times; degradationFactor</code></pre>
       <div class="alert-box info">
-        <strong>Note:</strong> Actual response times will vary based on your Azure App Service tier, current load, and other factors. Use Azure Load Testing to establish baseline performance for your specific environment.
+        <strong>Note:</strong> Actual response times will vary based on your Azure App Service tier, current load, and other factors. Use Azure Load Testing to establish baseline performance for your specific environment. These example scenarios, and the defaults, are for a Premium0V3 worker. Any other SKU or worker size will need individual tuning.
       </div>
 
       <h3>Diagnosing Load Test Results</h3>
@@ -903,6 +903,10 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
       </table>
 
       <h3>Tuning Parameters for Different Scenarios</h3>
+      <p>Complete request body examples for various test scenarios:</p>
+      <div class="alert-box info">
+        <strong>Note:</strong> Actual response times will vary based on your Azure App Service tier, current load, and other factors. Use Azure Load Testing to establish baseline performance for your specific environment. These example scenarios, and the defaults, are for a Premium0V3 worker. Any other SKU or worker size will need individual tuning.
+      </div>
       <table class="comparison-table">
         <tr><th>Scenario</th><th>workIterations</th><th>bufferSizeKb</th><th>baselineDelayMs</th><th>softLimit</th><th>degradationFactor</th><th>Primary Stress</th></tr>
         <tr><td>Thread pool only</td><td>0</td><td>2000</td><td>500</td><td>25</td><td>500</td><td>Event loop exhaustion, minimal CPU</td></tr>

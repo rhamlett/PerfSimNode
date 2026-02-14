@@ -304,8 +304,8 @@ function onProbeLatency(data) {
     const unresponsiveDuration = Date.now() - serverResponsiveness.unresponsiveStartTime;
     serverResponsiveness.totalUnresponsiveTime += unresponsiveDuration;
     
-    // Log recovery
-    if (typeof addEventToLog === 'function') {
+    // Log recovery (only if unresponsive for >= 1s to reduce spam)
+    if (unresponsiveDuration >= 1000 && typeof addEventToLog === 'function') {
       addEventToLog({
         level: 'success',
         message: `Server responsive again after ${(unresponsiveDuration / 1000).toFixed(1)}s unresponsive`
@@ -337,8 +337,8 @@ function startHeartbeatProbe() {
   serverResponsiveness.probeInterval = setInterval(() => {
     const timeSinceLastProbe = Date.now() - serverResponsiveness.lastProbeTime;
     
-    // If no probe received in 500ms, server may be unresponsive
-    if (timeSinceLastProbe > 500) {
+    // If no probe received in 1000ms, server may be unresponsive
+    if (timeSinceLastProbe > 1000) {
       serverResponsiveness.consecutiveFailures++;
       recordProbeResult(timeSinceLastProbe, false);
       
@@ -689,16 +689,9 @@ function initCharts() {
               return createLatencyGradient(ctx, chartArea, scales);
             },
             fill: true,
-            // Show points for slow request latencies
-            pointRadius: (context) => {
-              const value = context.raw;
-              return value > 1000 ? 4 : 0; // Show point if > 1 second
-            },
-            // Match hover radius to point radius to prevent orphaned hover dots
-            pointHoverRadius: (context) => {
-              const value = context.raw;
-              return value > 1000 ? 6 : 0;
-            },
+            // No point markers to keep the chart clean
+            pointRadius: 0,
+            pointHoverRadius: 0,
             pointBackgroundColor: (context) => {
               const value = context.raw;
               return getInterpolatedLatencyColor(value);
