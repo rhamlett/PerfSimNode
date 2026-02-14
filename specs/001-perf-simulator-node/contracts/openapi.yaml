@@ -29,6 +29,8 @@ tags:
     description: Performance simulation triggers
   - name: Admin
     description: Administration and configuration
+  - name: LoadTest
+    description: Azure Load Testing endpoint for automated load testing
 
 paths:
   /api/health:
@@ -374,8 +376,143 @@ paths:
                   count:
                     type: integer
 
+  /api/loadtest:
+    get:
+      tags:
+        - LoadTest
+      summary: Execute load test
+      description: |
+        Executes a load test request with configurable resource consumption.
+        Designed for Azure Load Testing integration. Performs sustained CPU work,
+        holds memory buffers, and degrades gracefully under concurrent load.
+        After 120s of processing, throws random exceptions with 20% probability.
+      operationId: executeLoadTest
+      parameters:
+        - name: workIterations
+          in: query
+          required: false
+          description: CPU spin iterations per work cycle (ms per cycle = workIterations/100)
+          schema:
+            type: integer
+            default: 200
+        - name: bufferSizeKb
+          in: query
+          required: false
+          description: Memory buffer held for request duration in KB
+          schema:
+            type: integer
+            default: 20000
+        - name: baselineDelayMs
+          in: query
+          required: false
+          description: Minimum request duration in milliseconds
+          schema:
+            type: integer
+            default: 500
+        - name: softLimit
+          in: query
+          required: false
+          description: Concurrent requests before degradation begins
+          schema:
+            type: integer
+            default: 25
+        - name: degradationFactor
+          in: query
+          required: false
+          description: Additional delay (ms) per request over soft limit
+          schema:
+            type: integer
+            default: 500
+      responses:
+        '200':
+          description: Load test completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadTestResult'
+        '500':
+          description: Random exception thrown (after 120s threshold)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/loadtest/stats:
+    get:
+      tags:
+        - LoadTest
+      summary: Get load test statistics
+      description: Returns current load test statistics including concurrent request count without performing work.
+      operationId: getLoadTestStats
+      responses:
+        '200':
+          description: Current load test statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadTestStats'
+
 components:
   schemas:
+    LoadTestResult:
+      type: object
+      properties:
+        elapsedMs:
+          type: number
+          description: Total elapsed time for the request in milliseconds
+          example: 157
+        concurrentRequestsAtStart:
+          type: integer
+          description: Number of concurrent requests when this request started
+          example: 73
+        degradationDelayAppliedMs:
+          type: number
+          description: Milliseconds of artificial delay applied due to exceeding soft limit
+          example: 115
+        workIterationsCompleted:
+          type: integer
+          description: Total ms of CPU work completed (0 if exception thrown)
+          example: 1000
+        memoryAllocatedBytes:
+          type: integer
+          description: Bytes of memory allocated (0 if exception thrown)
+          example: 5120
+        workCompleted:
+          type: boolean
+          description: Whether the request completed all work successfully
+          example: true
+        exceptionThrown:
+          type: boolean
+          description: Whether an exception was thrown during processing
+          example: false
+        exceptionType:
+          type: string
+          nullable: true
+          description: Type name of exception thrown (null if no exception)
+          example: null
+        timestamp:
+          type: string
+          format: date-time
+          description: UTC timestamp when the result was generated
+    LoadTestStats:
+      type: object
+      properties:
+        currentConcurrentRequests:
+          type: integer
+          description: Number of requests currently being processed
+          example: 127
+        totalRequestsProcessed:
+          type: integer
+          description: Total requests processed since app start
+          example: 45230
+        totalExceptionsThrown:
+          type: integer
+          description: Total random exceptions thrown (after 120s timeout)
+          example: 23
+        averageResponseTimeMs:
+          type: number
+          description: Average response time in milliseconds
+          example: 847.5
     HealthResponse:
       type: object
       required:

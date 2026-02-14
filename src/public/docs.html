@@ -166,6 +166,7 @@
         <li><a href="#crash-simulation">Crash Simulation</a></li>
         <li><a href="#diagnostics">Diagnostics</a></li>
         <li><a href="#api-reference">API Reference</a></li>
+        <li><a href="#load-testing">Azure Load Testing</a></li>
       </ul>
     </nav>
 
@@ -514,6 +515,61 @@ GET /api/simulations/slow?delaySeconds=10&blockingPattern=worker</code></pre>
         <tr><td><code>simulation</code></td><td>On status change</td><td>Simulation state updates</td></tr>
       </table>
       <p><em>Probe frequency automatically increases to 2500ms during slow request testing for cleaner diagnostics.</em></p>
+    </section>
+
+    <section id="load-testing" class="docs-section">
+      <h2>Azure Load Testing</h2>
+      <p>The Performance Problem Simulator includes a dedicated load testing endpoint designed for use with Azure Load Testing. This endpoint simulates realistic application behavior that degrades gracefully under load.</p>
+
+      <h3>Load Test Endpoint</h3>
+      <p>Unlike other simulation endpoints, this one does NOT appear in the dashboard UI and is meant for automated load testing scenarios only.</p>
+      <table>
+        <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
+        <tr><td><code>/api/loadtest</code></td><td>GET</td><td>Execute load test with query parameters</td></tr>
+        <tr><td><code>/api/loadtest/stats</code></td><td>GET</td><td>Get current concurrent request statistics</td></tr>
+      </table>
+
+      <h3>Usage</h3>
+      <p>Use the <code>GET /api/loadtest</code> endpoint directly in Azure Load Testing &mdash; no JMeter script required:</p>
+      <pre><code># With defaults
+https://your-app.azurewebsites.net/api/loadtest
+
+# Custom parameters
+https://your-app.azurewebsites.net/api/loadtest?workIterations=500&amp;bufferSizeKb=10000
+
+# Thread pool only (no CPU work)
+https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeKb=100</code></pre>
+
+      <h3>Query Parameters</h3>
+      <table>
+        <tr><th>Parameter</th><th>Default</th><th>Description</th></tr>
+        <tr><td><code>workIterations</code></td><td>200</td><td>CPU spin iterations per work cycle (ms per cycle = workIterations/100)</td></tr>
+        <tr><td><code>bufferSizeKb</code></td><td>20000</td><td>Memory buffer held for entire request duration (KB)</td></tr>
+        <tr><td><code>baselineDelayMs</code></td><td>500</td><td>Minimum request duration (ms)</td></tr>
+        <tr><td><code>softLimit</code></td><td>25</td><td>Concurrent requests before degradation begins</td></tr>
+        <tr><td><code>degradationFactor</code></td><td>500</td><td>Delay ms added per request over soft limit</td></tr>
+      </table>
+
+      <h3>Behavior (Sustained Resource Consumption)</h3>
+      <ul>
+        <li><strong>Memory:</strong> Allocated up front and held for entire request duration (visible in Azure Memory metrics)</li>
+        <li><strong>CPU:</strong> Interleaved work cycles (spin loop + sleep) creating sustained CPU usage per active request</li>
+        <li><strong>Degradation:</strong> Blocking delay = baselineDelayMs + max(0, concurrent - softLimit) &times; degradationFactor</li>
+        <li><strong>After 120 seconds:</strong> 20% chance of throwing a random exception per check interval</li>
+        <li><strong>Extreme load:</strong> Can reach Azure's 230-second timeout threshold</li>
+      </ul>
+
+      <h3>What It Tests</h3>
+      <ul>
+        <li><strong>CPU</strong> &mdash; Sustained spin loop cycles per active thread</li>
+        <li><strong>Memory</strong> &mdash; Buffers held for entire request duration</li>
+        <li><strong>Event Loop</strong> &mdash; Graceful degradation under concurrent load</li>
+        <li><strong>Timeouts</strong> &mdash; Random exceptions after 120s (20% probability)</li>
+      </ul>
+
+      <div class="info-box">
+        <strong>&#x1f4d8; Full Documentation:</strong> See the <a href="/azure-diagnostics.html#load-testing">Azure Diagnostics Guide</a> for detailed setup instructions, tuning scenarios, and diagnostic techniques.
+      </div>
     </section>
   </main>
 

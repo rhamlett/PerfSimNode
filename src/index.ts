@@ -17,6 +17,7 @@ import { createApp } from './app';
 import { config } from './config';
 import { MetricsService } from './services/metrics.service';
 import { EventLogService } from './services/event-log.service';
+import { LoadTestService } from './services/load-test.service';
 
 /**
  * Bootstrap and start the application server.
@@ -85,6 +86,11 @@ async function main(): Promise<void> {
       process: metrics.process,
     });
   }, config.metricsIntervalMs);
+
+  // Wire up load test stats broadcaster to Socket.IO
+  LoadTestService.setStatsBroadcaster((data) => {
+    io.emit('loadTestStats', data);
+  });
 
   // Start server
   server.listen(port, () => {

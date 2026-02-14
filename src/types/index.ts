@@ -256,6 +256,87 @@ export interface SimulationResponse {
   message: string;
 }
 
+// =============================================================================
+// LOAD TEST TYPES
+// =============================================================================
+
+/**
+ * Request parameters for load test endpoint.
+ * All properties have defaults, making query parameters optional.
+ */
+export interface LoadTestRequest {
+  /** CPU work intensity (workIterations / 100 = ms of spin per cycle). Default: 200 */
+  workIterations: number;
+  /** Memory buffer held for request duration in KB. Default: 20000 */
+  bufferSizeKb: number;
+  /** Minimum request duration in ms. Default: 500 */
+  baselineDelayMs: number;
+  /** Concurrent requests before degradation begins. Default: 25 */
+  softLimit: number;
+  /** Additional delay (ms) per request over soft limit. Default: 500 */
+  degradationFactor: number;
+}
+
+/**
+ * Result returned from load test endpoint with timing and diagnostic information.
+ */
+export interface LoadTestResult {
+  /** Total elapsed time for the request in milliseconds */
+  elapsedMs: number;
+  /** Number of concurrent requests when this request started processing */
+  concurrentRequestsAtStart: number;
+  /** Milliseconds of artificial delay applied due to exceeding soft limit */
+  degradationDelayAppliedMs: number;
+  /** Total ms of CPU work completed (0 if exception thrown before completion) */
+  workIterationsCompleted: number;
+  /** Bytes of memory allocated (0 if exception thrown before allocation) */
+  memoryAllocatedBytes: number;
+  /** Whether the request completed all work successfully */
+  workCompleted: boolean;
+  /** Whether an exception was thrown during processing */
+  exceptionThrown: boolean;
+  /** Type name of exception thrown (null if no exception) */
+  exceptionType: string | null;
+  /** UTC timestamp when the result was generated */
+  timestamp: string;
+}
+
+/**
+ * Current statistics for the load test service.
+ */
+export interface LoadTestStats {
+  /** Number of requests currently being processed */
+  currentConcurrentRequests: number;
+  /** Total requests processed since app start */
+  totalRequestsProcessed: number;
+  /** Total random exceptions thrown (after 120s timeout) */
+  totalExceptionsThrown: number;
+  /** Average response time in milliseconds */
+  averageResponseTimeMs: number;
+}
+
+/**
+ * Load test statistics data broadcast via Socket.IO every 60 seconds.
+ */
+export interface LoadTestStatsData {
+  /** Current number of concurrent requests being processed */
+  currentConcurrent: number;
+  /** Peak concurrent requests observed in this reporting period */
+  peakConcurrent: number;
+  /** Total requests completed in this reporting period */
+  requestsCompleted: number;
+  /** Average response time in ms for this period */
+  avgResponseTimeMs: number;
+  /** Maximum response time observed in this period */
+  maxResponseTimeMs: number;
+  /** Requests per second throughput */
+  requestsPerSecond: number;
+  /** Number of exceptions thrown in this period */
+  exceptionCount: number;
+  /** When this stats snapshot was taken */
+  timestamp: string;
+}
+
 /**
  * Health check response structure.
  */
