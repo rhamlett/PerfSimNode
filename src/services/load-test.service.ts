@@ -7,7 +7,7 @@
  *
  * Algorithm:
  * 1. Increment concurrent counter
- * 2. Allocate memory buffer up front (held for entire request duration)
+ * 2. Allocate memory: half on V8 heap (heapUsed), half as native Buffer (RSS)
  * 3. Calculate degradation delay: max(0, concurrent - softLimit) * degradationFactor
  * 4. Interleave CPU work and brief sleeps until total duration reached
  * 5. After 120s elapsed, 20% chance per check of throwing a random exception
@@ -23,6 +23,7 @@ import {
   LoadTestStats,
   LoadTestStatsData,
 } from '../types';
+import { EventLogService } from './event-log.service';
 
 // =============================================================================
 // RANDOM EXCEPTION POOL
@@ -171,17 +172,28 @@ class LoadTestServiceClass {
     const startTime = Date.now();
     let totalCpuWorkDone = 0;
     let workCompleted = false;
-    let buffer: Buffer | null = null;
+    let heapMemory: number[][] | null = null;
+    let nativeBuffer: Buffer | null = null;
+    const allocatedBytes = params.bufferSizeKb * 1024;
 
     try {
       // -----------------------------------------------------------------
-      // STEP 1: ALLOCATE MEMORY UP FRONT
-      // Allocate at the START and hold for the entire request duration.
-      // This ensures memory scales with concurrent requests.
+      // STEP 1: ALLOCATE MEMORY — SPLIT 50/50 BETWEEN HEAP AND NATIVE
+      //
+      // V8 heap half (JS arrays): visible in heapUsed / Memory Working Set,
+      //   triggers GC pauses that cause event loop lag spikes.
+      // Native half (Buffer): visible in RSS only, adds OS-level memory
+      //   pressure that can cause paging/swapping under load.
+      // Both halves contribute to RSS.
       // -----------------------------------------------------------------
-      const bufferSize = params.bufferSizeKb * 1024;
-      buffer = Buffer.alloc(bufferSize); // zero-filled allocation
-      this.touchMemoryBuffer(buffer);
+      const heapKb = Math.ceil(params.bufferSizeKb / 2);
+      const nativeKb = params.bufferSizeKb - heapKb;
+
+      heapMemory = this.allocateHeapMemory(heapKb);
+      this.touchHeapMemory(heapMemory);
+
+      nativeBuffer = Buffer.alloc(nativeKb * 1024);
+      this.touchNativeBuffer(nativeBuffer);
 
       // -----------------------------------------------------------------
       // STEP 2: CALCULATE TOTAL REQUEST DURATION
@@ -206,7 +218,8 @@ class LoadTestServiceClass {
         }
 
         // Keep memory active
-        this.touchMemoryBuffer(buffer);
+        this.touchHeapMemory(heapMemory);
+        this.touchNativeBuffer(nativeBuffer);
 
         // Check for timeout exception (20% chance after 120s)
         this.checkAndThrowTimeoutException(startTime);
@@ -220,7 +233,8 @@ class LoadTestServiceClass {
       }
 
       // Final memory touch before returning
-      this.touchMemoryBuffer(buffer);
+      this.touchHeapMemory(heapMemory);
+      this.touchNativeBuffer(nativeBuffer);
 
       workCompleted = true;
       const elapsedMs = Date.now() - startTime;
@@ -230,7 +244,7 @@ class LoadTestServiceClass {
         currentConcurrent,
         elapsedMs,
         totalCpuWorkDone,
-        buffer.length,
+        allocatedBytes,
         workCompleted,
         false,
         null
@@ -262,8 +276,9 @@ class LoadTestServiceClass {
       this.periodResponseTimeSum += elapsedMs;
       this.updateMaxResponseTime(elapsedMs);
 
-      // Allow buffer to be GC'd
-      buffer = null;
+      // Allow memory to be GC'd / released
+      heapMemory = null;
+      nativeBuffer = null;
     }
   }
 
@@ -293,11 +308,42 @@ class LoadTestServiceClass {
   // =========================================================================
 
   /**
-   * Touches all pages in the memory buffer to keep it active.
-   * Prevents the runtime from optimizing away the allocation.
+   * Allocates memory on the V8 heap using regular JS arrays.
+   * Unlike Buffer/TypedArray (which use native/external memory),
+   * these arrays live on the V8 heap and show in heapUsed metrics.
+   *
+   * @param sizeKb - Amount of memory to allocate in kilobytes
+   * @returns Array of number arrays residing on the V8 heap
    */
-  private touchMemoryBuffer(buffer: Buffer): void {
-    // XOR through buffer every 4096 bytes (one per memory page)
+  private allocateHeapMemory(sizeKb: number): number[][] {
+    const memory: number[][] = new Array(sizeKb);
+    for (let i = 0; i < sizeKb; i++) {
+      // 128 doubles × 8 bytes = 1024 bytes ≈ 1 KB per chunk
+      const chunk = new Array<number>(128);
+      for (let j = 0; j < 128; j++) {
+        chunk[j] = Math.random(); // heap-allocated doubles, not SMIs
+      }
+      memory[i] = chunk;
+    }
+    return memory;
+  }
+
+  /**
+   * Touches heap memory periodically to prevent GC from collecting it.
+   * Mutates values to ensure V8 cannot optimize the allocation away.
+   */
+  private touchHeapMemory(memory: number[][]): void {
+    // Touch every 4th chunk (~one per 4 KB, similar to page touching)
+    for (let i = 0; i < memory.length; i += 4) {
+      memory[i][0] = memory[i][0] + 0.001;
+    }
+  }
+
+  /**
+   * Touches native Buffer memory to keep pages resident and prevent
+   * the OS from reclaiming them. XORs one byte per 4 KB page.
+   */
+  private touchNativeBuffer(buffer: Buffer): void {
     for (let i = 0; i < buffer.length; i += 4096) {
       buffer[i] = buffer[i] ^ 0xff;
     }
@@ -406,6 +452,23 @@ class LoadTestServiceClass {
 
     console.log(
       `[LoadTest] Broadcasting stats: ${requestsCompleted} requests, ${avgResponseTime.toFixed(1)}ms avg, ${maxResponseTime}ms max, ${requestsPerSecond.toFixed(2)} RPS`
+    );
+
+    // Write to event log so it appears in the dashboard
+    EventLogService.info(
+      'LOAD_TEST_STATS',
+      `Load test: ${requestsCompleted} requests in last 60s, avg response ${avgResponseTime.toFixed(0)}ms, ${currentConcurrent} concurrent`,
+      {
+        details: {
+          requestsCompleted,
+          avgResponseTimeMs: statsData.avgResponseTimeMs,
+          maxResponseTimeMs: maxResponseTime,
+          currentConcurrent,
+          peakConcurrent,
+          requestsPerSecond: statsData.requestsPerSecond,
+          exceptionCount: exceptions,
+        },
+      }
     );
 
     // Emit via broadcaster

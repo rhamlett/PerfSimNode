@@ -11,6 +11,8 @@
       max-width: 1100px;
       margin: 0 auto;
       padding: 2rem;
+      flex: 1;
+      min-width: 0;
     }
     .deploy-header {
       text-align: center;
@@ -23,34 +25,6 @@
     .deploy-header p {
       color: var(--color-text-muted);
       font-size: 1.1rem;
-    }
-    .deploy-nav {
-      background: var(--color-card);
-      border-radius: 8px;
-      padding: 1rem 1.5rem;
-      margin-bottom: 2rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    .deploy-nav ul {
-      list-style: none;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      justify-content: center;
-    }
-    .deploy-nav a {
-      display: inline-block;
-      padding: 0.5rem 1rem;
-      background: var(--color-bg);
-      border-radius: 4px;
-      text-decoration: none;
-      color: var(--color-text);
-      font-size: 0.9rem;
-      transition: all 0.2s;
-    }
-    .deploy-nav a:hover {
-      background: var(--color-primary);
-      color: white;
     }
     .card {
       background: var(--color-card);
@@ -203,24 +177,12 @@
     </div>
   </aside>
 
+  <div class="docs-page-wrapper">
   <main class="deploy-container">
     <div class="deploy-header">
       <h1>🚀 Azure Deployment Guide</h1>
       <p>Deploy PerfSimNode to Azure App Service using GitHub Actions with OIDC authentication</p>
     </div>
-
-    <nav class="deploy-nav">
-      <ul>
-        <li><a href="#overview">Overview</a></li>
-        <li><a href="#app-service">1. Create App Service</a></li>
-        <li><a href="#app-registration">2. App Registration</a></li>
-        <li><a href="#federated-credentials">3. Federated Credentials</a></li>
-        <li><a href="#permissions">4. Permissions</a></li>
-        <li><a href="#github-secrets">5. GitHub Secrets</a></li>
-        <li><a href="#deploy">6. Deploy</a></li>
-        <li><a href="#troubleshooting">Troubleshooting</a></li>
-      </ul>
-    </nav>
 
     <section id="overview" class="card">
       <h2>Overview</h2>
@@ -525,7 +487,7 @@ az webapp log tail --name $APP_NAME --resource-group $RESOURCE_GROUP
 az webapp log deployment show --name $APP_NAME --resource-group $RESOURCE_GROUP</code></pre>
     </section>
 
-    <section class="card">
+    <section id="quick-reference" class="card">
       <h2>Quick Reference - CLI One-Liner</h2>
       <p>Complete setup script (customize variables at top):</p>
       <pre><code># Full setup (customize variables at top)
@@ -565,6 +527,31 @@ echo "AZURE_SUBSCRIPTION_ID=$SUB_ID"</code></pre>
     </section>
 
   </main>
+
+  <!-- Right Sidebar: On This Page -->
+  <aside class="docs-right-sidebar">
+    <div class="sidebar-card">
+      <div class="sidebar-title">ON THIS PAGE</div>
+      <ul class="sidebar-links" id="page-nav">
+        <li><a href="#overview">🎯 Overview</a></li>
+      </ul>
+      <div class="sidebar-section-label">SETUP STEPS</div>
+      <ul class="sidebar-links" id="page-nav-steps">
+        <li><a href="#app-service">☁️ Create App Service</a></li>
+        <li><a href="#app-registration">📝 App Registration</a></li>
+        <li><a href="#federated-credentials">🔐 Federated Credentials</a></li>
+        <li><a href="#permissions">🛡️ Permissions</a></li>
+        <li><a href="#github-secrets">🔑 GitHub Secrets</a></li>
+        <li><a href="#deploy">🚀 Deploy</a></li>
+      </ul>
+      <div class="sidebar-section-label">REFERENCE</div>
+      <ul class="sidebar-links" id="page-nav-ref">
+        <li><a href="#troubleshooting">🚨 Troubleshooting</a></li>
+        <li><a href="#quick-reference">📋 Quick Reference</a></li>
+      </ul>
+    </div>
+  </aside>
+  </div><!-- /docs-page-wrapper -->
 
   <footer style="text-align: center; padding: 2rem; color: var(--color-text-muted);">
     <p>PerfSimNode - Azure Deployment Guide | <a href="/">Back to Dashboard</a></p>
@@ -606,6 +593,27 @@ echo "AZURE_SUBSCRIPTION_ID=$SUB_ID"</code></pre>
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeSidebar();
     });
+
+    // Scroll-spy: highlight active section in right sidebar
+    (function() {
+      const links = document.querySelectorAll('#page-nav a, #page-nav-steps a, #page-nav-ref a');
+      const sections = [];
+      links.forEach(link => {
+        const id = link.getAttribute('href').slice(1);
+        const el = document.getElementById(id);
+        if (el) sections.push({ id, el, link });
+      });
+      function updateActive() {
+        let current = sections[0];
+        for (const s of sections) {
+          if (s.el.getBoundingClientRect().top <= 100) current = s;
+        }
+        links.forEach(l => l.classList.remove('active'));
+        if (current) current.link.classList.add('active');
+      }
+      window.addEventListener('scroll', updateActive, { passive: true });
+      updateActive();
+    })();
   </script>
 </body>
 </html>

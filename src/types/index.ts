@@ -43,7 +43,8 @@ export type EventType =
   | 'MEMORY_RELEASED'
   | 'SERVER_STARTED'
   | 'CLIENT_CONNECTED'
-  | 'CLIENT_DISCONNECTED';
+  | 'CLIENT_DISCONNECTED'
+  | 'LOAD_TEST_STATS';
 
 /**
  * Parameters for CPU stress simulation.

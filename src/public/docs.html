@@ -11,31 +11,8 @@
       max-width: 900px;
       margin: 0 auto;
       padding: 1rem;
-    }
-    .docs-nav {
-      background-color: var(--color-card);
-      border-radius: var(--radius-md);
-      padding: 1.5rem;
-      margin-bottom: 2rem;
-      box-shadow: var(--shadow-sm);
-    }
-    .docs-nav ul {
-      list-style: none;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-    .docs-nav a {
-      display: inline-block;
-      padding: 0.5rem 1rem;
-      background-color: var(--color-bg);
-      border-radius: var(--radius-sm);
-      text-decoration: none;
-      color: var(--color-text);
-    }
-    .docs-nav a:hover {
-      background-color: var(--color-primary);
-      color: white;
+      flex: 1;
+      min-width: 0;
     }
     .docs-section {
       background-color: var(--color-card);
@@ -155,20 +132,8 @@
     </div>
   </aside>
 
+  <div class="docs-page-wrapper">
   <main class="docs-container">
-    <nav class="docs-nav">
-      <ul>
-        <li><a href="#overview">Overview</a></li>
-        <li><a href="#cpu-stress">CPU Stress</a></li>
-        <li><a href="#memory-pressure">Memory Pressure</a></li>
-        <li><a href="#eventloop-blocking">Event Loop Blocking</a></li>
-        <li><a href="#slow-requests">Slow Requests</a></li>
-        <li><a href="#crash-simulation">Crash Simulation</a></li>
-        <li><a href="#diagnostics">Diagnostics</a></li>
-        <li><a href="#api-reference">API Reference</a></li>
-        <li><a href="#load-testing">Azure Load Testing</a></li>
-      </ul>
-    </nav>
 
     <section id="overview" class="docs-section">
       <h2>Overview</h2>
@@ -573,6 +538,31 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
     </section>
   </main>
 
+  <!-- Right Sidebar: On This Page -->
+  <aside class="docs-right-sidebar">
+    <div class="sidebar-card">
+      <div class="sidebar-title">ON THIS PAGE</div>
+      <ul class="sidebar-links" id="page-nav">
+        <li><a href="#overview">🎯 Overview</a></li>
+      </ul>
+      <div class="sidebar-section-label">SIMULATIONS</div>
+      <ul class="sidebar-links" id="page-nav-sims">
+        <li><a href="#cpu-stress">🔥 CPU Stress</a></li>
+        <li><a href="#memory-pressure">📊 Memory Pressure</a></li>
+        <li><a href="#eventloop-blocking">🟣 Event Loop Blocking</a></li>
+        <li><a href="#slow-requests">🐢 Slow Requests</a></li>
+        <li><a href="#crash-simulation">💥 Crash Simulation</a></li>
+      </ul>
+      <div class="sidebar-section-label">REFERENCE</div>
+      <ul class="sidebar-links" id="page-nav-ref">
+        <li><a href="#diagnostics">🔬 Diagnostics</a></li>
+        <li><a href="#api-reference">📋 API Reference</a></li>
+        <li><a href="#load-testing">📈 Azure Load Testing</a></li>
+      </ul>
+    </div>
+  </aside>
+  </div><!-- /docs-page-wrapper -->
+
   <footer>
     <p>Performance Problem Simulator - Educational Tool for Azure App Service Diagnostics</p>
     <p>Created by <a href="https://speckit.org/" target="_blank">SpecKit</a> in collaboration with <a href="mailto:rhamlett@microsoft.com">Richard Hamlett</a></p>
@@ -623,6 +613,27 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeSidebar();
     });
+
+    // Scroll-spy: highlight active section in right sidebar
+    (function() {
+      const links = document.querySelectorAll('#page-nav a, #page-nav-sims a, #page-nav-ref a');
+      const sections = [];
+      links.forEach(link => {
+        const id = link.getAttribute('href').slice(1);
+        const el = document.getElementById(id);
+        if (el) sections.push({ id, el, link });
+      });
+      function updateActive() {
+        let current = sections[0];
+        for (const s of sections) {
+          if (s.el.getBoundingClientRect().top <= 100) current = s;
+        }
+        links.forEach(l => l.classList.remove('active'));
+        if (current) current.link.classList.add('active');
+      }
+      window.addEventListener('scroll', updateActive, { passive: true });
+      updateActive();
+    })();
   </script>
 </body>
 </html>
