@@ -34,7 +34,7 @@ export const loadtestRouter = Router();
  * All parameters are optional query params with sensible defaults.
  *
  * Query Parameters:
- * - workIterations (default: 200)     CPU work intensity (ms per cycle = workIterations/100)
+ * - workIterations (default: 200)     CPU work intensity (ms per cycle = workIterations/10)
  * - bufferSizeKb  (default: 20000)    Memory buffer held for request duration in KB
  * - baselineDelayMs (default: 500)    Minimum request duration in ms
  * - softLimit     (default: 25)       Concurrent requests before degradation begins

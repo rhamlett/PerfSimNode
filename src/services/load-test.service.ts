@@ -206,9 +206,10 @@ class LoadTestServiceClass {
       // -----------------------------------------------------------------
       // STEP 3: SUSTAINED WORK LOOP
       // Interleave CPU work and brief sleeps until total duration reached.
-      // CPU work per cycle = workIterations / 100 ms
+      // CPU work per cycle = workIterations / 10 ms
+      // Default 200 → 20ms spin per 70ms cycle ≈ 28% CPU duty per request
       // -----------------------------------------------------------------
-      const cpuWorkMsPerCycle = params.workIterations / 100;
+      const cpuWorkMsPerCycle = params.workIterations / 10;
 
       while (Date.now() - startTime < totalDurationMs) {
         // CPU work phase
@@ -457,7 +458,7 @@ class LoadTestServiceClass {
     // Write to event log so it appears in the dashboard
     EventLogService.info(
       'LOAD_TEST_STATS',
-      `Load test: ${requestsCompleted} requests in last 60s, avg response ${avgResponseTime.toFixed(0)}ms, ${currentConcurrent} concurrent`,
+      `📊 Load Test Stats (60s): ${requestsCompleted} requests`,
       {
         details: {
           requestsCompleted,

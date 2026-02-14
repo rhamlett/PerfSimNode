@@ -895,7 +895,7 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
       <p>Each parameter controls a specific resource independently:</p>
       <table class="comparison-table">
         <tr><th>Parameter</th><th>Default</th><th>Resource</th><th>Purpose</th></tr>
-        <tr><td><code>workIterations</code></td><td>200</td><td><strong>CPU</strong></td><td>Spin-loop iterations per CPU work cycle. Controls sustained CPU usage.</td></tr>
+        <tr><td><code>workIterations</code></td><td>200</td><td><strong>CPU</strong></td><td>Spin-loop ms per CPU work cycle (workIterations/10). Default 200 → 20ms spin per 70ms cycle ≈ 28% CPU duty per request.</td></tr>
         <tr><td><code>bufferSizeKb</code></td><td>20000</td><td><strong>Memory</strong></td><td>Memory held for entire request duration. Creates sustained memory pressure.</td></tr>
         <tr><td><code>baselineDelayMs</code></td><td>500</td><td><strong>Event Loop</strong></td><td>Minimum request duration (ms). CPU work and sleep interleaved throughout.</td></tr>
         <tr><td><code>softLimit</code></td><td>25</td><td><strong>Concurrency</strong></td><td>Concurrent requests before degradation. Lower = faster degradation.</td></tr>
