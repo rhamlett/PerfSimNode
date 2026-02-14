@@ -347,7 +347,10 @@ function startHeartbeatProbe() {
         serverResponsiveness.isResponsive = false;
         serverResponsiveness.unresponsiveStartTime = Date.now();
         
-        if (typeof addEventToLog === 'function') {
+        // Only log warning if at least 1s since last warning to reduce spam
+        const now = Date.now();
+        if (typeof addEventToLog === 'function' && (!serverResponsiveness.lastWarningTime || now - serverResponsiveness.lastWarningTime >= 1000)) {
+          serverResponsiveness.lastWarningTime = now;
           addEventToLog({
             level: 'warning',
             message: '⚠️ Server unresponsive - event loop may be blocked'
@@ -357,7 +360,7 @@ function startHeartbeatProbe() {
       
       updateResponsivenessUI();
     }
-  }, 250); // Check 4x per second
+  }, 500); // Check 2x per second
 }
 
 /**
