@@ -41,17 +41,6 @@ const latencyChartData = {
 let lastLatencyChartUpdate = 0;
 const LATENCY_CHART_UPDATE_INTERVAL_MS = 100; // Update chart 10x per second
 
-// Gap interpolation: track when probes stop arriving and fill nulls to keep x-axis aligned
-let lastProbeArrivalTime = 0; // Timestamp of last received probe data
-const GAP_CHECK_INTERVAL_MS = 500; // Check for gaps every 500ms
-const GAP_THRESHOLD_MS = 1000; // Consider it a gap after 1s of no probes
-let gapFillInterval = null; // Interval handle for gap detection
-
-// Track gap regions for shaded overlay rendering
-// Each entry: { startIndex: number, endIndex: number } (indices into latencyChartData)
-const latencyGapRegions = [];
-let currentGapStartIndex = null; // Index where current gap started (null = no active gap)
-
 // Latency tracking - uses time-based retention (last 60 seconds)
 // Each entry is { time: timestamp, value: latencyMs }
 const LATENCY_STATS_WINDOW_MS = 60000; // 60 seconds
@@ -304,14 +293,6 @@ function onProbeLatency(data) {
   
   // Update latency chart data (throttled for display)
   const now = Date.now();
-  lastProbeArrivalTime = now;
-  
-  // Close any active gap region since we got real data
-  if (currentGapStartIndex !== null) {
-    latencyGapRegions.push({ startIndex: currentGapStartIndex, endIndex: latencyChartData.labels.length - 1 });
-    currentGapStartIndex = null;
-  }
-  
   if (now - lastLatencyChartUpdate >= LATENCY_CHART_UPDATE_INTERVAL_MS) {
     addLatencyToChart(latency);
     lastLatencyChartUpdate = now;
@@ -438,17 +419,6 @@ function addLatencyToChart(latencyMs) {
   if (latencyChartData.labels.length > maxLatencyDataPoints) {
     latencyChartData.labels.shift();
     latencyChartData.values.shift();
-    // Adjust gap region indices after shift
-    if (currentGapStartIndex !== null && currentGapStartIndex > 0) {
-      currentGapStartIndex--;
-    }
-    for (const region of latencyGapRegions) {
-      region.startIndex = Math.max(0, region.startIndex - 1);
-      region.endIndex = Math.max(0, region.endIndex - 1);
-    }
-    while (latencyGapRegions.length > 0 && latencyGapRegions[0].endIndex <= 0) {
-      latencyGapRegions.shift();
-    }
   }
   
   // Update latency chart
@@ -486,54 +456,6 @@ function recordSlowRequestLatency(latencyMs) {
 }
 
 /**
- * Starts the gap-fill interval that inserts null data points when probe data stops arriving.
- * This keeps the latency chart x-axis aligned with wall-clock time.
- */
-function startGapFillInterval() {
-  if (gapFillInterval) clearInterval(gapFillInterval);
-  
-  gapFillInterval = setInterval(() => {
-    if (lastProbeArrivalTime === 0) return; // No probes received yet
-    
-    const timeSinceLastProbe = Date.now() - lastProbeArrivalTime;
-    if (timeSinceLastProbe >= GAP_THRESHOLD_MS) {
-      // Start tracking gap region if not already
-      if (currentGapStartIndex === null) {
-        currentGapStartIndex = latencyChartData.labels.length;
-      }
-      
-      // Insert a null data point at current wall-clock time
-      const now = getUtcTimeString();
-      latencyChartData.labels.push(now);
-      latencyChartData.values.push(null);
-      
-      // Enforce max data points
-      if (latencyChartData.labels.length > maxLatencyDataPoints) {
-        latencyChartData.labels.shift();
-        latencyChartData.values.shift();
-        // Adjust gap region indices after shift
-        if (currentGapStartIndex !== null && currentGapStartIndex > 0) {
-          currentGapStartIndex--;
-        }
-        for (const region of latencyGapRegions) {
-          region.startIndex = Math.max(0, region.startIndex - 1);
-          region.endIndex = Math.max(0, region.endIndex - 1);
-        }
-        // Remove gap regions that have scrolled off
-        while (latencyGapRegions.length > 0 && latencyGapRegions[0].endIndex <= 0) {
-          latencyGapRegions.shift();
-        }
-      }
-      
-      // Update chart
-      if (latencyChart) {
-        latencyChart.update('none');
-      }
-    }
-  }, GAP_CHECK_INTERVAL_MS);
-}
-
-/**
  * Updates the server responsiveness UI elements.
  * The probe dots visualization now shows responsiveness status.
  */
@@ -548,103 +470,6 @@ setInterval(() => {
     updateResponsivenessUI();
   }
 }, 100);
-
-/**
- * Chart.js plugin to draw shaded regions over latency chart gaps.
- * Renders a semi-transparent overlay with diagonal hatching where data is missing.
- */
-const gapRegionPlugin = {
-  id: 'gapRegionOverlay',
-  afterDatasetsDraw(chart) {
-    const { ctx, chartArea, scales } = chart;
-    if (!chartArea || !scales.x) return;
-    
-    const xScale = scales.x;
-    const allRegions = [...latencyGapRegions];
-    // Include active gap if ongoing
-    if (currentGapStartIndex !== null) {
-      allRegions.push({ startIndex: currentGapStartIndex, endIndex: latencyChartData.labels.length - 1 });
-    }
-    
-    if (allRegions.length === 0) return;
-    
-    ctx.save();
-    
-    for (const region of allRegions) {
-      // Clamp indices to valid range
-      const startIdx = Math.max(0, region.startIndex);
-      const endIdx = Math.min(latencyChartData.labels.length - 1, region.endIndex);
-      if (startIdx >= endIdx) continue;
-      
-      // Get pixel positions from x-axis scale
-      const x1 = xScale.getPixelForValue(startIdx);
-      const x2 = xScale.getPixelForValue(endIdx);
-      
-      if (isNaN(x1) || isNaN(x2)) continue;
-      
-      const left = Math.max(chartArea.left, Math.min(x1, x2));
-      const right = Math.min(chartArea.right, Math.max(x1, x2));
-      const top = chartArea.top;
-      const bottom = chartArea.bottom;
-      
-      // Draw semi-transparent overlay
-      ctx.fillStyle = 'rgba(209, 52, 56, 0.06)';
-      ctx.fillRect(left, top, right - left, bottom - top);
-      
-      // Draw diagonal hatching lines
-      ctx.strokeStyle = 'rgba(209, 52, 56, 0.12)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([]);
-      
-      const spacing = 12;
-      const width = right - left;
-      const height = bottom - top;
-      
-      ctx.beginPath();
-      for (let offset = -height; offset < width; offset += spacing) {
-        const x = left + offset;
-        ctx.moveTo(Math.max(left, x), Math.max(top, top + (left - x)));
-        ctx.lineTo(
-          Math.min(right, x + height),
-          Math.min(bottom, top + Math.min(height, x + height - left))
-        );
-      }
-      ctx.stroke();
-      
-      // Draw border lines at gap boundaries
-      ctx.strokeStyle = 'rgba(209, 52, 56, 0.25)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      
-      if (left > chartArea.left) {
-        ctx.beginPath();
-        ctx.moveTo(left, top);
-        ctx.lineTo(left, bottom);
-        ctx.stroke();
-      }
-      if (right < chartArea.right) {
-        ctx.beginPath();
-        ctx.moveTo(right, top);
-        ctx.lineTo(right, bottom);
-        ctx.stroke();
-      }
-      
-      // Label the gap region
-      ctx.fillStyle = 'rgba(209, 52, 56, 0.5)';
-      ctx.font = '10px "Segoe UI", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      const centerX = (left + right) / 2;
-      if (right - left > 40) { // Only show label if region wide enough
-        ctx.fillText('No Data', centerX, top + 4);
-      }
-      
-      ctx.setLineDash([]);
-    }
-    
-    ctx.restore();
-  }
-};
 
 /**
  * Common chart configuration.
@@ -842,21 +667,18 @@ function initCharts() {
   if (latencyCtx) {
     latencyChart = new Chart(latencyCtx, {
       type: 'line',
-      plugins: [gapRegionPlugin],
       data: {
         labels: latencyChartData.labels,
         datasets: [
           {
             label: 'Latency (ms)',
             data: latencyChartData.values,
-            spanGaps: false, // Break line at null values (gap regions)
             // Segment-based border color - smooth gradient based on data value
             segment: {
               borderColor: (ctx) => {
                 // Use the higher of the two endpoint values for smooth color blending
                 const p0 = ctx.p0.parsed.y;
                 const p1 = ctx.p1.parsed.y;
-                if (p0 === null || p1 === null) return 'transparent';
                 const value = Math.max(p0, p1);
                 return getInterpolatedLatencyColor(value);
               },
@@ -908,7 +730,6 @@ function initCharts() {
             callbacks: {
               label: function(context) {
                 const value = context.raw;
-                if (value === null || value === undefined) return 'No data (event loop blocked)';
                 if (value >= 1000) {
                   return `Latency: ${(value / 1000).toFixed(1)}s`;
                 }
@@ -1080,11 +901,6 @@ function clearCharts() {
   latencyChartData.labels = [];
   latencyChartData.values = [];
   
-  // Clear gap tracking
-  latencyGapRegions.length = 0;
-  currentGapStartIndex = null;
-  lastProbeArrivalTime = 0;
-  
   latencyStats.entries = [];
   latencyStats.current = 0;
   latencyStats.critical = 0;
@@ -1098,5 +914,4 @@ function clearCharts() {
 document.addEventListener('DOMContentLoaded', () => {
   initCharts();
   startHeartbeatProbe();
-  startGapFillInterval();
 });

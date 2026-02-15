@@ -75,53 +75,6 @@ function onEventUpdate(event) {
 }
 
 /**
- * Load test banner state tracking.
- * Shows/hides the stress banner based on load test activity.
- */
-let loadTestBannerVisible = false;
-let loadTestBannerTimeout = null;
-const LOAD_TEST_BANNER_HIDE_DELAY_MS = 15000; // Hide banner 15s after last stats broadcast
-
-/**
- * Called when load test stats are received via WebSocket.
- * Shows the stress banner and updates stats display.
- * @param {Object} data - LoadTestStatsData from server
- */
-function onLoadTestStats(data) {
-  const banner = document.getElementById('load-test-banner');
-  const statsEl = document.getElementById('load-test-banner-stats');
-  
-  if (!banner) return;
-  
-  // Show banner
-  if (!loadTestBannerVisible) {
-    banner.style.display = 'flex';
-    document.body.classList.add('load-test-active');
-    loadTestBannerVisible = true;
-  }
-  
-  // Update stats display
-  if (statsEl && data) {
-    const rps = data.requestsPerSecond ? data.requestsPerSecond.toFixed(1) : '0';
-    const concurrent = data.currentConcurrent || 0;
-    const avg = data.avgResponseTimeMs ? data.avgResponseTimeMs.toFixed(0) : '0';
-    statsEl.textContent = `${concurrent} concurrent · ${rps} RPS · ${avg}ms avg`;
-  }
-  
-  // Reset hide timer — banner disappears 15s after last stats broadcast
-  if (loadTestBannerTimeout) {
-    clearTimeout(loadTestBannerTimeout);
-  }
-  loadTestBannerTimeout = setTimeout(() => {
-    if (banner) {
-      banner.style.display = 'none';
-      document.body.classList.remove('load-test-active');
-      loadTestBannerVisible = false;
-    }
-  }, LOAD_TEST_BANNER_HIDE_DELAY_MS);
-}
-
-/**
  * Called when a simulation status changes.
  */
 function onSimulationUpdate(simulation) {

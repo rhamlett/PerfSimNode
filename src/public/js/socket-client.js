@@ -103,13 +103,6 @@ function initSocket() {
       onProbeLatency(data);
     }
   });
-
-  // Listen for load test stats broadcasts
-  socket.on('loadTestStats', (data) => {
-    if (typeof onLoadTestStats === 'function') {
-      onLoadTestStats(data);
-    }
-  });
 }
 
 /**
