@@ -86,7 +86,6 @@ async function main(): Promise<void> {
   // Start server
   server.listen(port, () => {
     const cpuInfo = cpus();
-    const sidecarPort = port + 1;
     // Use process.stdout.write for Azure Log Stream compatibility
     process.stdout.write(`[PerfSimNode] Server running on http://localhost:${port}\n`);
     process.stdout.write(`[PerfSimNode] CPU cores reported: ${cpuInfo.length} (${cpuInfo[0]?.model || 'unknown'})\n`);
@@ -116,12 +115,11 @@ async function main(): Promise<void> {
         env: {
           ...process.env,
           MAIN_APP_PORT: String(port),
-          SIDECAR_PORT: String(sidecarPort),
           PROBE_INTERVAL_MS: '100',
           PROBE_TIMEOUT_MS: '10000',
         },
         execArgv,
-        stdio: 'pipe',
+        stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
       });
 
       // Forward sidecar stdout/stderr with prefix
@@ -130,6 +128,15 @@ async function main(): Promise<void> {
       });
       sidecarProcess.stderr?.on('data', (data: Buffer) => {
         process.stderr.write(data.toString());
+      });
+
+      // Relay IPC messages from sidecar to dashboard via main Socket.IO
+      sidecarProcess.on('message', (msg: { type: string; [key: string]: unknown }) => {
+        if (msg.type === 'sidecarProbe') {
+          io.emit('sidecarProbe', msg);
+        } else if (msg.type === 'loadTestStateChange') {
+          io.emit('loadTestStateChange', msg);
+        }
       });
 
       sidecarProcess.on('exit', (code, signal) => {
@@ -147,7 +154,7 @@ async function main(): Promise<void> {
         console.error(`[PerfSimNode] Sidecar error: ${err.message}`);
       });
 
-      console.log(`[PerfSimNode] Sidecar probe server started on port ${sidecarPort} (PID: ${sidecarProcess.pid})`);
+      console.log(`[PerfSimNode] Sidecar probe process started (PID: ${sidecarProcess.pid})`);
     };
 
     let isShuttingDown = false;
@@ -198,7 +205,7 @@ async function main(): Promise<void> {
     // Log probe stats every 60 seconds
     setInterval(() => {
       const curlStats = websiteHostname ? `, Curl: ${curlSuccessCount}/${curlErrorCount}` : '';
-      console.log(`[PerfSimNode] Sidecar port: ${sidecarPort}${curlStats}`);
+      console.log(`[PerfSimNode] Sidecar running${curlStats}`);
     }, 60000);
   });
 }

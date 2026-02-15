@@ -1,5 +1,5 @@
 /**
- * Sidecar Probe Server
+ * Sidecar Probe Process
  *
  * A lightweight, independent process that monitors the main PerfSimNode app's
  * responsiveness. Because it runs on its own event loop, it can accurately
@@ -7,18 +7,18 @@
  *
  * Communication:
  * - Probes the main app via HTTP GET /api/metrics/probe
- * - Serves its own Socket.IO endpoint for the dashboard to connect to
- * - Broadcasts probe results in real-time to connected clients
+ * - Sends results to the parent process via IPC (process.send)
+ * - Parent relays results to the dashboard via the main Socket.IO server
+ *
+ * This design works on Azure App Service where only one port is exposed.
  *
  * @module sidecar/probe-sidecar
  */
 
 import http from 'http';
-import { Server as SocketServer } from 'socket.io';
 
 // Configuration from environment (set by parent process)
 const MAIN_APP_PORT = parseInt(process.env.MAIN_APP_PORT || '3000', 10);
-const SIDECAR_PORT = parseInt(process.env.SIDECAR_PORT || '3001', 10);
 const PROBE_INTERVAL_MS = parseInt(process.env.PROBE_INTERVAL_MS || '100', 10);
 const PROBE_TIMEOUT_MS = parseInt(process.env.PROBE_TIMEOUT_MS || '10000', 10);
 
@@ -32,65 +32,22 @@ let probeErrors = 0;
 let lastProbeLatency = 0;
 
 /**
- * Creates and starts the sidecar HTTP server with Socket.IO.
+ * Send a message to the parent process via IPC.
  */
-function startSidecar(): void {
-  const server = http.createServer((_req, res) => {
-    // Simple health endpoint
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'ok',
-      role: 'sidecar-probe',
-      mainAppPort: MAIN_APP_PORT,
-      probeCount,
-      probeErrors,
-      lastProbeLatency,
-      loadTestActive,
-    }));
-  });
-
-  const io = new SocketServer(server, {
-    cors: {
-      origin: '*',
-      methods: ['GET', 'POST'],
-    },
-    transports: ['websocket'],
-    pingTimeout: 60000,
-    pingInterval: 25000,
-  });
-
-  io.on('connection', (socket) => {
-    console.log(`[Sidecar] Dashboard connected: ${socket.id}`);
-
-    // Send current state immediately on connect
-    socket.emit('sidecarStatus', {
-      connected: true,
-      mainAppPort: MAIN_APP_PORT,
-      probeIntervalMs: PROBE_INTERVAL_MS,
-      loadTestActive,
-      loadTestConcurrent,
-    });
-
-    socket.on('disconnect', (reason) => {
-      console.log(`[Sidecar] Dashboard disconnected: ${socket.id} (${reason})`);
-    });
-  });
-
-  // Start the probe loop
-  startProbeLoop(io);
-
-  server.listen(SIDECAR_PORT, () => {
-    console.log(`[Sidecar] Probe server running on http://localhost:${SIDECAR_PORT}`);
-    console.log(`[Sidecar] Monitoring main app on port ${MAIN_APP_PORT}`);
-    console.log(`[Sidecar] Probe interval: ${PROBE_INTERVAL_MS}ms, timeout: ${PROBE_TIMEOUT_MS}ms`);
-  });
+function sendToParent(type: string, data: Record<string, unknown>): void {
+  if (process.send) {
+    process.send({ type, ...data });
+  }
 }
 
 /**
- * Probes the main app and broadcasts the result via Socket.IO.
+ * Starts the probe loop. Sends results to parent via IPC.
  * Uses a self-scheduling setTimeout pattern for consistent intervals.
  */
-function startProbeLoop(io: SocketServer): void {
+function startProbeLoop(): void {
+  console.log(`[Sidecar] Monitoring main app on port ${MAIN_APP_PORT}`);
+  console.log(`[Sidecar] Probe interval: ${PROBE_INTERVAL_MS}ms, timeout: ${PROBE_TIMEOUT_MS}ms`);
+
   const scheduleProbe = () => {
     setTimeout(() => {
       const startTime = Date.now();
@@ -110,7 +67,7 @@ function startProbeLoop(io: SocketServer): void {
           const latencyMs = Date.now() - startTime;
           lastProbeLatency = latencyMs;
 
-          // Try to detect load test activity from probe response headers or body
+          // Try to detect load test activity from probe response
           try {
             const data = JSON.parse(body);
             if (data.loadTest) {
@@ -118,19 +75,19 @@ function startProbeLoop(io: SocketServer): void {
               loadTestActive = data.loadTest.active;
               loadTestConcurrent = data.loadTest.concurrent || 0;
 
-              // Notify on state change
+              // Notify parent on state change
               if (!wasActive && loadTestActive) {
-                io.emit('loadTestStateChange', { active: true, concurrent: loadTestConcurrent });
+                sendToParent('loadTestStateChange', { active: true, concurrent: loadTestConcurrent });
               } else if (wasActive && !loadTestActive) {
-                io.emit('loadTestStateChange', { active: false, concurrent: 0 });
+                sendToParent('loadTestStateChange', { active: false, concurrent: 0 });
               }
             }
           } catch {
             // Probe response may not be JSON, that's fine
           }
 
-          // Broadcast probe result
-          io.emit('sidecarProbe', {
+          // Send probe result to parent
+          sendToParent('sidecarProbe', {
             latencyMs,
             timestamp,
             success: true,
@@ -147,8 +104,7 @@ function startProbeLoop(io: SocketServer): void {
         const latencyMs = Date.now() - startTime;
         lastProbeLatency = latencyMs;
 
-        // Emit failure probe - this is valuable data (shows the app is unresponsive)
-        io.emit('sidecarProbe', {
+        sendToParent('sidecarProbe', {
           latencyMs,
           timestamp,
           success: false,
@@ -166,7 +122,7 @@ function startProbeLoop(io: SocketServer): void {
         const latencyMs = Date.now() - startTime;
         lastProbeLatency = latencyMs;
 
-        io.emit('sidecarProbe', {
+        sendToParent('sidecarProbe', {
           latencyMs,
           timestamp,
           success: false,
@@ -181,7 +137,12 @@ function startProbeLoop(io: SocketServer): void {
   };
 
   scheduleProbe();
+
+  // Log probe stats every 60 seconds
+  setInterval(() => {
+    console.log(`[Sidecar] Probes: ${probeCount} ok, ${probeErrors} errors, last: ${lastProbeLatency}ms`);
+  }, 60000);
 }
 
-// Start the sidecar
-startSidecar();
+// Start the probe loop
+startProbeLoop();

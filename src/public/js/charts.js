@@ -559,8 +559,7 @@ const chartConfig = {
   elements: {
     point: {
       radius: 0,
-      hoverRadius: 5,
-      hoverBorderWidth: 2,
+      hoverRadius: 0,
     },
     line: {
       tension: 0.3,
