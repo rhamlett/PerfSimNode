@@ -582,11 +582,6 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
   slowRequestRunning = true;
   slowRequestAbortController = new AbortController();
   
-  // Reduce probe frequency to avoid noise in V8 Profiler diagnostics
-  if (typeof setProbeMode === 'function') {
-    setProbeMode('reduced');
-  }
-  
   const patternDesc = getPatternDescription(blockingPattern);
   
   // Log simulation start
@@ -699,11 +694,6 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
   slowRequestRunning = false;
   slowRequestAbortController = null;
   
-  // Restore normal probe frequency
-  if (typeof setProbeMode === 'function') {
-    setProbeMode('normal');
-  }
-  
   if (statusEl && !statusEl.textContent.includes('Stopped')) {
     const avgLatency = completedRequests > 0 ? (totalLatency / completedRequests / 1000).toFixed(1) : 0;
     statusEl.textContent = '';
@@ -748,11 +738,6 @@ function stopSlowRequests() {
     if (statusEl) {
       statusEl.textContent = 'Stopped by user';
       statusEl.className = 'slow-status';
-    }
-    
-    // Restore normal probe frequency
-    if (typeof setProbeMode === 'function') {
-      setProbeMode('normal');
     }
   }
 }

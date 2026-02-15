@@ -219,15 +219,6 @@ function getLatencyBorderColor(maxValue) {
 }
 
 // Server responsiveness tracking
-// Probe interval is dynamic: 100ms normally, 5000ms during slow request simulations
-// to avoid noise in Node.js profiling tools (V8 CPU Profiler, Application Insights, perf traces).
-const PROBE_INTERVAL_NORMAL_MS = 100;   // 100ms between probes (normal mode)
-const PROBE_INTERVAL_REDUCED_MS = 5000; // 5 seconds during slow request testing
-const PROBE_TIMEOUT_MS = 500;           // 500ms timeout per probe
-
-let currentProbeIntervalMs = PROBE_INTERVAL_NORMAL_MS;
-let probeMode = 'normal'; // 'normal' or 'reduced'
-
 const serverResponsiveness = {
   isResponsive: true,
   lastProbeTime: Date.now(),
@@ -239,31 +230,6 @@ const serverResponsiveness = {
   probeHistory: [],      // Last 20 probe results for visualization
   maxProbeHistory: 20,
 };
-
-/**
- * Sets the probe mode. With the sidecar architecture, probing runs independently.
- * This function is kept for backward compatibility but only updates the UI message.
- * @param {'normal'|'reduced'} mode - The probe mode
- */
-function setProbeMode(mode) {
-  if (mode === probeMode) return;
-  
-  probeMode = mode;
-  currentProbeIntervalMs = mode === 'reduced' ? PROBE_INTERVAL_REDUCED_MS : PROBE_INTERVAL_NORMAL_MS;
-  
-  // Update UI message
-  const messageEl = document.getElementById('probe-reduced-message');
-  if (messageEl) {
-    if (mode === 'reduced') {
-      messageEl.style.display = 'block';
-      messageEl.textContent = 'Latency probes reduced during Slow Request testing to ensure clean V8 Profile diagnostics.';
-    } else {
-      messageEl.style.display = 'none';
-    }
-  }
-  
-  console.log(`[Probe] Mode changed to '${mode}' (sidecar handles probing independently)`);
-}
 
 // Converts a UTC epoch timestamp to a formatted time string (HH:MM:SS)
 function timestampToUtcTimeString(ts) {

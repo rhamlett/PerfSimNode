@@ -42,93 +42,87 @@ function sendToParent(type: string, data: Record<string, unknown>): void {
 
 /**
  * Starts the probe loop. Sends results to parent via IPC.
- * Uses a self-scheduling setTimeout pattern for consistent intervals.
+ * Uses setInterval to fire probes at a fixed rate regardless of whether
+ * previous probes have completed. During event loop blocking, probes
+ * queue up on the main app's side — when the block ends, they all
+ * complete with their actual wait times, producing a ramp-down pattern
+ * in the chart that shows the full duration of the block.
  */
 function startProbeLoop(): void {
   console.log(`[Sidecar] Monitoring main app on port ${MAIN_APP_PORT}`);
   console.log(`[Sidecar] Probe interval: ${PROBE_INTERVAL_MS}ms, timeout: ${PROBE_TIMEOUT_MS}ms`);
 
-  const scheduleProbe = () => {
-    setTimeout(() => {
-      const startTime = Date.now();
-      const timestamp = Date.now();
+  setInterval(() => {
+    const startTime = Date.now();
+    const timestamp = Date.now();
 
-      const req = http.get({
-        hostname: 'localhost',
-        port: MAIN_APP_PORT,
-        path: '/api/metrics/probe',
-        headers: { 'X-Sidecar-Probe': 'true' },
-        timeout: PROBE_TIMEOUT_MS,
-      }, (res) => {
-        let body = '';
-        res.on('data', (chunk) => { body += chunk; });
-        res.on('end', () => {
-          probeCount++;
-          const latencyMs = Date.now() - startTime;
-          lastProbeLatency = latencyMs;
+    const req = http.get({
+      hostname: 'localhost',
+      port: MAIN_APP_PORT,
+      path: '/api/metrics/probe',
+      headers: { 'X-Sidecar-Probe': 'true' },
+      timeout: PROBE_TIMEOUT_MS,
+    }, (res) => {
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        probeCount++;
+        const latencyMs = Date.now() - startTime;
+        lastProbeLatency = latencyMs;
 
-          // Try to detect load test activity from probe response
-          try {
-            const data = JSON.parse(body);
-            if (data.loadTest) {
-              loadTestActive = data.loadTest.active;
-              loadTestConcurrent = data.loadTest.concurrent || 0;
-            }
-          } catch {
-            // Probe response may not be JSON, that's fine
+        // Try to detect load test activity from probe response
+        try {
+          const data = JSON.parse(body);
+          if (data.loadTest) {
+            loadTestActive = data.loadTest.active;
+            loadTestConcurrent = data.loadTest.concurrent || 0;
           }
+        } catch {
+          // Probe response may not be JSON, that's fine
+        }
 
-          // Send probe result to parent
-          sendToParent('sidecarProbe', {
-            latencyMs,
-            timestamp,
-            success: true,
-            loadTestActive,
-            loadTestConcurrent,
-          });
-
-          scheduleProbe();
-        });
-      });
-
-      req.on('error', (err) => {
-        probeErrors++;
-        const latencyMs = Date.now() - startTime;
-        lastProbeLatency = latencyMs;
-
+        // Send probe result to parent
         sendToParent('sidecarProbe', {
           latencyMs,
           timestamp,
-          success: false,
-          error: err.message,
+          success: true,
           loadTestActive,
           loadTestConcurrent,
         });
-
-        scheduleProbe();
       });
+    });
 
-      req.on('timeout', () => {
-        req.destroy();
-        probeErrors++;
-        const latencyMs = Date.now() - startTime;
-        lastProbeLatency = latencyMs;
+    req.on('error', (err) => {
+      probeErrors++;
+      const latencyMs = Date.now() - startTime;
+      lastProbeLatency = latencyMs;
 
-        sendToParent('sidecarProbe', {
-          latencyMs,
-          timestamp,
-          success: false,
-          error: 'timeout',
-          loadTestActive,
-          loadTestConcurrent,
-        });
-
-        scheduleProbe();
+      sendToParent('sidecarProbe', {
+        latencyMs,
+        timestamp,
+        success: false,
+        error: err.message,
+        loadTestActive,
+        loadTestConcurrent,
       });
-    }, PROBE_INTERVAL_MS);
-  };
+    });
 
-  scheduleProbe();
+    req.on('timeout', () => {
+      req.destroy();
+      probeErrors++;
+      const latencyMs = Date.now() - startTime;
+      lastProbeLatency = latencyMs;
+
+      sendToParent('sidecarProbe', {
+        latencyMs,
+        timestamp,
+        success: false,
+        error: 'timeout',
+        loadTestActive,
+        loadTestConcurrent,
+      });
+    });
+  }, PROBE_INTERVAL_MS);
 
   // Log probe stats every 60 seconds
   setInterval(() => {

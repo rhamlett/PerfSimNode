@@ -735,18 +735,6 @@ section h2, section h3 {
   max-height: 150px;
 }
 
-.probe-reduced-message {
-  background: linear-gradient(90deg, #fff3cd, #ffe69c);
-  color: #664d03;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  border-left: 4px solid #ffb900;
-  text-align: center;
-}
-
 /* --------------------------------------------------------------------------
    Server Responsiveness & Probe Visualization
    -------------------------------------------------------------------------- */
