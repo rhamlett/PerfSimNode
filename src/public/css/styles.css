@@ -98,6 +98,57 @@ header nav {
   margin-left: auto;
 }
 
+/* --------------------------------------------------------------------------
+   Load Test Stress Banner
+   -------------------------------------------------------------------------- */
+.load-test-banner {
+  display: none;
+  position: fixed;
+  top: 56px; /* Below the header */
+  left: 0;
+  right: 0;
+  z-index: 99;
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border-bottom: 2px solid #e2a90a;
+  color: #856404;
+  padding: 0.5rem 1.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  animation: bannerSlideIn 0.3s ease-out;
+}
+
+@keyframes bannerSlideIn {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.load-test-banner .banner-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.load-test-banner .banner-text {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.load-test-banner .banner-stats {
+  flex-shrink: 0;
+  background: rgba(133, 100, 4, 0.12);
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* When banner is visible, push body content down */
+body.load-test-active {
+  padding-top: 92px; /* 56px header + ~36px banner */
+}
+
 .nav-link {
   color: white;
   text-decoration: none;
