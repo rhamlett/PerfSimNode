@@ -241,8 +241,8 @@ const serverResponsiveness = {
 };
 
 /**
- * Sets the probe mode. Use 'reduced' during slow request simulations to avoid
- * noise in Node.js profiling diagnostics (V8 Profiler, Application Insights).
+ * Sets the probe mode. With the sidecar architecture, probing runs independently.
+ * This function is kept for backward compatibility but only updates the UI message.
  * @param {'normal'|'reduced'} mode - The probe mode
  */
 function setProbeMode(mode) {
@@ -262,70 +262,107 @@ function setProbeMode(mode) {
     }
   }
   
-  // Tell server to change probe interval via Socket.IO
-  if (typeof socket !== 'undefined' && socket && socket.connected) {
-    socket.emit('setProbeMode', mode);
-    console.log(`[Probe] Mode changed to '${mode}' - server notified (interval: ${mode === 'reduced' ? '2500ms' : '250ms'})`);
-  } else {
-    console.log(`[Probe] Mode changed to '${mode}' but socket not connected`);
-  }
+  console.log(`[Probe] Mode changed to '${mode}' (sidecar handles probing independently)`);
+}
+
+// Null-fill interpolation: inserts null data points at regular intervals
+// to keep the latency chart x-axis aligned with wall-clock time even when
+// the main app's event loop is blocked and no probe data arrives.
+let nullFillInterval = null;
+const NULL_FILL_INTERVAL_MS = 500; // Check every 500ms
+const NULL_FILL_THRESHOLD_MS = 300; // Insert null if no data for 300ms
+
+/**
+ * Starts the null-fill interpolation timer.
+ * Inserts null data points into the latency chart when no probe data
+ * arrives, keeping the x-axis synchronized with real time.
+ */
+function startNullFillTimer() {
+  if (nullFillInterval) clearInterval(nullFillInterval);
+  
+  nullFillInterval = setInterval(() => {
+    const timeSinceLastUpdate = Date.now() - lastLatencyChartUpdate;
+    
+    // If no latency data received recently, insert a null point
+    if (timeSinceLastUpdate > NULL_FILL_THRESHOLD_MS) {
+      addLatencyToChart(null);
+      // Don't update lastLatencyChartUpdate - let real data reset it
+    }
+  }, NULL_FILL_INTERVAL_MS);
 }
 
 /**
- * Handles incoming probe latency data from the server.
- * The server probes itself every 100ms and broadcasts the measured latency.
- * This replaces client-side fetch probing for consistency with AppLens traffic.
- * @param {Object} data - Probe data { latencyMs, timestamp }
+ * Handles incoming probe latency data from the sidecar process.
+ * The sidecar runs on its own event loop and probes the main app every 100ms,
+ * providing accurate latency measurement even under heavy load.
+ * @param {Object} data - Probe data { latencyMs, timestamp, success, loadTestActive, loadTestConcurrent }
  */
 function onProbeLatency(data) {
   const latency = data.latencyMs;
-  const probeTime = data.timestamp;
   
-  // Record probe result
-  recordProbeResult(latency, true);
+  // Record probe result (sidecar provides success/failure directly)
+  recordProbeResult(latency, data.success !== false);
   
-  // Update latency stats with actual probe latency
-  latencyStats.current = latency;
-  addLatencyEntry(latency);
-  if (latency > 30000) {
-    latencyStats.critical++;
-  }
-  
-  // Update latency chart data (throttled for display)
-  const now = Date.now();
-  if (now - lastLatencyChartUpdate >= LATENCY_CHART_UPDATE_INTERVAL_MS) {
-    addLatencyToChart(latency);
-    lastLatencyChartUpdate = now;
-  }
-  
-  // Mark server as responsive
-  if (!serverResponsiveness.isResponsive) {
-    // Calculate how long it was unresponsive
-    const unresponsiveDuration = Date.now() - serverResponsiveness.unresponsiveStartTime;
-    serverResponsiveness.totalUnresponsiveTime += unresponsiveDuration;
+  if (data.success !== false) {
+    // Successful probe - update latency stats
+    latencyStats.current = latency;
+    addLatencyEntry(latency);
+    if (latency > 30000) {
+      latencyStats.critical++;
+    }
     
-    // Log recovery (only if unresponsive for >= 1s to reduce spam)
-    if (unresponsiveDuration >= 1000 && typeof addEventToLog === 'function') {
-      addEventToLog({
-        level: 'success',
-        message: `Server responsive again after ${(unresponsiveDuration / 1000).toFixed(1)}s unresponsive`
-      });
+    // Update latency chart data (throttled for display)
+    const now = Date.now();
+    if (now - lastLatencyChartUpdate >= LATENCY_CHART_UPDATE_INTERVAL_MS) {
+      addLatencyToChart(latency);
+      lastLatencyChartUpdate = now;
+    }
+    
+    // Mark server as responsive
+    if (!serverResponsiveness.isResponsive) {
+      const unresponsiveDuration = Date.now() - serverResponsiveness.unresponsiveStartTime;
+      serverResponsiveness.totalUnresponsiveTime += unresponsiveDuration;
+      
+      if (unresponsiveDuration >= 1000 && typeof addEventToLog === 'function') {
+        addEventToLog({
+          level: 'success',
+          message: `Server responsive again after ${(unresponsiveDuration / 1000).toFixed(1)}s unresponsive`
+        });
+      }
+    }
+    
+    serverResponsiveness.isResponsive = true;
+    serverResponsiveness.lastSuccessfulProbe = Date.now();
+    serverResponsiveness.consecutiveFailures = 0;
+    serverResponsiveness.unresponsiveStartTime = null;
+  } else {
+    // Failed probe from sidecar - the main app didn't respond
+    serverResponsiveness.consecutiveFailures++;
+    
+    if (serverResponsiveness.consecutiveFailures >= 2 && serverResponsiveness.isResponsive) {
+      serverResponsiveness.isResponsive = false;
+      serverResponsiveness.unresponsiveStartTime = Date.now();
+      
+      const now = Date.now();
+      if (typeof addEventToLog === 'function' && (!serverResponsiveness.lastWarningTime || now - serverResponsiveness.lastWarningTime >= 1000)) {
+        serverResponsiveness.lastWarningTime = now;
+        addEventToLog({
+          level: 'warning',
+          message: '⚠️ Server unresponsive - event loop may be blocked'
+        });
+      }
     }
   }
   
-  serverResponsiveness.isResponsive = true;
-  serverResponsiveness.lastSuccessfulProbe = Date.now();
-  serverResponsiveness.consecutiveFailures = 0;
-  serverResponsiveness.unresponsiveStartTime = null;
   serverResponsiveness.lastProbeTime = Date.now();
-  
   updateResponsivenessUI();
   updateLatencyDisplay();
 }
 
 /**
  * Starts the server responsiveness monitoring.
- * Checks if we're receiving probe updates from the server.
+ * With the sidecar, unresponsive detection is handled by sidecar probe data.
+ * This also starts the null-fill timer for chart x-axis interpolation.
  */
 function startHeartbeatProbe() {
   // Clear any existing interval
@@ -333,34 +370,18 @@ function startHeartbeatProbe() {
     clearInterval(serverResponsiveness.probeInterval);
   }
   
-  // Monitor for missing probe updates (server may be down/unresponsive)
+  // Start null-fill interpolation for the latency chart
+  startNullFillTimer();
+  
+  // Fallback: if no sidecar data arrives at all, detect via missing probes
   serverResponsiveness.probeInterval = setInterval(() => {
     const timeSinceLastProbe = Date.now() - serverResponsiveness.lastProbeTime;
     
-    // If no probe received in 1000ms, server may be unresponsive
-    if (timeSinceLastProbe > 1000) {
-      serverResponsiveness.consecutiveFailures++;
-      recordProbeResult(timeSinceLastProbe, false);
-      
-      // After 2 consecutive misses, mark as unresponsive
-      if (serverResponsiveness.consecutiveFailures >= 2 && serverResponsiveness.isResponsive) {
-        serverResponsiveness.isResponsive = false;
-        serverResponsiveness.unresponsiveStartTime = Date.now();
-        
-        // Only log warning if at least 1s since last warning to reduce spam
-        const now = Date.now();
-        if (typeof addEventToLog === 'function' && (!serverResponsiveness.lastWarningTime || now - serverResponsiveness.lastWarningTime >= 1000)) {
-          serverResponsiveness.lastWarningTime = now;
-          addEventToLog({
-            level: 'warning',
-            message: '⚠️ Server unresponsive - event loop may be blocked'
-          });
-        }
-      }
-      
+    // If no probe received from sidecar in 2s, something is wrong
+    if (timeSinceLastProbe > 2000) {
       updateResponsivenessUI();
     }
-  }, 500); // Check 2x per second
+  }, 1000);
 }
 
 /**
@@ -407,7 +428,8 @@ function updateProbeVisualization() {
 /**
  * Adds a latency value to the latency chart.
  * The latency chart has its own data store for a 60-second window.
- * @param {number} latencyMs - The latency in milliseconds
+ * Null values create visible gaps in the chart line (no data received).
+ * @param {number|null} latencyMs - The latency in milliseconds, or null for gaps
  */
 function addLatencyToChart(latencyMs) {
   const now = getUtcTimeString();
@@ -673,12 +695,15 @@ function initCharts() {
           {
             label: 'Latency (ms)',
             data: latencyChartData.values,
+            // Don't connect data points across null gaps (unresponsive periods)
+            spanGaps: false,
             // Segment-based border color - smooth gradient based on data value
             segment: {
               borderColor: (ctx) => {
-                // Use the higher of the two endpoint values for smooth color blending
-                const p0 = ctx.p0.parsed.y;
-                const p1 = ctx.p1.parsed.y;
+                // Handle null (gap) data points
+                const p0 = ctx.p0.parsed?.y;
+                const p1 = ctx.p1.parsed?.y;
+                if (p0 == null || p1 == null) return 'rgba(0,0,0,0)';
                 const value = Math.max(p0, p1);
                 return getInterpolatedLatencyColor(value);
               },

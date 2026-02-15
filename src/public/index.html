@@ -63,6 +63,18 @@
     </div>
   </aside>
 
+  <!-- Load Test Stress Banner (hidden by default, shown by sidecar detection) -->
+  <div id="stress-banner" class="stress-banner" style="display: none;">
+    <div class="stress-banner-content">
+      <span class="stress-icon">🔥</span>
+      <span class="stress-text">
+        <strong>Load Test Active</strong> — <span class="stress-concurrent">0</span> concurrent requests.
+        Latency chart gaps indicate periods when the event loop was blocked and no probe responses were received.
+        Data is provided by an independent sidecar process for accuracy under load.
+      </span>
+    </div>
+  </div>
+
   <div class="app-container">
     <main>
       <!-- Compact Metric Tiles -->

@@ -17,6 +17,46 @@ const maxEventLogEntries = 100;
 // Track if initial load has happened
 let initialLoadComplete = false;
 
+// Load test state tracking
+let isLoadTestActive = false;
+
+/**
+ * Called when the sidecar detects a load test state change.
+ * Shows/hides the stress banner and logs the event.
+ * @param {Object} data - { active: boolean, concurrent: number }
+ */
+function onLoadTestStateChange(data) {
+  const wasActive = isLoadTestActive;
+  isLoadTestActive = data.active;
+
+  const banner = document.getElementById('stress-banner');
+  if (!banner) return;
+
+  if (data.active) {
+    banner.style.display = 'flex';
+    const concurrentEl = banner.querySelector('.stress-concurrent');
+    if (concurrentEl) {
+      concurrentEl.textContent = data.concurrent || '?';
+    }
+
+    if (!wasActive && typeof addEventToLog === 'function') {
+      addEventToLog({
+        level: 'warning',
+        message: `🔥 Load test detected (${data.concurrent} concurrent requests). Latency chart may show gaps during periods of high event loop blocking.`
+      });
+    }
+  } else {
+    banner.style.display = 'none';
+
+    if (wasActive && typeof addEventToLog === 'function') {
+      addEventToLog({
+        level: 'success',
+        message: 'Load test completed. Latency metrics returning to normal.'
+      });
+    }
+  }
+}
+
 /**
  * Called when Socket.IO connection is established.
  */

@@ -10,7 +10,8 @@
 import './instrumentation';
 
 import http from 'http';
-import { exec } from 'child_process';
+import { exec, fork, ChildProcess } from 'child_process';
+import path from 'path';
 import { cpus } from 'os';
 import { Server as SocketServer } from 'socket.io';
 import { createApp } from './app';
@@ -63,17 +64,7 @@ async function main(): Promise<void> {
     socket.on('disconnect', (reason) => {
       console.log(`[Socket.IO] Client disconnected: ${socket.id} (${reason})`);
     });
-
-    // Handle probe mode changes from clients
-    socket.on('setProbeMode', (mode: 'normal' | 'reduced') => {
-      probeMode = mode;
-      console.log(`[PerfSimNode] Probe mode set to: ${mode} (interval: ${mode === 'reduced' ? '2500ms' : '250ms'})`);
-    });
   });
-
-  // Dynamic probe interval: 100ms normal, 2500ms during slow request testing
-  let probeMode: 'normal' | 'reduced' = 'normal';
-  const getProbeInterval = () => probeMode === 'reduced' ? 2500 : 100;
 
   // Broadcast metrics at configured interval
   setInterval(() => {
@@ -95,6 +86,7 @@ async function main(): Promise<void> {
   // Start server
   server.listen(port, () => {
     const cpuInfo = cpus();
+    const sidecarPort = port + 1;
     // Use process.stdout.write for Azure Log Stream compatibility
     process.stdout.write(`[PerfSimNode] Server running on http://localhost:${port}\n`);
     process.stdout.write(`[PerfSimNode] CPU cores reported: ${cpuInfo.length} (${cpuInfo[0]?.model || 'unknown'})\n`);
@@ -103,47 +95,88 @@ async function main(): Promise<void> {
       details: { port, metricsIntervalMs: config.metricsIntervalMs },
     });
 
-    // Server-side health probes for latency monitoring
-    // Hybrid approach: native http for low-overhead dashboard updates, curl for AppLens visibility
+    // -------------------------------------------------------------------
+    // Sidecar Probe Process
+    // Runs on its own event loop for accurate latency monitoring under load
+    // -------------------------------------------------------------------
+    const sidecarScript = path.join(__dirname, 'sidecar', 'probe-sidecar.js');
+    // For ts-node-dev, use the .ts source directly
+    const sidecarSource = path.join(__dirname, 'sidecar', 'probe-sidecar.ts');
+    const fs = require('fs');
+    const scriptToRun = fs.existsSync(sidecarScript) ? sidecarScript : sidecarSource;
+
+    let sidecarProcess: ChildProcess | null = null;
+
+    const startSidecar = () => {
+      const execArgv = scriptToRun.endsWith('.ts')
+        ? ['--require', 'ts-node/register']
+        : [];
+
+      sidecarProcess = fork(scriptToRun, [], {
+        env: {
+          ...process.env,
+          MAIN_APP_PORT: String(port),
+          SIDECAR_PORT: String(sidecarPort),
+          PROBE_INTERVAL_MS: '100',
+          PROBE_TIMEOUT_MS: '10000',
+        },
+        execArgv,
+        stdio: 'pipe',
+      });
+
+      // Forward sidecar stdout/stderr with prefix
+      sidecarProcess.stdout?.on('data', (data: Buffer) => {
+        process.stdout.write(data.toString());
+      });
+      sidecarProcess.stderr?.on('data', (data: Buffer) => {
+        process.stderr.write(data.toString());
+      });
+
+      sidecarProcess.on('exit', (code, signal) => {
+        console.log(`[PerfSimNode] Sidecar exited (code: ${code}, signal: ${signal})`);
+        // Restart sidecar after a brief delay unless main process is shutting down
+        if (!isShuttingDown) {
+          setTimeout(() => {
+            console.log('[PerfSimNode] Restarting sidecar...');
+            startSidecar();
+          }, 2000);
+        }
+      });
+
+      sidecarProcess.on('error', (err) => {
+        console.error(`[PerfSimNode] Sidecar error: ${err.message}`);
+      });
+
+      console.log(`[PerfSimNode] Sidecar probe server started on port ${sidecarPort} (PID: ${sidecarProcess.pid})`);
+    };
+
+    let isShuttingDown = false;
+
+    // Graceful shutdown - kill sidecar when main process exits
+    const shutdownSidecar = () => {
+      isShuttingDown = true;
+      if (sidecarProcess && !sidecarProcess.killed) {
+        sidecarProcess.kill('SIGTERM');
+      }
+    };
+    process.on('SIGTERM', shutdownSidecar);
+    process.on('SIGINT', shutdownSidecar);
+    process.on('exit', shutdownSidecar);
+
+    startSidecar();
+
+    // -------------------------------------------------------------------
+    // Curl probe for AppLens visibility (Azure only)
+    // -------------------------------------------------------------------
     const websiteHostname = process.env.WEBSITE_HOSTNAME;
-    
     console.log(`[PerfSimNode] WEBSITE_HOSTNAME: ${websiteHostname || 'not set'}`);
-    
-    let probeSuccessCount = 0;
-    let probeErrorCount = 0;
+
     let curlSuccessCount = 0;
     let curlErrorCount = 0;
-    
-    // Native HTTP probe with dynamic interval - uses setTimeout for interval flexibility
-    const scheduleProbe = () => {
-      setTimeout(() => {
-        const startTime = Date.now();
-        const req = http.get({
-          hostname: 'localhost',
-          port: port,
-          path: '/api/metrics/probe',
-          headers: { 'X-Internal-Probe': 'true' }
-        }, (res) => {
-          res.on('data', () => {});
-          res.on('end', () => {
-            probeSuccessCount++;
-            const latencyMs = Date.now() - startTime;
-            io.emit('probeLatency', { latencyMs, timestamp: Date.now() });
-          });
-        });
-        req.on('error', () => { probeErrorCount++; });
-        req.on('timeout', () => req.destroy());
-        
-        // Schedule next probe with current interval
-        scheduleProbe();
-      }, getProbeInterval());
-    };
-    scheduleProbe();
-    
-    // Curl probe every 1s - for AppLens visibility (only on Azure)
+
     if (websiteHostname) {
       const curlUrl = `https://${websiteHostname}/api/metrics/probe`;
-      console.log(`[PerfSimNode] Using hybrid probing: native http (250ms/2500ms dynamic), curl every 1s`);
+      console.log(`[PerfSimNode] Sidecar probing main app, curl every 1s for AppLens`);
       console.log(`[PerfSimNode] Curl URL for AppLens: ${curlUrl}`);
       
       setInterval(() => {
@@ -159,13 +192,13 @@ async function main(): Promise<void> {
         });
       }, 1000);
     } else {
-      console.log(`[PerfSimNode] Local mode: native http probes only (250ms/2500ms dynamic)`);
+      console.log(`[PerfSimNode] Local mode: sidecar probes only`);
     }
     
     // Log probe stats every 60 seconds
     setInterval(() => {
       const curlStats = websiteHostname ? `, Curl: ${curlSuccessCount}/${curlErrorCount}` : '';
-      console.log(`[PerfSimNode] Probe stats - Native: ${probeSuccessCount}/${probeErrorCount}${curlStats}`);
+      console.log(`[PerfSimNode] Sidecar port: ${sidecarPort}${curlStats}`);
     }, 60000);
   });
 }

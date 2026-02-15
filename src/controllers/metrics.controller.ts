@@ -8,6 +8,7 @@
 
 import { Router, Request, Response } from 'express';
 import { MetricsService } from '../services/metrics.service';
+import { LoadTestService } from '../services/load-test.service';
 
 /**
  * Express router for metrics endpoints.
@@ -42,5 +43,12 @@ metricsRouter.get('/', (_req: Request, res: Response) => {
  * @returns {Object} Server timestamp for latency calculation
  */
 metricsRouter.get('/probe', (_req: Request, res: Response) => {
-  res.json({ ts: Date.now() });
+  const stats = LoadTestService.getCurrentStats();
+  res.json({
+    ts: Date.now(),
+    loadTest: {
+      active: stats.currentConcurrentRequests > 0,
+      concurrent: stats.currentConcurrentRequests,
+    },
+  });
 });
