@@ -388,16 +388,17 @@
         <div class="scenario-card">
           <div class="header eventloop">🧵 Event Loop Blocking</div>
           <div class="body">
-            <p><strong>Symptom:</strong> Event Loop Lag spikes, ALL requests queue, dashboard freezes.</p>
+            <p><strong>Symptom:</strong> Event Loop Lag spikes, ALL requests queue, latency chart shows sustained high latency in real-time.</p>
             <h4>What's Happening</h4>
             <ul>
-              <li>Synchronous crypto runs IN the main thread</li>
-              <li>All pending callbacks must wait</li>
-              <li>Request latency = blocking duration + normal processing</li>
+              <li>Synchronous crypto runs IN the main thread in repeated chunks</li>
+              <li>Between chunks, a brief yield lets queued probe data flush</li>
+              <li>Event loop is blocked ~97% of the time — effectively unresponsive</li>
+              <li>Latency chart updates in real-time showing the blocking effect</li>
               <li><strong>Key difference from CPU stress:</strong> Server is unresponsive!</li>
             </ul>
             <h4>How to Identify</h4>
-            <p><em>Check Event Loop Lag!</em> If it equals the slowdown duration, the event loop is blocked. CPU stress shows high CPU but LOW event loop lag.</p>
+            <p><em>Check Event Loop Lag!</em> If it equals the chunk duration, the event loop is blocked. CPU stress shows high CPU but LOW event loop lag.</p>
             <h4>Azure Diagnostic Tools</h4>
             <ul>
               <li>Application Insights → <strong>Performance</strong></li>
@@ -407,8 +408,9 @@
             </ul>
             <h4>What to Look For</h4>
             <ul>
-              <li>Event loop lag = blocking duration</li>
+              <li>Event loop lag = chunk duration (~200ms default)</li>
               <li>ALL requests affected simultaneously</li>
+              <li>Latency chart shows sustained elevated latency during the simulation</li>
               <li>CPU may be high OR low (depends on blocking work)</li>
               <li>V8 profile identifies the synchronous function (e.g., <code>pbkdf2Sync</code>)</li>
             </ul>

@@ -450,7 +450,7 @@ async function releaseMemory(id) {
 /**
  * Triggers event loop blocking with impact measurement.
  */
-async function blockEventLoop(durationSeconds) {
+async function blockEventLoop(durationSeconds, chunkMs) {
   const impactEl = document.getElementById('eventloop-impact');
   
   // Clear previous impact results
@@ -484,10 +484,12 @@ async function blockEventLoop(durationSeconds) {
     }
 
     // The main blocking request
+    const body = { durationSeconds };
+    if (chunkMs != null) body.chunkMs = chunkMs;
     const response = await fetch('/api/simulations/eventloop', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ durationSeconds }),
+      body: JSON.stringify(body),
     });
 
     const endTime = Date.now();
@@ -872,7 +874,11 @@ document.addEventListener('DOMContentLoaded', () => {
     eventloopForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const formData = new FormData(eventloopForm);
-      blockEventLoop(parseInt(formData.get('durationSeconds')));
+      const chunkMsValue = formData.get('chunkMs');
+      blockEventLoop(
+        parseInt(formData.get('durationSeconds')),
+        chunkMsValue ? parseInt(chunkMsValue) : undefined
+      );
     });
   }
 

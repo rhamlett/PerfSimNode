@@ -70,6 +70,10 @@ export interface MemoryPressureParams {
 export interface EventLoopBlockingParams {
   /** Duration to block in seconds (1-300) */
   durationSeconds: number;
+  /** Duration of each blocking chunk in ms (default: 200). Between chunks, a brief
+   *  yield allows queued I/O (probe responses, IPC messages, Socket.IO emits) to flush
+   *  so the latency chart updates in real-time during the block. */
+  chunkMs?: number;
 }
 
 /**

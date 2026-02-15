@@ -212,10 +212,9 @@ paths:
         - Simulations
       summary: Start event loop blocking simulation
       description: |
-        Blocks the Node.js event loop for the specified duration using synchronous operations.
-        
-        **Warning**: During this simulation, the server will be unresponsive to all requests.
-        The response is sent AFTER the blocking completes.
+        Blocks the Node.js event loop for the specified duration using repeated synchronous
+        crypto chunks. Between chunks, a brief yield allows queued I/O to flush so the
+        latency chart updates in real-time. The event loop is blocked ~97% of the time.
       operationId: startEventLoopBlocking
       requestBody:
         required: true
@@ -699,8 +698,15 @@ components:
           type: integer
           minimum: 1
           maximum: 300
-          description: Duration to block in seconds
+          description: Total duration to block in seconds
           example: 5
+        chunkMs:
+          type: integer
+          minimum: 50
+          maximum: 2000
+          default: 200
+          description: Duration of each blocking chunk in milliseconds. Between chunks, queued I/O flushes so the dashboard updates in real-time.
+          example: 200
 
     SimulationStartedResponse:
       type: object

@@ -244,19 +244,23 @@
         <!-- Event Loop Blocking -->
         <div class="control-section eventloop-section">
           <h3>🧵 Event Loop Blocking <span class="info-icon" title="Unlike CPU Stress (child processes), this runs IN the main thread. Server becomes completely unresponsive!">⚠️</span></h3>
-          <p class="control-description">Runs synchronous crypto in the main thread - blocks ALL requests, WebSocket, probes. Dashboard will freeze!</p>
+          <p class="control-description">Runs synchronous crypto in the main thread in repeated chunks. Between chunks, a brief yield lets probe data flush so you see latency spikes in real-time.</p>
           <div class="eventloop-education">
             <strong>What to observe:</strong>
             <ul>
-              <li>Probe dots turn red (failed) in the Request Latency Monitor</li>
-              <li>Dashboard metrics stop updating during block</li>
-              <li>Request latency spikes after server recovers</li>
+              <li>Latency chart shows sustained high latency during the block</li>
+              <li>Probe dots turn red/orange as each chunk blocks responses</li>
+              <li>Event loop lag spikes in the metrics chart</li>
             </ul>
           </div>
           <form id="eventloop-form">
             <label>
               Block Duration (s):
               <input type="number" name="durationSeconds" value="5" min="1" max="60">
+            </label>
+            <label>
+              Chunk (ms):
+              <input type="number" name="chunkMs" value="200" min="50" max="2000" title="Duration of each blocking chunk. Between chunks, queued I/O flushes so the dashboard updates in real-time. Larger = more severe spikes, smaller = smoother chart.">
             </label>
             <button type="submit" class="btn-trigger btn-eventloop">🧵 Block Event Loop</button>
           </form>

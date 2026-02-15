@@ -1,63 +1,75 @@
 # Event Loop Blocking Simulation
 
-Demonstrates how synchronous operations block the Node.js event loop, making the server completely unresponsive.
+Demonstrates how synchronous operations block the Node.js event loop, making the server effectively unresponsive. Uses chunked blocking so the latency chart shows the effect in real-time.
 
 ## How It Works
 
-Executes synchronous `crypto.pbkdf2Sync()` directly in the main JavaScript thread:
+Executs synchronous `crypto.pbkdf2Sync()` in repeated chunks, yielding briefly between each chunk via `setImmediate`:
 
 ```javascript
 // Simplified implementation
-const startTime = Date.now();
-while (Date.now() - startTime < durationMs) {
-  crypto.pbkdf2Sync('password', 'salt', 10000, 64, 'sha512');
-}
+const endTime = Date.now() + totalDurationMs;
+const runChunk = () => {
+  const chunkEnd = Math.min(Date.now() + chunkMs, endTime);
+  while (Date.now() < chunkEnd) {
+    crypto.pbkdf2Sync('password', 'salt', 10000, 64, 'sha512');
+  }
+  if (Date.now() < endTime) {
+    setImmediate(runChunk); // Brief yield lets queued I/O flush
+  }
+};
+runChunk();
 ```
 
-During this time, **nothing else can execute**:
+During each chunk, **nothing else can execute**:
 - No incoming requests processed
 - No responses sent
 - No timers fire
 - No I/O callbacks execute
-- No WebSocket heartbeats
+
+Between chunks, the brief `setImmediate` yield lets queued probe responses, IPC messages, and Socket.IO emits flush — so the latency chart shows elevated latency in real-time.
+
+The event loop is blocked ~97% of the time — effectively unresponsive.
 
 ## Dashboard Controls
 
-| Control | Range | Description |
-|---------|-------|-------------|
-| Duration | 1-30 seconds | How long to block (longer may disconnect WebSocket) |
+| Control | Range | Default | Description |
+|---------|-------|---------|-------------|
+| Duration | 1-60 seconds | 5 | Total blocking duration |
+| Chunk (ms) | 50-2000 | 200 | Duration of each blocking chunk. Larger = more severe spikes |
 
 ### Button Actions
 
-- **Block Event Loop** - Starts blocking immediately
+- **Block Event Loop** - Starts chunked blocking immediately
 
-> ⚠️ **Warning:** There is no "stop" button - once started, the block must complete. The dashboard will freeze.
+> ⚠️ **Warning:** There is no "stop" button - once started, the block must complete.
 
 ## Expected Effects
 
-### Metrics (After Block Completes)
+### Metrics (During Block - Visible in Real-Time)
 
 | Metric | Expected Change | Why |
 |--------|-----------------|-----|
-| Event Loop Lag | Spikes to blocking duration | Direct measurement of the block |
-| Request Latency | All queued requests complete together | Requests waited in queue |
+| Event Loop Lag | Spikes to chunk duration (~200ms) | Direct measurement of each blocking chunk |
+| Request Latency | Sustained high latency (200ms+) | Probes wait for current chunk to complete |
 | CPU | May show spike | Synchronous work consuming CPU |
 
 ### What Happens During the Block
 
 | Component | Behavior |
 |-----------|----------|
-| Dashboard charts | Freeze (no updates) |
-| WebSocket | May disconnect if >25s |
-| Health checks | Fail/timeout |
-| Other requests | Queue, all respond at once after block |
-| Probe dots | Turn red (probe failures) |
+| Dashboard charts | Update in real-time (between chunks) |
+| Latency chart | Shows sustained elevated latency |
+| WebSocket | Stays connected (brief yields keep it alive) |
+| Health checks | Slow but responsive between chunks |
+| Other requests | Severely delayed (~chunk duration per request) |
+| Probe dots | Show high latency (orange/red) |
 
 ### Recovery After Block
 
-- Event loop resumes
-- All queued requests complete simultaneously
-- Metrics broadcast resumes
+- Event loop resumes full speed
+- Latency drops back to normal
+- Metrics broadcast resumes at full rate
 - Dashboard reconnects (if disconnected)
 
 ## Why This Is Critical for Node.js
@@ -87,35 +99,17 @@ During this time, **nothing else can execute**:
 
 **Key insight:** If any callback runs too long, the loop cannot advance. Everything waits.
 
-### What Happens to Timers and Probes?
+### How Probes Work During Chunked Blocking
 
-A common question: if the event loop is blocked for 15 seconds, and probes run every 250ms, shouldn't there be 60 probe requests queued up?
+The sidecar probe process runs on its own event loop (separate Node.js process) and fires HTTP probes to the main app at a fixed interval using `setInterval`. During each blocking chunk:
 
-**No.** Here's why:
+1. **Sidecar probes keep firing** — the sidecar has its own event loop, unaffected by main app blocking
+2. **Probes queue in the main app's TCP stack** — the HTTP requests arrive but can't be processed
+3. **When the chunk ends** — the brief `setImmediate` yield lets the main app's event loop process queued probe responses
+4. **IPC relay fires** — probe results are sent via `process.send()` to the parent, which relays via Socket.IO
+5. **Dashboard updates** — the latency chart shows the actual probe latency (≈ chunk duration)
 
-The probe mechanism uses `setTimeout` to schedule the next probe only *after* the current one completes:
-
-```javascript
-const scheduleProbe = () => {
-  setTimeout(() => {
-    // Make HTTP request...
-    // When done, schedule the next probe
-    scheduleProbe();
-  }, 250);
-};
-```
-
-During an event loop block:
-
-1. **One `setTimeout` is pending** - Its 250ms timer counts down, then the callback enters the event loop queue
-2. **The callback waits** - Since the main thread is stuck in a `while` loop doing `pbkdf2Sync`, the callback cannot execute
-3. **No new probes are scheduled** - Because scheduling happens inside the callback that's waiting
-4. **Only ~3 requests appear** in your latency chart:
-   - The probe that was "in flight" when blocking started
-   - The pending probe that executes immediately after unblocking
-   - Any curl probes (run in child processes, but response handling also waits)
-
-This is fundamentally different from a model where timers "pile up" - **Node.js does not queue multiple instances of the same `setTimeout` callback**. Only one is ever pending at a time.
+This produces a sustained plateau of elevated latency visible in real-time, rather than a burst of backfilled data after the simulation ends.
 
 This behavior perfectly illustrates why blocking the event loop is so dangerous:
 - **All timers stop** - Not just delayed, but *frozen*

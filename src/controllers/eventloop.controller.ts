@@ -27,13 +27,16 @@ export const eventloopRouter = Router();
  * @body {number} durationSeconds - Duration to block in seconds (no limit)
  * @returns {SimulationCompletedResponse} Completed simulation details
  */
-eventloopRouter.post('/', (req: Request, res: Response, next: NextFunction) => {
+eventloopRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Validate input parameters
     const { durationSeconds } = validateEventLoopBlockingParams(req.body.durationSeconds);
+    const chunkMs = req.body.chunkMs != null
+      ? Math.max(50, Math.min(2000, parseInt(req.body.chunkMs, 10) || 200))
+      : undefined;
 
-    // Block the event loop (synchronous - response sent after completion)
-    const simulation = EventLoopBlockService.block({ durationSeconds });
+    // Block the event loop in chunks (async - yields briefly between chunks)
+    const simulation = await EventLoopBlockService.block({ durationSeconds, chunkMs });
 
     res.json({
       id: simulation.id,
