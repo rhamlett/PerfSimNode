@@ -265,30 +265,13 @@ function setProbeMode(mode) {
   console.log(`[Probe] Mode changed to '${mode}' (sidecar handles probing independently)`);
 }
 
-// Null-fill interpolation: inserts null data points at regular intervals
-// to keep the latency chart x-axis aligned with wall-clock time even when
-// the main app's event loop is blocked and no probe data arrives.
-let nullFillInterval = null;
-const NULL_FILL_INTERVAL_MS = 500; // Check every 500ms
-const NULL_FILL_THRESHOLD_MS = 300; // Insert null if no data for 300ms
-
-/**
- * Starts the null-fill interpolation timer.
- * Inserts null data points into the latency chart when no probe data
- * arrives, keeping the x-axis synchronized with real time.
- */
-function startNullFillTimer() {
-  if (nullFillInterval) clearInterval(nullFillInterval);
-  
-  nullFillInterval = setInterval(() => {
-    const timeSinceLastUpdate = Date.now() - lastLatencyChartUpdate;
-    
-    // If no latency data received recently, insert a null point
-    if (timeSinceLastUpdate > NULL_FILL_THRESHOLD_MS) {
-      addLatencyToChart(null);
-      // Don't update lastLatencyChartUpdate - let real data reset it
-    }
-  }, NULL_FILL_INTERVAL_MS);
+// Converts a UTC epoch timestamp to a formatted time string (HH:MM:SS)
+function timestampToUtcTimeString(ts) {
+  const d = new Date(ts);
+  const hours = d.getUTCHours().toString().padStart(2, '0');
+  const minutes = d.getUTCMinutes().toString().padStart(2, '0');
+  const seconds = d.getUTCSeconds().toString().padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
 }
 
 /**
@@ -311,12 +294,12 @@ function onProbeLatency(data) {
       latencyStats.critical++;
     }
     
-    // Update latency chart data (throttled for display)
-    const now = Date.now();
-    if (now - lastLatencyChartUpdate >= LATENCY_CHART_UPDATE_INTERVAL_MS) {
-      addLatencyToChart(latency);
-      lastLatencyChartUpdate = now;
-    }
+    // Add to chart using the sidecar's original timestamp.
+    // During event loop blocking, IPC messages queue up and arrive
+    // as a burst — using the original timestamp backfills the chart
+    // at the correct time positions instead of creating gaps.
+    addLatencyToChart(latency, data.timestamp);
+    lastLatencyChartUpdate = Date.now();
     
     // Mark server as responsive
     if (!serverResponsiveness.isResponsive) {
@@ -362,16 +345,12 @@ function onProbeLatency(data) {
 /**
  * Starts the server responsiveness monitoring.
  * With the sidecar, unresponsive detection is handled by sidecar probe data.
- * This also starts the null-fill timer for chart x-axis interpolation.
  */
 function startHeartbeatProbe() {
   // Clear any existing interval
   if (serverResponsiveness.probeInterval) {
     clearInterval(serverResponsiveness.probeInterval);
   }
-  
-  // Start null-fill interpolation for the latency chart
-  startNullFillTimer();
   
   // Fallback: if no sidecar data arrives at all, detect via missing probes
   serverResponsiveness.probeInterval = setInterval(() => {
@@ -427,14 +406,15 @@ function updateProbeVisualization() {
 
 /**
  * Adds a latency value to the latency chart.
- * The latency chart has its own data store for a 60-second window.
- * Null values create visible gaps in the chart line (no data received).
- * @param {number|null} latencyMs - The latency in milliseconds, or null for gaps
+ * Uses the sidecar's original timestamp to position data correctly,
+ * enabling accurate backfill when IPC bursts arrive after event loop blocking.
+ * @param {number} latencyMs - The latency in milliseconds
+ * @param {number} [timestamp] - The sidecar's original UTC timestamp (epoch ms)
  */
-function addLatencyToChart(latencyMs) {
-  const now = getUtcTimeString();
+function addLatencyToChart(latencyMs, timestamp) {
+  const label = timestamp ? timestampToUtcTimeString(timestamp) : getUtcTimeString();
   
-  latencyChartData.labels.push(now);
+  latencyChartData.labels.push(label);
   latencyChartData.values.push(latencyMs);
   
   // Enforce 60-second window
@@ -694,12 +674,9 @@ function initCharts() {
           {
             label: 'Latency (ms)',
             data: latencyChartData.values,
-            // Don't connect data points across null gaps (unresponsive periods)
-            spanGaps: false,
             // Segment-based border color - smooth gradient based on data value
             segment: {
               borderColor: (ctx) => {
-                // Handle null (gap) data points
                 const p0 = ctx.p0.parsed?.y;
                 const p1 = ctx.p1.parsed?.y;
                 if (p0 == null || p1 == null) return 'rgba(0,0,0,0)';

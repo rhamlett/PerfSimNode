@@ -106,13 +106,6 @@ function initSocket() {
       onProbeLatency(data);
     }
   });
-
-  // Listen for load test state changes (relayed from sidecar via IPC)
-  socket.on('loadTestStateChange', (data) => {
-    if (typeof onLoadTestStateChange === 'function') {
-      onLoadTestStateChange(data);
-    }
-  });
 }
 
 /**

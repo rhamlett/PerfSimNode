@@ -134,8 +134,6 @@ async function main(): Promise<void> {
       sidecarProcess.on('message', (msg: { type: string; [key: string]: unknown }) => {
         if (msg.type === 'sidecarProbe') {
           io.emit('sidecarProbe', msg);
-        } else if (msg.type === 'loadTestStateChange') {
-          io.emit('loadTestStateChange', msg);
         }
       });
 

@@ -423,50 +423,6 @@ header nav {
   min-height: calc(100vh - 52px);
 }
 
-/* Load Test Stress Banner */
-.stress-banner {
-  display: flex;
-  align-items: center;
-  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
-  border-bottom: 2px solid #f0ad4e;
-  padding: 0.6rem 1.2rem;
-  font-size: 0.85rem;
-  color: #856404;
-  animation: stressPulse 3s ease-in-out infinite;
-}
-
-@keyframes stressPulse {
-  0%, 100% { background: linear-gradient(135deg, #fff3cd, #ffeaa7); }
-  50% { background: linear-gradient(135deg, #ffeaa7, #ffd93d); }
-}
-
-.stress-banner-content {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  max-width: 1400px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.stress-icon {
-  font-size: 1.3rem;
-  flex-shrink: 0;
-}
-
-.stress-text {
-  line-height: 1.4;
-}
-
-.stress-text strong {
-  color: #664d03;
-}
-
-.stress-concurrent {
-  font-weight: 700;
-  color: #d63384;
-}
-
 main {
   flex: 1;
   max-width: 1400px;

@@ -71,16 +71,8 @@ function startProbeLoop(): void {
           try {
             const data = JSON.parse(body);
             if (data.loadTest) {
-              const wasActive = loadTestActive;
               loadTestActive = data.loadTest.active;
               loadTestConcurrent = data.loadTest.concurrent || 0;
-
-              // Notify parent on state change
-              if (!wasActive && loadTestActive) {
-                sendToParent('loadTestStateChange', { active: true, concurrent: loadTestConcurrent });
-              } else if (wasActive && !loadTestActive) {
-                sendToParent('loadTestStateChange', { active: false, concurrent: 0 });
-              }
             }
           } catch {
             // Probe response may not be JSON, that's fine
