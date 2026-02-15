@@ -81,11 +81,11 @@ const BROADCAST_INTERVAL_SECONDS = 60;
 // =============================================================================
 
 const DEFAULT_REQUEST: LoadTestRequest = {
-  workIterations: 200,
-  bufferSizeKb: 20000,
-  baselineDelayMs: 500,
-  softLimit: 25,
-  degradationFactor: 500,
+  workIterations: 700,
+  bufferSizeKb: 100000,
+  baselineDelayMs: 1000,
+  softLimit: 20,
+  degradationFactor: 1000,
 };
 
 // =============================================================================

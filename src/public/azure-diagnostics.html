@@ -838,17 +838,17 @@ process.on('SIGUSR2', takeHeapSnapshot);</code></pre>
 https://your-app.azurewebsites.net/api/loadtest
 
 # Custom parameters
-https://your-app.azurewebsites.net/api/loadtest?workIterations=500&amp;bufferSizeKb=10000
+https://your-app.azurewebsites.net/api/loadtest?workIterations=2000&amp;bufferSizeKb=50000
 
 # Thread pool only (no CPU work)
 https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeKb=100</code></pre>
       <p><strong>Query Parameters:</strong></p>
       <ul>
-        <li><code>workIterations</code> - CPU spin iterations per work cycle (default: 200, ms per cycle = workIterations/100)</li>
-        <li><code>bufferSizeKb</code> - Memory buffer held for request duration in KB (default: 20000)</li>
-        <li><code>baselineDelayMs</code> - Minimum request duration in ms (default: 500)</li>
-        <li><code>softLimit</code> - Concurrent requests before degradation (default: 25)</li>
-        <li><code>degradationFactor</code> - Delay ms per request over limit (default: 500)</li>
+        <li><code>workIterations</code> - CPU spin iterations per work cycle (default: 700, ms per cycle = workIterations/100)</li>
+        <li><code>bufferSizeKb</code> - Memory buffer held for request duration in KB (default: 100000)</li>
+        <li><code>baselineDelayMs</code> - Minimum request duration in ms (default: 1000)</li>
+        <li><code>softLimit</code> - Concurrent requests before degradation (default: 20)</li>
+        <li><code>degradationFactor</code> - Delay ms per request over limit (default: 1000)</li>
       </ul>
 
       <ol start="3">
@@ -895,11 +895,11 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
       <p>Each parameter controls a specific resource independently:</p>
       <table class="comparison-table">
         <tr><th>Parameter</th><th>Default</th><th>Resource</th><th>Purpose</th></tr>
-        <tr><td><code>workIterations</code></td><td>200</td><td><strong>CPU</strong></td><td>Spin-loop ms per CPU work cycle (workIterations/10). Default 200 → 20ms spin per 70ms cycle ≈ 28% CPU duty per request.</td></tr>
-        <tr><td><code>bufferSizeKb</code></td><td>20000</td><td><strong>Memory</strong></td><td>Memory held for entire request duration. Creates sustained memory pressure.</td></tr>
-        <tr><td><code>baselineDelayMs</code></td><td>500</td><td><strong>Event Loop</strong></td><td>Minimum request duration (ms). CPU work and sleep interleaved throughout.</td></tr>
-        <tr><td><code>softLimit</code></td><td>25</td><td><strong>Concurrency</strong></td><td>Concurrent requests before degradation. Lower = faster degradation.</td></tr>
-        <tr><td><code>degradationFactor</code></td><td>500</td><td><strong>Concurrency</strong></td><td>Additional delay (ms) per request over softLimit.</td></tr>
+        <tr><td><code>workIterations</code></td><td>700</td><td><strong>CPU</strong></td><td>Spin-loop ms per CPU work cycle (workIterations/10). Default 700 → 70ms spin per 70ms cycle ≈ 100% CPU duty per request.</td></tr>
+        <tr><td><code>bufferSizeKb</code></td><td>100000</td><td><strong>Memory</strong></td><td>Memory held for entire request duration. Creates sustained memory pressure.</td></tr>
+        <tr><td><code>baselineDelayMs</code></td><td>1000</td><td><strong>Event Loop</strong></td><td>Minimum request duration (ms). CPU work and sleep interleaved throughout.</td></tr>
+        <tr><td><code>softLimit</code></td><td>20</td><td><strong>Concurrency</strong></td><td>Concurrent requests before degradation. Lower = faster degradation.</td></tr>
+        <tr><td><code>degradationFactor</code></td><td>1000</td><td><strong>Concurrency</strong></td><td>Additional delay (ms) per request over softLimit.</td></tr>
       </table>
 
       <h3>Tuning Parameters for Different Scenarios</h3>
@@ -909,11 +909,11 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
       </div>
       <table class="comparison-table">
         <tr><th>Scenario</th><th>workIterations</th><th>bufferSizeKb</th><th>baselineDelayMs</th><th>softLimit</th><th>degradationFactor</th><th>Primary Stress</th></tr>
-        <tr><td>Thread pool only</td><td>0</td><td>2000</td><td>500</td><td>25</td><td>500</td><td>Event loop exhaustion, minimal CPU</td></tr>
-        <tr><td>CPU intensive</td><td>10000</td><td>2000</td><td>0</td><td>500</td><td>25</td><td>High CPU, minimal blocking</td></tr>
-        <tr><td>Memory pressure</td><td>20</td><td>100000</td><td>100</td><td>100</td><td>125</td><td>High memory allocation (100MB/request)</td></tr>
-        <tr><td>Balanced (default)</td><td>200</td><td>20000</td><td>500</td><td>25</td><td>500</td><td>Balanced resource consumption</td></tr>
-        <tr><td>High concurrency</td><td>100</td><td>10000</td><td>200</td><td>250</td><td>50</td><td>Gradual degradation under high load</td></tr>
+        <tr><td>Thread pool only</td><td>0</td><td>10000</td><td>1000</td><td>20</td><td>1000</td><td>Event loop exhaustion, minimal CPU</td></tr>
+        <tr><td>CPU intensive</td><td>35000</td><td>10000</td><td>0</td><td>400</td><td>50</td><td>High CPU, minimal blocking</td></tr>
+        <tr><td>Memory pressure</td><td>70</td><td>500000</td><td>200</td><td>80</td><td>250</td><td>High memory allocation (500MB/request)</td></tr>
+        <tr><td>Balanced (default)</td><td>700</td><td>100000</td><td>1000</td><td>20</td><td>1000</td><td>Balanced resource consumption</td></tr>
+        <tr><td>High concurrency</td><td>350</td><td>50000</td><td>400</td><td>200</td><td>100</td><td>Gradual degradation under high load</td></tr>
       </table>
     </section>
 

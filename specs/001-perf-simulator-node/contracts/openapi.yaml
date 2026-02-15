@@ -394,35 +394,35 @@ paths:
           description: CPU spin iterations per work cycle (ms per cycle = workIterations/100)
           schema:
             type: integer
-            default: 200
+            default: 700
         - name: bufferSizeKb
           in: query
           required: false
           description: Memory buffer held for request duration in KB
           schema:
             type: integer
-            default: 20000
+            default: 100000
         - name: baselineDelayMs
           in: query
           required: false
           description: Minimum request duration in milliseconds
           schema:
             type: integer
-            default: 500
+            default: 1000
         - name: softLimit
           in: query
           required: false
           description: Concurrent requests before degradation begins
           schema:
             type: integer
-            default: 25
+            default: 20
         - name: degradationFactor
           in: query
           required: false
           description: Additional delay (ms) per request over soft limit
           schema:
             type: integer
-            default: 500
+            default: 1000
       responses:
         '200':
           description: Load test completed successfully

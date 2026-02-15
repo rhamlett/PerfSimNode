@@ -34,20 +34,20 @@ export const loadtestRouter = Router();
  * All parameters are optional query params with sensible defaults.
  *
  * Query Parameters:
- * - workIterations (default: 200)     CPU work intensity (ms per cycle = workIterations/10)
- * - bufferSizeKb  (default: 20000)    Memory buffer held for request duration in KB
- * - baselineDelayMs (default: 500)    Minimum request duration in ms
- * - softLimit     (default: 25)       Concurrent requests before degradation begins
- * - degradationFactor (default: 500)  Additional delay (ms) per request over soft limit
+ * - workIterations (default: 700)     CPU work intensity (ms per cycle = workIterations/10)
+ * - bufferSizeKb  (default: 100000)   Memory buffer held for request duration in KB
+ * - baselineDelayMs (default: 1000)   Minimum request duration in ms
+ * - softLimit     (default: 20)       Concurrent requests before degradation begins
+ * - degradationFactor (default: 1000) Additional delay (ms) per request over soft limit
  *
  * Total delay formula:
  *   totalDelay = baselineDelayMs + max(0, currentConcurrent - softLimit) * degradationFactor
  *
  * Example scenarios (with defaults):
- *   1 concurrent request  → 500ms baseline only
- *   10 concurrent requests → 500 + (10-25)*500 = 500ms (still under limit)
- *   30 concurrent requests → 500 + (30-25)*500 = 3000ms total
- *   50 concurrent requests → 500 + (50-25)*500 = 13000ms total
+ *   1 concurrent request  → 1000ms baseline only
+ *   10 concurrent requests → 1000 + (10-20)*1000 = 1000ms (still under limit)
+ *   30 concurrent requests → 1000 + (30-20)*1000 = 11000ms total
+ *   50 concurrent requests → 1000 + (50-20)*1000 = 31000ms total
  */
 loadtestRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
