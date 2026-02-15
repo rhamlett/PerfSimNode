@@ -1,7 +1,27 @@
 /**
- * CPU Controller
+ * =============================================================================
+ * CPU CONTROLLER — CPU Stress Simulation REST API
+ * =============================================================================
  *
- * Handles CPU stress simulation endpoints.
+ * PURPOSE:
+ *   REST endpoints for starting, stopping, and listing CPU stress simulations.
+ *   Delegates all business logic to CpuStressService.
+ *
+ * ENDPOINTS:
+ *   POST   /api/simulations/cpu     → Start CPU stress (body: targetLoadPercent, durationSeconds)
+ *   DELETE /api/simulations/cpu/:id → Stop a running simulation
+ *   GET    /api/simulations/cpu     → List active CPU simulations
+ *
+ * PATTERN:
+ *   Controller → Validate input → Call service → Format response
+ *   Errors are thrown (ValidationError, NotFoundError) and caught by
+ *   the global error handler middleware.
+ *
+ * PORTING NOTES:
+ *   - Java Spring: @RestController with @PostMapping, @DeleteMapping, @GetMapping
+ *   - Python FastAPI: @router.post(), @router.delete(), @router.get() with Pydantic models
+ *   - C#: [ApiController] with [HttpPost], [HttpDelete], [HttpGet] attributes
+ *   - PHP Laravel: Resource controller with store(), destroy(), index() methods
  *
  * @module controllers/cpu
  */

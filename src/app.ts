@@ -1,7 +1,44 @@
 /**
- * Express Application Configuration
+ * =============================================================================
+ * EXPRESS APPLICATION SETUP — HTTP Routing & Middleware Pipeline
+ * =============================================================================
  *
- * Configures Express middleware, routes, and error handling.
+ * PURPOSE:
+ *   Creates and configures the Express web application with all middleware and
+ *   API routes. This is the "wiring" layer — it doesn't contain business logic,
+ *   just connects middleware → routes → controllers → services.
+ *
+ * MIDDLEWARE PIPELINE (order matters):
+ *   1. Body parsing (JSON + URL-encoded)
+ *   2. Request logging (timestamps, method, URL, status, duration)
+ *   3. Static file serving (dashboard HTML/CSS/JS)
+ *   4. API routes (health → metrics → simulations → admin)
+ *   5. 404 handler (unmatched routes)
+ *   6. Global error handler (catches all thrown errors, returns JSON)
+ *
+ * API ROUTE STRUCTURE:
+ *   GET    /api/health            → Health check (used by Azure health probes)
+ *   GET    /api/metrics           → Current system metrics snapshot
+ *   GET    /api/metrics/probe     → Lightweight latency probe for sidecar
+ *   POST   /api/simulations/cpu   → Start CPU stress simulation
+ *   DELETE /api/simulations/cpu/:id → Stop CPU stress simulation
+ *   POST   /api/simulations/memory → Allocate memory
+ *   DELETE /api/simulations/memory/:id → Release memory
+ *   POST   /api/simulations/eventloop → Block event loop
+ *   GET    /api/simulations/slow  → Slow request (GET for browser testing)
+ *   POST   /api/simulations/crash/* → Trigger crash simulations
+ *   GET    /api/loadtest          → Load test endpoint
+ *   GET    /api/simulations       → List all active simulations
+ *   GET    /api/admin/status      → Admin status overview
+ *   GET    /api/admin/events      → Event log entries
+ *
+ * PORTING NOTES:
+ *   - Java Spring Boot: @SpringBootApplication with @RestController classes.
+ *   - Python Flask/FastAPI: app = Flask() or FastAPI() with route decorators.
+ *   - PHP Laravel: routes/api.php with Controller classes.
+ *   - C# ASP.NET: Startup.cs or Program.cs with MapControllers/MapGet.
+ *   The pattern is the same: define middleware pipeline, mount route handlers,
+ *   add error handling as the last middleware.
  *
  * @module app
  */
@@ -23,7 +60,10 @@ import { loadtestRouter } from './controllers/loadtest.controller';
 /**
  * Creates and configures the Express application.
  *
- * @returns Configured Express application instance
+ * This factory function pattern allows creating fresh app instances for testing.
+ * The app is framework-agnostic in design: middleware pipeline → route handlers → error handler.
+ *
+ * @returns Configured Express application instance (without HTTP server — that's in index.ts)
  */
 export function createApp(): Application {
   const app = express();

@@ -1,7 +1,21 @@
 /**
- * Utility Functions
+ * =============================================================================
+ * UTILITY FUNCTIONS
+ * =============================================================================
  *
- * Shared helper functions used throughout the application.
+ * PURPOSE:
+ *   Shared helper functions used across services, controllers, and middleware.
+ *   All functions are pure (no side effects, no state) and can be unit tested
+ *   independently.
+ *
+ * PORTING NOTES:
+ *   These are straightforward utility functions that exist in every language's
+ *   standard library. Most can be replaced with built-in equivalents:
+ *   - UUID: Java UUID.randomUUID(), Python uuid.uuid4(), PHP uniqid() or Ramsey\Uuid
+ *   - Bytes↔MB: Simple arithmetic — implement inline or as a utility class.
+ *   - ns↔ms: Simple arithmetic.
+ *   - delay(): Java Thread.sleep(), Python asyncio.sleep(), PHP usleep().
+ *   - isInRange/clamp: Standard math operations.
  *
  * @module utils
  */

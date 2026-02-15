@@ -1,20 +1,30 @@
 /**
- * Load Test Controller
+ * =============================================================================
+ * LOAD TEST CONTROLLER — Azure Load Testing Integration REST API
+ * =============================================================================
  *
- * API endpoints for Azure Load Testing integration.
- * Provides a load test endpoint that degrades gracefully under high volume.
+ * PURPOSE:
+ *   Provides a load test endpoint designed for automated load testing tools
+ *   (Azure Load Testing, JMeter, k6, Gatling). Unlike other simulation
+ *   endpoints, this does NOT appear in the dashboard UI.
  *
- * Unlike other simulation endpoints, this one does NOT appear in the dashboard
- * UI and is meant for automated load testing scenarios only.
+ * ENDPOINTS:
+ *   GET /api/loadtest       → Execute load test work (all params optional query params)
+ *   GET /api/loadtest/stats → Current statistics without performing work
  *
- * Behavior under load:
- * - Low load (below soft limit): ~100ms response time
- * - Moderate load (at soft limit): 200-500ms as contention builds
- * - High load (above soft limit): Multi-second responses
- * - Extreme load: Responses approach 230s Azure timeout
+ * DEGRADATION BEHAVIOR:
+ *   The endpoint degrades gracefully as concurrency increases:
+ *   - Below soft limit:  ~baselineDelayMs response time (default 1000ms)
+ *   - At soft limit:     Response time starts increasing
+ *   - Above soft limit:  baselineDelayMs + (concurrent - softLimit) * degradationFactor
+ *   - Extreme load:      Responses approach 230s Azure App Service frontend timeout
  *
- * After 120s of processing, there is a 20% chance per check interval
- * that a random exception will be thrown.
+ * QUERY PARAMETERS (all optional with defaults):
+ *   - workIterations   (default: 700)    → CPU work per cycle (ms = value/10)
+ *   - bufferSizeKb     (default: 100000) → Memory held per request
+ *   - baselineDelayMs  (default: 1000)   → Minimum request duration
+ *   - softLimit        (default: 20)     → Max concurrent before degradation
+ *   - degradationFactor (default: 1000)  → Delay per request over limit
  *
  * @module controllers/loadtest
  */

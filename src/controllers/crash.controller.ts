@@ -1,7 +1,24 @@
 /**
- * Crash Controller
+ * =============================================================================
+ * CRASH CONTROLLER — Crash Simulation REST API
+ * =============================================================================
  *
- * Handles crash simulation endpoints.
+ * PURPOSE:
+ *   REST endpoints for intentionally crashing the process via different failure
+ *   modes. Each crash type produces a different diagnostic signature in
+ *   monitoring tools.
+ *
+ * ENDPOINTS:
+ *   POST /api/simulations/crash/failfast      → SIGABRT (process.abort)
+ *   POST /api/simulations/crash/stackoverflow → Infinite recursion crash
+ *   POST /api/simulations/crash/exception     → Unhandled exception
+ *   POST /api/simulations/crash/memory        → OOM (allocate until crash)
+ *
+ * RESPONSE PATTERN:
+ *   All endpoints return HTTP 202 (Accepted) with a warning message BEFORE
+ *   the crash is triggered. The crash happens asynchronously via setImmediate,
+ *   giving the response time to be sent. However, the client may still see
+ *   a connection reset if the response hasn't fully flushed.
  *
  * @module controllers/crash
  */

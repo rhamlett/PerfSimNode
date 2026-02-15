@@ -1,7 +1,27 @@
 /**
- * Input Validation Helpers
+ * =============================================================================
+ * INPUT VALIDATION HELPERS
+ * =============================================================================
  *
- * Provides validation functions for API request parameters.
+ * PURPOSE:
+ *   Provides reusable validation functions for API request parameters.
+ *   All simulation endpoints use these to validate and sanitize user input
+ *   before passing to services.
+ *
+ * VALIDATION PATTERN:
+ *   Each function either returns the validated value or throws a ValidationError
+ *   (which the global error handler catches and returns as HTTP 400).
+ *   This "validate-or-throw" pattern keeps controller code clean.
+ *
+ * PORTING NOTES:
+ *   - Java Spring: Use Bean Validation annotations (@Min, @Max, @NotNull)
+ *     on request DTO classes, or manual validation in service layer.
+ *   - Python FastAPI: Use Pydantic models with Field(ge=, le=) constraints.
+ *   - Python Django: Use serializer validation or Form classes.
+ *   - PHP Laravel: Use Form Request validation rules.
+ *   - C#: Use DataAnnotations or FluentValidation.
+ *   The key pattern: validate at the controller boundary, before passing
+ *   to services. Services should receive already-validated data.
  *
  * @module middleware/validation
  */

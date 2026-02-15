@@ -1,7 +1,31 @@
 /**
- * Application Configuration Module
+ * =============================================================================
+ * APPLICATION CONFIGURATION
+ * =============================================================================
  *
- * Centralizes configuration management with environment variable support.
+ * PURPOSE:
+ *   Centralizes all configurable values in one place. Every tunable parameter
+ *   (port, intervals, limits) is defined here with sensible defaults that can
+ *   be overridden via environment variables.
+ *
+ * ARCHITECTURE ROLE:
+ *   Imported by services, middleware, and controllers that need access to
+ *   configuration values. Acts as the single source of truth for all tunable
+ *   parameters, avoiding magic numbers scattered throughout the codebase.
+ *
+ * ENVIRONMENT VARIABLES:
+ *   - PORT                          → HTTP server port (Azure App Service sets this)
+ *   - METRICS_INTERVAL_MS           → How often metrics are collected/broadcast (ms)
+ *   - MAX_SIMULATION_DURATION_SECONDS → Upper limit for timed simulations
+ *   - MAX_MEMORY_ALLOCATION_MB      → Upper limit for single memory allocation
+ *   - EVENT_LOG_MAX_ENTRIES         → Ring buffer size for event log
+ *
+ * PORTING NOTES:
+ *   - Java Spring: Use application.properties/yml with @Value or @ConfigurationProperties.
+ *   - Python Django: Use settings.py with os.environ.get().
+ *   - PHP Laravel: Use .env file with config() helper.
+ *   - C# ASP.NET: Use appsettings.json with IConfiguration.
+ *   Every runtime has a standard config mechanism — use it, don't hardcode values.
  *
  * @module config
  */
@@ -26,6 +50,9 @@ function parseIntEnv(envVar: string, defaultValue: number): number {
 
 /**
  * Application configuration loaded from environment variables with defaults.
+ *
+ * All config values use a parse-with-fallback pattern:
+ * if the env var is set and parseable → use it; otherwise → use the default.
  */
 export const config: AppConfig = {
   /** HTTP server port (default: 3000, or PORT env var for Azure App Service) */
@@ -56,6 +83,9 @@ export const APP_NAME = 'PerfSimNode';
 
 /**
  * Default values for simulation parameters.
+ *
+ * Used by controllers when optional request parameters are omitted.
+ * These provide a good out-of-box experience for demo/training scenarios.
  */
 export const defaults = {
   /** Default CPU stress target load percentage */
@@ -72,6 +102,13 @@ export const defaults = {
 
 /**
  * Validation limits for simulation parameters.
+ *
+ * Used by the validation middleware to enforce bounds on user input.
+ * Min/max ranges prevent accidental resource exhaustion from invalid input.
+ *
+ * PORTING NOTES:
+ *   Define these as constants and reference them in your validation layer.
+ *   In Java, use Spring's @Min/@Max annotations; in Python, Pydantic Field(ge=, le=).
  */
 export const limits = {
   /** Minimum CPU load percentage */

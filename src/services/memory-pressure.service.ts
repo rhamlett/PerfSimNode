@@ -1,7 +1,42 @@
 /**
- * Memory Pressure Service
+ * =============================================================================
+ * MEMORY PRESSURE SERVICE — Heap Memory Allocation Simulation
+ * =============================================================================
  *
- * Simulates memory pressure by allocating and retaining V8 heap memory.
+ * PURPOSE:
+ *   Simulates memory pressure by allocating and retaining objects on the managed
+ *   heap. Memory is held until explicitly released by the user via the DELETE
+ *   endpoint. This makes memory usage visible in application metrics and
+ *   Azure App Service monitoring.
+ *
+ * HOW IT WORKS:
+ *   1. Allocate small JS objects (~210 bytes each) in an array
+ *   2. ~4800 objects = ~1MB of V8 heap memory
+ *   3. Allocation is done in batches (10k objects per batch) via setImmediate
+ *      to avoid blocking the event loop during large allocations
+ *   4. Objects stay referenced (preventing GC) until release() is called
+ *   5. On release: clear array, dereferenced objects become eligible for GC
+ *   6. If --expose-gc flag is set, force GC runs immediately after release
+ *
+ * WHY HEAP OBJECTS (NOT BUFFERS):
+ *   Buffer.alloc() creates native (C++) memory outside the V8 heap.
+ *   It shows in RSS but NOT in heapUsed. For this training tool, we want
+ *   heap-visible memory pressure that triggers GC pauses and shows in
+ *   V8/managed memory metrics.
+ *
+ * PORTING NOTES:
+ *   The goal is to allocate MANAGED HEAP objects that are visible in the
+ *   runtime's memory metrics and trigger garbage collection pressure:
+ *   - Java: ArrayList<byte[]> with byte[1024] chunks. Shows in Runtime.totalMemory().
+ *   - Python: List of dict objects. Shows in sys.getsizeof() and tracemalloc.
+ *   - C#: List<byte[]> with byte[1024] chunks. Shows in GC.GetTotalMemory().
+ *   - PHP: Array of stdClass objects. Shows in memory_get_usage().
+ *
+ *   KEY BEHAVIORS TO REPLICATE:
+ *   a) Memory does NOT auto-expire — must be explicitly released
+ *   b) Allocation is incremental (batched) to avoid blocking during large allocs
+ *   c) Release triggers immediate GC if possible
+ *   d) Multiple independent allocations can coexist (tracked by simulation ID)
  *
  * @module services/memory-pressure
  */
@@ -22,15 +57,31 @@ const allocations: Map<string, MemoryAllocation> = new Map();
 /**
  * Memory Pressure Service
  *
- * Uses object arrays to create memory pressure in V8 heap.
+ * ALLOCATION TRACKING:
+ * - allocations Map<simulationId, { data: object[], sizeMb: number }>
+ * - Each entry holds the actual object references (preventing GC)
+ * - sizeMb records the requested size for reporting
+ *
+ * LIFECYCLE:
+ * - allocate(): Creates simulation, starts async batch allocation
+ * - release(): Clears array, deletes from map, forces GC, stops simulation
  */
 class MemoryPressureServiceClass {
   /**
    * Allocates memory and starts a memory pressure simulation.
-   * Allocation happens asynchronously to avoid blocking the event loop.
    *
-   * @param params - Memory pressure parameters
-   * @returns The created simulation
+   * ALLOCATION ALGORITHM:
+   * 1. Create simulation record (no auto-expiry for memory allocations)
+   * 2. Calculate total objects needed: sizeMb * 4800 objects/MB
+   * 3. Allocate in batches of 10k objects using setImmediate between batches
+   * 4. Each object has properties to ensure it takes ~210 bytes on the heap
+   * 5. Log MEMORY_ALLOCATING immediately, MEMORY_ALLOCATED when complete
+   *
+   * The async batching via setImmediate prevents the allocation from blocking
+   * the event loop, which would freeze the dashboard during large allocations.
+   *
+   * @param params - Memory pressure parameters (sizeMb)
+   * @returns The created simulation record
    */
   allocate(params: MemoryPressureParams): Simulation {
     const { sizeMb } = params;
@@ -99,10 +150,25 @@ class MemoryPressureServiceClass {
   }
 
   /**
-   * Releases a memory allocation.
+   * Releases a memory allocation and triggers garbage collection.
+   *
+   * RELEASE ALGORITHM:
+   * 1. Clear the data array (data.length = 0) to dereference all objects
+   * 2. Delete the allocation entry from the map
+   * 3. Force GC twice if --expose-gc flag is set (global.gc())
+   * 4. Update simulation status to STOPPED
+   * 5. Log MEMORY_RELEASED event
+   *
+   * The double GC call helps ensure the memory is reclaimed promptly.
+   * Without --expose-gc, GC happens at the V8 engine's discretion.
+   *
+   * PORTING NOTES:
+   *   - Java: Clear the ArrayList, then System.gc() (advisory only)
+   *   - Python: Clear the list, then gc.collect()
+   *   - C#: Clear the list, then GC.Collect() + GC.WaitForPendingFinalizers()
    *
    * @param id - Simulation/allocation ID
-   * @returns Object with release info, or undefined if nothing was found to release
+   * @returns Release info including size freed, or undefined if nothing found
    */
   release(id: string): { simulation?: Simulation; sizeMb: number; wasAllocated: boolean } | undefined {
     const allocation = allocations.get(id);

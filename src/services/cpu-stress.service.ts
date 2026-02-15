@@ -1,8 +1,37 @@
 /**
- * CPU Stress Service
+ * =============================================================================
+ * CPU STRESS SERVICE — Multi-Core CPU Load Simulation
+ * =============================================================================
  *
- * Simulates CPU stress using child processes for guaranteed multi-core utilization.
- * Uses child_process.fork() which spawns real OS processes on separate cores.
+ * PURPOSE:
+ *   Generates real CPU load by spawning separate OS processes that run tight
+ *   synchronous loops. This makes CPU usage visible in system monitoring tools
+ *   like Azure App Service metrics, top/htop, and Windows Task Manager.
+ *
+ * HOW IT WORKS:
+ *   1. Calculate number of worker processes: round((targetLoadPercent/100) * CPU_CORES)
+ *   2. Fork N child processes (cpu-worker.ts) via child_process.fork()
+ *   3. Each child runs pbkdf2Sync in a tight loop, burning 100% of one CPU core
+ *   4. After durationSeconds, kill all child processes
+ *
+ * WHY CHILD PROCESSES (NOT WORKER THREADS OR MAIN THREAD):
+ *   - Node.js is single-threaded — CPU work in the main thread blocks ALL I/O
+ *   - Worker Threads share the same process — CPU usage appears as one process
+ *   - child_process.fork() creates separate OS processes that the OS scheduler
+ *     distributes across physical CPU cores, producing real multi-core load
+ *   - System-wide CPU metrics (os.cpus()) capture child process activity
+ *
+ * PORTING NOTES:
+ *   - Java: Use ExecutorService.submit() with Runnable tasks in a fixed-size
+ *     thread pool. Java threads map to OS threads and get scheduled on separate cores.
+ *   - Python: Use multiprocessing.Process (NOT threading — GIL prevents parallelism).
+ *     Each process runs a tight loop (e.g., while True: hashlib.pbkdf2_hmac(...))
+ *   - C#: Use Task.Run() or Thread.Start() with synchronous CPU-bound work.
+ *     .NET threads are OS threads and distribute across cores naturally.
+ *   - PHP: Use pcntl_fork() for true multi-process CPU burning.
+ *
+ *   The key requirement: use OS-level parallelism (processes or native threads)
+ *   to produce CPU load visible in SYSTEM-WIDE metrics, not just the main process.
  *
  * @module services/cpu-stress
  */
@@ -21,8 +50,13 @@ const activeTimeouts: Map<string, NodeJS.Timeout> = new Map();
 /**
  * CPU Stress Service
  *
- * Uses child_process.fork() to spawn separate OS processes.
- * Each process runs on its own CPU core, guaranteed by the OS scheduler.
+ * PROCESS MANAGEMENT:
+ * - activeProcesses: Map of simulation ID → array of ChildProcess handles
+ * - activeTimeouts:  Map of simulation ID → auto-completion timer
+ *
+ * On start: fork N processes, store handles, set completion timer
+ * On stop:  send 'stop' IPC message, force-kill after 200ms, clear timer
+ * On complete: same as stop but triggered by timer expiration
  */
 class CpuStressServiceClass {
   /**
@@ -80,10 +114,21 @@ class CpuStressServiceClass {
   /**
    * Starts CPU worker processes for a simulation.
    *
-   * Uses child_process.fork() to spawn separate OS processes.
-   * Each process burns 100% of one CPU core.
+   * ALGORITHM:
+   * 1. Get CPU core count from os.cpus().length
+   * 2. Calculate worker count: round((targetLoadPercent / 100) * numCpus)
+   *    - 100% on 2 CPUs = 2 workers; 50% on 4 CPUs = 2 workers
+   * 3. Fork each worker as a separate OS process running cpu-worker.js
+   * 4. Each worker signals 'ready' via IPC when its burn loop starts
+   * 5. Set a timeout to auto-kill all workers after durationSeconds
    *
-   * @param simulationId - Simulation ID
+   * PORTING NOTES:
+   *   The fork() call creates a new Node.js process. In other runtimes:
+   *   - Java: new Thread(() -> { while(running) { doCpuWork(); } }).start()
+   *   - Python: multiprocessing.Process(target=burn_cpu).start()
+   *   - C#: Task.Run(() => { while(running) { DoCpuWork(); } })
+   *
+   * @param simulationId - Simulation ID for tracking
    * @param targetLoadPercent - Target CPU load percentage (1-100)
    * @param durationSeconds - Total duration in seconds
    */

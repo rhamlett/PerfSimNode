@@ -1,7 +1,42 @@
 /**
- * Simulation Tracker Service
+ * =============================================================================
+ * SIMULATION TRACKER SERVICE — Simulation Lifecycle Management
+ * =============================================================================
  *
- * Manages active simulations and their lifecycle.
+ * PURPOSE:
+ *   Central registry for all active and completed simulations. Manages the
+ *   lifecycle state machine (ACTIVE → COMPLETED/STOPPED/FAILED) and provides
+ *   query methods for listing and filtering simulations.
+ *
+ * RESPONSIBILITIES:
+ *   1. Create simulation records with unique IDs and timestamps
+ *   2. Manage auto-completion timers (simulations expire after their duration)
+ *   3. Handle user-initiated stops and error failures
+ *   4. Provide query methods (by ID, by type, active only)
+ *
+ * STATE MACHINE:
+ *   createSimulation() → status=ACTIVE, timer set for auto-completion
+ *   completeSimulation() → status=COMPLETED (timer elapsed naturally)
+ *   stopSimulation() → status=STOPPED (user called DELETE endpoint)
+ *   failSimulation() → status=FAILED (error during execution)
+ *
+ * STORAGE:
+ *   In-memory Map<id, Simulation>. All data is lost on process restart.
+ *   This is intentional — simulations are ephemeral training exercises.
+ *
+ * SINGLETON PATTERN:
+ *   Single instance shared by all simulation services and controllers.
+ *
+ * PORTING NOTES:
+ *   - Java: ConcurrentHashMap<String, Simulation> with ScheduledExecutorService
+ *     for auto-completion timers. Thread safety is critical in Java!
+ *   - Python: dict with asyncio.create_task() for timers
+ *   - C#: ConcurrentDictionary<string, Simulation> with System.Threading.Timer
+ *   - PHP: In-memory array (or Redis if using a process-manager like Swoole)
+ *
+ *   Key decision: simulations are in-memory only. For production systems,
+ *   you might persist to a database, but for this training tool, ephemeral
+ *   storage is appropriate and simplifies the implementation.
  *
  * @module services/simulation-tracker
  */

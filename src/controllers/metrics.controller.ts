@@ -1,7 +1,20 @@
 /**
- * Metrics Controller
+ * =============================================================================
+ * METRICS CONTROLLER — System Metrics & Probe Endpoints
+ * =============================================================================
  *
- * Provides system metrics endpoint for observability.
+ * PURPOSE:
+ *   Exposes system metrics via REST for on-demand queries and provides a
+ *   lightweight probe endpoint for latency monitoring.
+ *
+ * ENDPOINTS:
+ *   GET /api/metrics       → Full system metrics snapshot (CPU, memory, event loop)
+ *   GET /api/metrics/probe → Lightweight probe for sidecar latency measurement.
+ *                            Also returns load test activity status so the
+ *                            sidecar can adjust its behavior during load tests.
+ *
+ * NOTE: Real-time metrics are primarily delivered via WebSocket (see index.ts).
+ *       These REST endpoints are for on-demand queries and sidecar probing.
  *
  * @module controllers/metrics
  */

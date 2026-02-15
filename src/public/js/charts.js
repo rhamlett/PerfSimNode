@@ -1,7 +1,59 @@
 /**
- * Chart.js Integration
+ * =============================================================================
+ * CHARTS.JS INTEGRATION — Real-Time Metric Visualization
+ * =============================================================================
  *
- * Manages real-time metric charts using Chart.js.
+ * PURPOSE:
+ *   Manages three real-time Chart.js charts on the dashboard:
+ *   1. CPU/Memory chart — Combined CPU%, heap MB, RSS MB (60-second window)
+ *   2. Event Loop chart — Heartbeat lag in milliseconds (60-second window)
+ *   3. Latency chart — HTTP probe latency from sidecar (600 data points,
+ *      ~60 seconds at 100ms probe interval)
+ *
+ * DATA FLOW:
+ *   socket-client.js receives WebSocket events → calls onMetricsUpdate()
+ *   and onProbeLatency() → this file updates charts.
+ *
+ * LATENCY CHART FEATURES:
+ *   - Color-coded gradient fill based on latency severity:
+ *     * Green (0-150ms): Healthy response times
+ *     * Yellow (150ms-1s): Degraded performance
+ *     * Orange (1s-30s): Severe degradation
+ *     * Red (30s+): Critical / near-timeout
+ *   - Smooth color interpolation between thresholds (not hard bands)
+ *   - Dynamic Y-axis scaling based on current maximum
+ *   - Sidecar timestamp backfill: when event loop unblocks, burst of
+ *     queued IPC messages arrive with their original timestamps,
+ *     correctly backfilling the chart at the right X positions
+ *
+ * LATENCY STATISTICS:
+ *   - Time-based rolling window (last 60 seconds)
+ *   - Calculates: current, average, max, P99 from rolling window
+ *   - Separate tracking for slow request latencies vs probe latencies
+ *
+ * SERVER RESPONSIVENESS MONITORING:
+ *   - Tracks consecutive probe failures to detect unresponsive state
+ *   - Shows probe history as colored dots (green=ok, yellow=slow, red=fail)
+ *   - Reports recovery time when server becomes responsive again
+ *
+ * CHART.JS CONFIGURATION:
+ *   - animation: false (real-time charts must not animate)
+ *   - Update mode: 'none' (skip animation on data push)
+ *   - Custom tooltip formatters for each chart type
+ *   - Responsive but not aspect-ratio-maintaining (fills container)
+ *
+ * PORTING NOTES:
+ *   This file is FRONTEND JavaScript — it stays JS regardless of backend.
+ *   When porting to a different frontend framework:
+ *   - React: Use react-chartjs-2 wrapper, store chart data in state
+ *   - Vue: Use vue-chartjs wrapper
+ *   - Angular: Use ng2-charts wrapper
+ *   - Or use any other charting library (D3.js, Recharts, Highcharts)
+ *   The key behaviors to preserve:
+ *   - Real-time push updates (not polling)
+ *   - Rolling window data retention (60s for metrics, 60s for latency)
+ *   - Color gradient based on latency thresholds
+ *   - Timestamp backfill from sidecar probe data
  */
 
 /**

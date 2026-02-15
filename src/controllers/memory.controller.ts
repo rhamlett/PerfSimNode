@@ -1,7 +1,20 @@
 /**
- * Memory Controller
+ * =============================================================================
+ * MEMORY CONTROLLER — Memory Pressure Simulation REST API
+ * =============================================================================
  *
- * Handles memory pressure simulation endpoints.
+ * PURPOSE:
+ *   REST endpoints for allocating, releasing, and listing memory allocations.
+ *   Memory allocations persist until explicitly released (no auto-expiry).
+ *
+ * ENDPOINTS:
+ *   POST   /api/simulations/memory     → Allocate memory (body: sizeMb)
+ *   DELETE /api/simulations/memory/:id → Release a memory allocation (idempotent)
+ *   GET    /api/simulations/memory     → List active allocations with total
+ *
+ * DESIGN DECISION:
+ *   DELETE is idempotent — releasing an already-released allocation returns
+ *   success (not 404). This prevents issues with double-clicks and retries.
  *
  * @module controllers/memory
  */

@@ -1,7 +1,36 @@
 /**
- * Event Log Service
+ * =============================================================================
+ * EVENT LOG SERVICE — Application Event Ring Buffer & Broadcasting
+ * =============================================================================
  *
- * Maintains a ring buffer of simulation and system events.
+ * PURPOSE:
+ *   Central logging service for simulation lifecycle events and system events.
+ *   Maintains a bounded in-memory ring buffer and broadcasts each new event
+ *   to connected WebSocket clients for real-time dashboard updates.
+ *
+ * DATA FLOW:
+ *   Service/Controller calls EventLogService.info/warn/error()
+ *     → Entry added to ring buffer (oldest evicted if at capacity)
+ *     → Entry printed to console (stdout/stderr based on level)
+ *     → Entry broadcast to all WebSocket clients via broadcaster callback
+ *
+ * SINGLETON PATTERN:
+ *   Single instance created at module load. All services share it.
+ *
+ * RING BUFFER:
+ *   Fixed-size array (default 100 entries). When full, oldest entry is removed
+ *   (FIFO). This prevents unbounded memory growth during long-running sessions.
+ *
+ * PORTING NOTES:
+ *   - Java: Use a ConcurrentLinkedDeque or ArrayDeque with size cap.
+ *     Thread-safe wrapper needed if accessed from multiple threads.
+ *   - Python: collections.deque(maxlen=100) — automatic oldest eviction.
+ *   - C#: Channel<T> or ConcurrentQueue<T> with manual size management.
+ *   - PHP: Simple array with array_shift() when over capacity.
+ *
+ *   The broadcaster callback pattern decouples this service from Socket.IO.
+ *   The main server wires it up at startup: EventLogService.setBroadcaster(fn).
+ *   In other frameworks, use an event bus or observer pattern.
  *
  * @module services/event-log
  */

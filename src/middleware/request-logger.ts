@@ -1,7 +1,28 @@
 /**
- * Request Logger Middleware
+ * =============================================================================
+ * REQUEST LOGGER MIDDLEWARE
+ * =============================================================================
  *
- * Logs incoming HTTP requests for debugging and monitoring.
+ * PURPOSE:
+ *   Logs every HTTP request with method, URL, status code, and response time.
+ *   Provides visibility into API traffic for debugging and monitoring.
+ *
+ * FILTERING:
+ *   Internal probe requests (from the sidecar process and dashboard heartbeat)
+ *   are filtered out to reduce log noise. These are identified by:
+ *   - X-Internal-Probe header (set by internal monitoring)
+ *   - Localhost requests to /api/metrics/probe (sidecar probes)
+ *
+ *   External probe requests (via Azure's public URL) are NOT filtered —
+ *   they should appear in Azure AppLens diagnostics.
+ *
+ * PORTING NOTES:
+ *   - Java Spring: Use a HandlerInterceptor or Filter
+ *   - Python: Django middleware or FastAPI middleware
+ *   - PHP: Laravel middleware
+ *   - C#: ASP.NET middleware or IHttpLoggingMiddleware
+ *   The key feature is measuring response time by hooking into the
+ *   response lifecycle (record start time, log on response finish).
  *
  * @module middleware/request-logger
  */

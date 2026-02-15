@@ -53,6 +53,15 @@ body {
   padding-top: 56px; /* offset for fixed header */
 }
 
+/* Anchor scroll offset – clears fixed header when navigating via sidebar links */
+html {
+  scroll-padding-top: 72px;
+}
+
+section[id] {
+  scroll-margin-top: 72px;
+}
+
 /* --------------------------------------------------------------------------
    Header
    -------------------------------------------------------------------------- */

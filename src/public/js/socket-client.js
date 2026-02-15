@@ -1,10 +1,34 @@
 /**
- * Socket.IO Client Connection
+ * =============================================================================
+ * SOCKET.IO CLIENT — WebSocket Connection Manager
+ * =============================================================================
  *
- * Manages WebSocket connection to the main app server for all real-time data:
- * - Metrics, events, and simulation updates
- * - Sidecar probe latency data (relayed via IPC through main server)
- * - Load test state changes
+ * PURPOSE:
+ *   Manages the WebSocket connection from the browser to the main server.
+ *   All real-time data flows through this single connection:
+ *   - 'metrics'       → System metrics updates (~1/second)
+ *   - 'event'         → Event log entries (simulation start/stop, errors)
+ *   - 'simulation'    → Simulation state changes (started/completed/failed)
+ *   - 'sidecarProbe'  → Latency probe results from the sidecar process
+ *
+ * SCRIPT LOADING ORDER:
+ *   This file must be loaded BEFORE dashboard.js and charts.js in index.html.
+ *   It defines callback hooks (onSocketConnected, onMetricsUpdate, etc.) that
+ *   those files implement. This is a simple dependency injection via globals.
+ *
+ * CONNECTION STRATEGY:
+ *   - Uses WebSocket transport directly (skips HTTP long-polling fallback)
+ *   - Auto-reconnects with exponential backoff up to 10 attempts
+ *   - 60-second timeout matches server-side Socket.IO pingTimeout
+ *
+ * PORTING NOTES:
+ *   When porting to another stack, the frontend WebSocket layer remains
+ *   JavaScript regardless of the backend language. However:
+ *   - Java/Spring: Use SockJS + STOMP client instead of Socket.IO
+ *   - Python/FastAPI: Use native WebSocket API or socket.io-client
+ *   - C#/SignalR: Use @microsoft/signalr client library
+ *   - PHP/Ratchet: Use native WebSocket API
+ *   Each framework has its own real-time messaging protocol.
  */
 
 // Main app Socket.IO connection

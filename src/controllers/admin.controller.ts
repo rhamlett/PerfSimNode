@@ -1,7 +1,32 @@
 /**
- * Admin Controller
+ * =============================================================================
+ * ADMIN CONTROLLER — Administrative & Diagnostic REST API
+ * =============================================================================
  *
- * Handles administrative endpoints for status, events, and simulations listing.
+ * PURPOSE:
+ *   Provides administrative endpoints for system status, event logs, and
+ *   diagnostic information. These are used by the dashboard and for
+ *   troubleshooting deployment issues.
+ *
+ * ENDPOINTS:
+ *   GET /api/simulations        → List all active simulations (any type)
+ *   GET /api/admin/status       → Comprehensive status (config + simulations + metrics)
+ *   GET /api/admin/events       → Recent event log entries (with limit parameter)
+ *   GET /api/admin/memory-debug → Memory diagnostic info (cgroup, OS, process)
+ *   GET /api/admin/system-info  → System info (CPU count, model, platform)
+ *   GET /api/admin/network-debug → Network diagnostic info (DNS, HTTPS tests)
+ *
+ * DIAGNOSTIC ENDPOINTS:
+ *   memory-debug and network-debug are Azure-specific debugging tools.
+ *   memory-debug reads Linux cgroup files to understand container memory limits.
+ *   network-debug performs DNS lookups and HTTPS requests to diagnose routing.
+ *
+ * PORTING NOTES:
+ *   - Diagnostic endpoints reading /sys/fs/cgroup are Linux-specific.
+ *     On Windows/macOS, use platform-native memory APIs.
+ *   - Network debug with dns.resolve4/dns.lookup: use equivalent DNS APIs.
+ *   - The /api/simulations listing endpoint aggregates across all simulation
+ *     types — implement as a query across all service registries.
  *
  * @module controllers/admin
  */

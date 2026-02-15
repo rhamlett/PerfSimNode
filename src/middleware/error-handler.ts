@@ -1,7 +1,31 @@
 /**
- * Global Error Handler Middleware
+ * =============================================================================
+ * GLOBAL ERROR HANDLER MIDDLEWARE
+ * =============================================================================
  *
- * Catches and formats all unhandled errors in the application.
+ * PURPOSE:
+ *   Catches ALL unhandled errors from route handlers and middleware, and
+ *   transforms them into consistent JSON error responses. This is the last
+ *   middleware in the pipeline — it acts as a safety net.
+ *
+ * ERROR HIERARCHY:
+ *   AppError (base)       → Custom application error with HTTP status code
+ *   ├─ ValidationError    → 400 Bad Request (invalid user input)
+ *   └─ NotFoundError      → 404 Not Found (resource doesn't exist)
+ *   SyntaxError           → 400 Bad Request (malformed JSON body)
+ *   Error (any other)     → 500 Internal Server Error
+ *
+ * RESPONSE FORMAT:
+ *   All errors return: { error: string, message: string, details?: object }
+ *
+ * PORTING NOTES:
+ *   - Java Spring: @ControllerAdvice + @ExceptionHandler methods
+ *   - Python FastAPI: @app.exception_handler; Django: custom middleware
+ *   - PHP Laravel: App\Exceptions\Handler.php render() method
+ *   - C# ASP.NET: UseExceptionHandler middleware or ProblemDetails
+ *
+ *   The pattern is universal: define custom exception classes with status codes,
+ *   and a single global handler that catches them all and formats the response.
  *
  * @module middleware/error-handler
  */
@@ -10,7 +34,15 @@ import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../types';
 
 /**
- * Custom application error with status code.
+ * Custom application error with HTTP status code.
+ *
+ * Base class for all application-specific errors. Carries an HTTP status code
+ * and optional structured details for the error response body.
+ *
+ * PORTING NOTES:
+ *   In Java, extend RuntimeException with a statusCode field.
+ *   In Python, create a custom exception class with status_code attribute.
+ *   In C#, create ApiException : Exception with StatusCode property.
  */
 export class AppError extends Error {
   constructor(
@@ -25,7 +57,10 @@ export class AppError extends Error {
 }
 
 /**
- * Validation error for invalid input parameters.
+ * Validation error for invalid input parameters. Returns HTTP 400.
+ *
+ * Thrown by validation functions when user input doesn't meet requirements.
+ * The `details` field can include the field name, min/max, and received value.
  */
 export class ValidationError extends AppError {
   constructor(message: string, details?: Record<string, unknown>) {
@@ -35,7 +70,9 @@ export class ValidationError extends AppError {
 }
 
 /**
- * Not found error for missing resources.
+ * Not found error for missing resources. Returns HTTP 404.
+ *
+ * Thrown when a requested simulation or resource doesn't exist.
  */
 export class NotFoundError extends AppError {
   constructor(message: string = 'Resource not found') {

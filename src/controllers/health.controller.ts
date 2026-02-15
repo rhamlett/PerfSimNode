@@ -1,7 +1,29 @@
 /**
- * Health Controller
+ * =============================================================================
+ * HEALTH CONTROLLER — Health Check & Environment Endpoints
+ * =============================================================================
  *
- * Provides health check endpoint for monitoring and Azure App Service.
+ * PURPOSE:
+ *   Provides health check endpoints used by:
+ *   - Azure App Service health probes (determines if app is running)
+ *   - Monitoring dashboards (uptime, version info)
+ *   - Internal sidecar heartbeat detection
+ *
+ * ENDPOINTS:
+ *   GET /api/health         → Standard health check (status, uptime, version)
+ *   GET /api/health/environment → Azure environment info (SKU, site name)
+ *   GET /api/health/build   → Build timestamp for deployment tracking
+ *   GET /api/health/probe   → Ultra-lightweight probe for heartbeat
+ *
+ * PORTING NOTES:
+ *   - Java Spring Boot: @GetMapping("/health") with Spring Actuator
+ *   - Python FastAPI: @app.get("/health") returning dict
+ *   - C# ASP.NET: app.MapGet("/health") or Health Checks middleware
+ *   - PHP Laravel: Route::get('/health', fn() => response()->json(...))
+ *
+ *   Azure-specific env vars (WEBSITE_SKU, WEBSITE_SITE_NAME, etc.) are set
+ *   automatically by Azure App Service. Check equivalent env vars for other
+ *   cloud platforms (AWS: AWS_REGION; GCP: GOOGLE_CLOUD_PROJECT).
  *
  * @module controllers/health
  */

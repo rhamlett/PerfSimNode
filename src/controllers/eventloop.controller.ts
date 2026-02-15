@@ -1,7 +1,23 @@
 /**
- * Event Loop Controller
+ * =============================================================================
+ * EVENT LOOP CONTROLLER — Event Loop Blocking Simulation REST API
+ * =============================================================================
  *
- * Handles event loop blocking simulation endpoints.
+ * PURPOSE:
+ *   REST endpoint for blocking the event loop. The request blocks server-side
+ *   for the specified duration and returns only AFTER the blocking completes.
+ *   This means the HTTP response time equals the blocking duration.
+ *
+ * ENDPOINTS:
+ *   POST /api/simulations/eventloop → Block event loop (body: durationSeconds, optional chunkMs)
+ *
+ * BLOCKING BEHAVIOR:
+ *   Unlike CPU and memory simulations which start in the background and return
+ *   immediately, this endpoint is synchronous from the client's perspective.
+ *   The Express handler awaits EventLoopBlockService.block(), which runs the
+ *   blocking simulation in the main thread. The response is sent after the
+ *   simulation completes, making the HTTP response time a direct measure of
+ *   the blocking duration.
  *
  * @module controllers/eventloop
  */

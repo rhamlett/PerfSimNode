@@ -1,18 +1,51 @@
 /**
- * Load Test Service
+ * =============================================================================
+ * LOAD TEST SERVICE — Simulated Application Under Load
+ * =============================================================================
  *
- * Core implementation for the load test endpoint designed for Azure Load Testing.
- * Simulates realistic application behavior that degrades gracefully under load,
- * eventually leading to the 230-second Azure App Service frontend timeout.
+ * PURPOSE:
+ *   Provides a load test endpoint designed for Azure Load Testing (or similar
+ *   tools like JMeter, k6, Gatling). Simulates realistic application behavior
+ *   that degrades gracefully under increasing concurrency, eventually leading
+ *   to the 230-second Azure App Service frontend timeout.
  *
- * Algorithm:
- * 1. Increment concurrent counter
- * 2. Allocate memory: half on V8 heap (heapUsed), half as native Buffer (RSS)
- * 3. Calculate degradation delay: max(0, concurrent - softLimit) * degradationFactor
- * 4. Interleave CPU work and brief sleeps until total duration reached
- * 5. After 120s elapsed, 20% chance per check of throwing a random exception
- * 6. Decrement counter in finally block
- * 7. Return result with timing details
+ * ALGORITHM (per request):
+ *   1. INCREMENT concurrent request counter (atomic in single-threaded Node.js)
+ *   2. ALLOCATE MEMORY: split 50/50 between V8 heap and native Buffer
+ *      - Heap half: visible in heapUsed/Memory Working Set, causes GC pauses
+ *      - Native half: visible in RSS, causes OS paging under load
+ *   3. CALCULATE TOTAL DELAY:
+ *      totalDelay = baselineDelayMs + max(0, concurrent - softLimit) * degradationFactor
+ *      Example with defaults: 30 concurrent = 1000 + (30-20)*1000 = 11000ms
+ *   4. SUSTAINED WORK LOOP: interleave CPU work and brief async sleeps
+ *      - CPU work: spin loop for (workIterations/10)ms per cycle
+ *      - Sleep: 50ms yield to event loop between cycles
+ *      - Touch memory each cycle to prevent GC/OS page reclamation
+ *   5. RANDOM EXCEPTIONS: After 120s elapsed, 20% chance per cycle of
+ *      throwing a random exception from a pool of realistic error types
+ *   6. DECREMENT counter in finally block; return timing diagnostics
+ *
+ * EXCEPTION POOL:
+ *   17 different exception types simulating real-world failures:
+ *   - InvalidOperationError, TypeError, ReferenceError, TimeoutError,
+ *     IOException, HttpRequestError, StackOverflowError, etc.
+ *   These produce diverse error signatures in Application Insights.
+ *
+ * STATISTICS:
+ *   Tracks lifetime and per-period statistics:
+ *   - Concurrent requests, total processed, total exceptions
+ *   - Period stats (60s windows) broadcast via Socket.IO
+ *
+ * PORTING NOTES:
+ *   - The concurrent counter is a simple integer here because Node.js is
+ *     single-threaded. In multi-threaded runtimes:
+ *     Java: AtomicInteger; C#: Interlocked.Increment; Python: threading.Lock
+ *   - Memory allocation should split between managed heap and native memory
+ *     to produce both GC pressure and RSS growth.
+ *   - The degradation formula is the core behavior to replicate:
+ *     delay = baseline + max(0, current - softLimit) * factor
+ *   - Exception pool: use the target language's exception hierarchy
+ *   - Stats broadcasting: periodic timer that emits to WebSocket/SSE
  *
  * @module services/load-test
  */
@@ -28,7 +61,17 @@ import { EventLogService } from './event-log.service';
 // =============================================================================
 // RANDOM EXCEPTION POOL
 // =============================================================================
-// Simulates diverse real-world application failures.
+// Simulates diverse real-world application failures for load testing.
+// When a request has been processing for >120 seconds, there is a 20% chance
+// per work cycle that one of these exceptions is thrown. This produces varied
+// error signatures in Application Insights and other monitoring tools.
+//
+// PORTING NOTES:
+//   Replace these with equivalent exception types in the target language:
+//   - Java: IllegalStateException, NullPointerException, SocketTimeoutException, etc.
+//   - Python: ValueError, TypeError, TimeoutError, ConnectionError, etc.
+//   - C#: InvalidOperationException, NullReferenceException, TimeoutException, etc.
+//   - PHP: RuntimeException, InvalidArgumentException, DomainException, etc.
 
 const EXCEPTION_FACTORIES: Array<() => Error> = [
   // Common application logic errors
@@ -95,9 +138,17 @@ const DEFAULT_REQUEST: LoadTestRequest = {
 /**
  * Singleton service for load test endpoint work simulation.
  *
- * Node.js is single-threaded so simple counters are thread-safe.
- * The service maintains lifetime and period statistics and can broadcast
- * periodic stats via a configurable callback (e.g., Socket.IO).
+ * THREAD SAFETY:
+ *   Node.js is single-threaded, so simple counters are naturally thread-safe.
+ *   In multi-threaded runtimes (Java, C#), use atomic operations:
+ *   - Java: AtomicInteger for counters, AtomicLong for sums
+ *   - C#: Interlocked.Increment/Decrement for counters
+ *   - Python: threading.Lock around counter operations
+ *
+ * STATISTICS TRACKING:
+ *   Two tiers of statistics:
+ *   1. Lifetime counters — never reset, used for /api/loadtest/stats endpoint
+ *   2. Period counters — reset every 60s after broadcasting via Socket.IO
  */
 class LoadTestServiceClass {
   // ---- Lifetime counters ----
@@ -310,8 +361,22 @@ class LoadTestServiceClass {
 
   /**
    * Allocates memory on the V8 heap using regular JS arrays.
+   *
    * Unlike Buffer/TypedArray (which use native/external memory),
    * these arrays live on the V8 heap and show in heapUsed metrics.
+   * This is important because heapUsed maps to Azure's "Memory Working Set"
+   * metric, and heap growth triggers GC pauses that cause event loop lag.
+   *
+   * STRUCTURE: Array of number[128] chunks, where each chunk ≈ 1 KB.
+   * Using Math.random() ensures V8 stores actual heap-allocated doubles,
+   * not Small Integer (SMI) optimizations.
+   *
+   * PORTING NOTES:
+   *   Allocate managed heap objects (not native memory) so the runtime's
+   *   GC metrics reflect the allocation. Use the runtime's equivalent:
+   *   - Java: new byte[1024] arrays in an ArrayList
+   *   - C#: new byte[1024] arrays in a List
+   *   - Python: list of bytearray(1024) objects
    *
    * @param sizeKb - Amount of memory to allocate in kilobytes
    * @returns Array of number arrays residing on the V8 heap

@@ -1,7 +1,45 @@
 /**
- * Crash Service
+ * =============================================================================
+ * CRASH SERVICE — Intentional Process Termination Simulation
+ * =============================================================================
  *
- * Simulates application crashes for training purposes.
+ * PURPOSE:
+ *   Intentionally crashes the application process using different failure modes.
+ *   Each crash type produces a different diagnostic signature in monitoring
+ *   tools (Azure AppLens, Application Insights, Event Viewer), helping users
+ *   learn to identify crash types from their diagnostics.
+ *
+ * CRASH TYPES:
+ *   1. FailFast (SIGABRT)    → process.abort() — immediate termination,
+ *      produces a core dump. Visible as SIGABRT in Azure diagnostics.
+ *   2. Stack Overflow         → Infinite recursion until stack space exhausted.
+ *      Visible as stack overflow error. May not auto-recover on Azure.
+ *   3. Unhandled Exception    → throw new Error() outside a try/catch.
+ *      Standard crash, auto-recovers on Azure App Service.
+ *   4. Memory Exhaustion (OOM) → Allocate 100MB buffers in a loop until OOM.
+ *      Visible as OOM killer in Linux or heap limit error. May not auto-recover.
+ *
+ * SAFETY:
+ *   All crash methods use setImmediate to defer the crash, ensuring the event
+ *   log entry and HTTP response are sent BEFORE the process terminates.
+ *
+ * AZURE BEHAVIOR:
+ *   - Azure App Service's process manager automatically restarts the app after
+ *     most crash types (exception, SIGABRT).
+ *   - Stack Overflow and OOM crashes may leave the container in a bad state
+ *     requiring manual restart via the Azure Portal.
+ *
+ * PORTING NOTES:
+ *   - Java: System.exit(1), throw new StackOverflowError(),
+ *     OutOfMemoryError (allocate until OOM), Runtime.halt(1)
+ *   - Python: sys.exit(1), recursion limit crash, MemoryError,
+ *     os.abort() for SIGABRT
+ *   - C#: Environment.FailFast(), StackOverflowException,
+ *     OutOfMemoryException, throw in unhandled context
+ *   - PHP: exit(1), trigger_error(E_ERROR), recursive function
+ *
+ *   The key is to produce DIFFERENT diagnostic signatures for each crash type
+ *   so users can practice identifying them in monitoring tools.
  *
  * @module services/crash
  */
@@ -11,7 +49,10 @@ import { EventLogService } from './event-log.service';
 /**
  * Crash Service
  *
- * Provides methods to intentionally crash the process for training.
+ * IMPORTANT: All crash methods use setImmediate to defer the actual crash.
+ * This ensures the event log entry is written and the HTTP response is sent
+ * BEFORE the process terminates. Without this, the client would see a
+ * connection reset instead of the 202 response.
  */
 class CrashServiceClass {
   /**

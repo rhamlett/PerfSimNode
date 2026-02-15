@@ -1,8 +1,34 @@
 /**
- * OpenTelemetry Instrumentation
+ * =============================================================================
+ * OPENTELEMETRY INSTRUMENTATION — Application Performance Monitoring
+ * =============================================================================
  *
- * This module initializes Azure Monitor OpenTelemetry for Application Insights.
- * It MUST be loaded before any other application code to ensure proper instrumentation.
+ * PURPOSE:
+ *   Initializes Azure Monitor OpenTelemetry SDK for automatic distributed tracing,
+ *   metrics collection, and log correlation in Azure Application Insights.
+ *
+ * CRITICAL REQUIREMENT:
+ *   This module MUST be imported BEFORE any other application code. OpenTelemetry
+ *   needs to monkey-patch HTTP, Express, and other modules before they are loaded
+ *   to automatically instrument them. If imported after, traces won't be captured.
+ *
+ * HOW IT WORKS:
+ *   - Checks for APPLICATIONINSIGHTS_CONNECTION_STRING environment variable
+ *   - If present (Azure App Service sets this automatically): enables full telemetry
+ *   - If absent (local development): silently disables — app runs without APM
+ *   - Auto-instruments: HTTP requests, Express routes, dependencies
+ *
+ * PORTING NOTES:
+ *   Every cloud platform has an equivalent APM SDK:
+ *   - Java: Azure Monitor OpenTelemetry (applicationinsights-agent) or Spring Boot Actuator
+ *   - Python: azure-monitor-opentelemetry or opentelemetry-sdk
+ *   - C#: Azure.Monitor.OpenTelemetry.AspNetCore or Application Insights SDK
+ *   - PHP: OpenTelemetry PHP SDK with Azure Monitor exporter
+ *
+ *   The pattern is always:
+ *   1. Import/initialize the SDK at the very start of the application
+ *   2. Configure via connection string (from environment variable)
+ *   3. Auto-instrumentation handles most tracing — no code changes needed
  *
  * @module instrumentation
  */

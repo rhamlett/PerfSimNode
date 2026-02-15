@@ -1,11 +1,45 @@
 /**
- * Event Loop Block Service
+ * =============================================================================
+ * EVENT LOOP BLOCK SERVICE — Main Thread Blocking Simulation
+ * =============================================================================
  *
- * Simulates event loop blocking using repeated synchronous chunks with brief
- * yields between them. This mirrors real-world sync-over-async patterns where
- * blocking operations (e.g. readFileSync in a loop) repeatedly seize the event
- * loop. The brief yields between chunks let queued I/O flush — probe responses,
- * IPC messages, Socket.IO emits — so the latency chart updates in real-time.
+ * PURPOSE:
+ *   Simulates the effect of synchronous/blocking operations on the main
+ *   application thread. When the event loop is blocked, ALL I/O stops —
+ *   no HTTP responses can be sent, no WebSocket messages processed, no
+ *   timers fire. This demonstrates why blocking the main thread is
+ *   catastrophic in event-driven runtimes.
+ *
+ * HOW IT WORKS:
+ *   Uses crypto.pbkdf2Sync() in repeated chunks to block the event loop.
+ *   Each chunk blocks for chunkMs (default 200ms), then yields briefly via
+ *   setImmediate. During the yield, queued I/O flushes — sidecar probe
+ *   responses, IPC messages, and Socket.IO emits can complete. This means
+ *   the dashboard shows latency spikes in real-time instead of only after
+ *   the simulation ends.
+ *
+ *   The event loop is blocked ~97% of the time during the simulation —
+ *   effectively unresponsive, but with enough yields for monitoring to work.
+ *
+ * CHUNKING STRATEGY:
+ *   Block for 200ms, yield, block for 200ms, yield, ...
+ *   This is analogous to real-world patterns like:
+ *   - readFileSync() in a loop
+ *   - Synchronous database queries
+ *   - Heavy computation without yielding
+ *
+ * PORTING NOTES:
+ *   The goal is to block the main request-processing thread:
+ *   - Java (Servlet): Thread.sleep(duration) on a request thread. Since Java
+ *     uses thread-per-request, this only blocks that one request. To block
+ *     ALL requests, exhaust the thread pool.
+ *   - Python (asyncio): time.sleep(duration) in the event loop blocks everything
+ *     (same as Node.js). asyncio.sleep() would NOT block.
+ *   - PHP: usleep(duration * 1000000) — blocks the current request handler.
+ *   - C#: Thread.Sleep() in a request handler. ASP.NET has limited threads.
+ *
+ *   The chunked-with-yield approach is Node.js-specific. In thread-per-request
+ *   runtimes, a single blocking call has the same effect on that request.
  *
  * @module services/eventloop-block
  */

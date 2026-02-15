@@ -1,7 +1,44 @@
 /**
- * Dashboard Logic
+ * =============================================================================
+ * DASHBOARD LOGIC — UI Interactions, API Calls, and State Management
+ * =============================================================================
  *
- * Handles UI interactions and API calls for the dashboard.
+ * PURPOSE:
+ *   Main dashboard controller handling all user interactions, REST API calls,
+ *   and UI state management. This is the largest frontend file and serves as
+ *   the central coordinator between the UI, the REST API, and real-time updates.
+ *
+ * RESPONSIBILITIES:
+ *   1. SIMULATION CONTROL: Start/stop CPU stress, allocate/release memory,
+ *      trigger event loop blocking, send slow requests, trigger crashes
+ *   2. UI RENDERING: Active simulation lists, event log, status badges,
+ *      metric gauge values, impact measurements
+ *   3. REAL-TIME HANDLERS: Callback implementations for WebSocket events
+ *      (onSocketConnected, onMetricsUpdate, onEventUpdate, onSimulationUpdate)
+ *   4. PROCESS RESTART DETECTION: Monitors process ID changes in metrics
+ *      to detect and report application crashes/restarts
+ *
+ * API INTEGRATION PATTERN:
+ *   Each simulation has a consistent UI flow:
+ *   1. User fills form → submit handler validates input
+ *   2. fetch() POST/GET/DELETE to /api/simulations/{type}
+ *   3. Response updates local state (activeSimulations Map)
+ *   4. UI re-renders via render*() functions
+ *   5. WebSocket events may also trigger state updates (dual path)
+ *
+ * STATE MANAGEMENT:
+ *   - activeSimulations.cpu: Map<id, SimulationInfo> for CPU simulations
+ *   - activeSimulations.memory: Map<id, SimulationInfo> for memory allocations
+ *   - eventLog: Array of log entries (ring buffer, max 100)
+ *   - lastProcessId: For crash/restart detection
+ *
+ * PORTING NOTES:
+ *   This file is FRONTEND JavaScript — it stays JavaScript regardless of
+ *   backend language. However, when porting:
+ *   - React/Vue/Angular: Convert to components with proper state management
+ *   - The fetch() calls target REST endpoints whose paths don't change
+ *   - The WebSocket event names must match whatever the backend emits
+ *   - UTC time formatting is used throughout to match Azure diagnostics
  */
 
 // Active simulations tracking

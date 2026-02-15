@@ -1,7 +1,22 @@
 /**
- * Slow Request Controller
+ * =============================================================================
+ * SLOW REQUEST CONTROLLER — Slow Request Simulation REST API
+ * =============================================================================
  *
- * Handles slow request simulation endpoints with multiple blocking patterns.
+ * PURPOSE:
+ *   REST endpoint for simulating slow HTTP responses with configurable blocking
+ *   patterns. Uses GET method to allow easy testing from browsers.
+ *
+ * ENDPOINTS:
+ *   GET /api/simulations/slow?delaySeconds=N&blockingPattern=P
+ *     - delaySeconds: How long to delay (default: 5, configurable)
+ *     - blockingPattern: setTimeout | libuv | worker (default: setTimeout)
+ *
+ * WHY GET (NOT POST):
+ *   Using GET allows testing directly from the browser address bar and from
+ *   the dashboard's slow request form without needing a POST body.
+ *   The slow request simulation is idempotent (no side effects on resources),
+ *   so GET is semantically acceptable.
  *
  * @module controllers/slow
  */

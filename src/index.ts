@@ -1,7 +1,55 @@
 /**
- * Application Entry Point
+ * =============================================================================
+ * APPLICATION ENTRY POINT — Server Bootstrap & Process Management
+ * =============================================================================
  *
- * Starts the Performance Problem Simulator server with Socket.IO support.
+ * PURPOSE:
+ *   This is the main entry point that wires everything together:
+ *   1. Initializes OpenTelemetry instrumentation (MUST be first import)
+ *   2. Creates the Express app and wraps it in an HTTP server
+ *   3. Initializes Socket.IO for real-time WebSocket communication
+ *   4. Wires up event broadcasting (events → Socket.IO → dashboard)
+ *   5. Starts periodic metrics broadcasting (every metricsIntervalMs)
+ *   6. Spawns the sidecar probe process for independent latency monitoring
+ *   7. Optionally starts curl-based probes for Azure AppLens visibility
+ *
+ * ARCHITECTURE:
+ *   ┌─────────────────────────────────────────────────┐
+ *   │  Main Process (this file)                       │
+ *   │  ├─ Express HTTP Server (REST API)              │
+ *   │  ├─ Socket.IO (WebSocket for real-time data)    │
+ *   │  ├─ MetricsService (periodic metrics broadcast) │
+ *   │  ├─ EventLogService (event broadcasting)        │
+ *   │  └─ LoadTestService (stats broadcasting)        │
+ *   └──────────────┬──────────────────────────────────┘
+ *                  │ IPC (fork)
+ *   ┌──────────────┴──────────────────────────────────┐
+ *   │  Sidecar Process (probe-sidecar.ts)             │
+ *   │  └─ HTTP probes → main app /api/metrics/probe   │
+ *   │    Results sent back via IPC → Socket.IO emit    │
+ *   └─────────────────────────────────────────────────┘
+ *
+ * REAL-TIME DATA FLOW:
+ *   1. Metrics: MetricsService.getMetrics() → io.emit('metrics') every 250ms
+ *   2. Events:  EventLogService.log() → broadcaster → io.emit('event')
+ *   3. Latency: Sidecar HTTP probe → IPC message → io.emit('sidecarProbe')
+ *   4. Load Test: LoadTestService stats → io.emit('loadTestStats') every 60s
+ *
+ * SIDECAR PATTERN:
+ *   The sidecar probe process runs on its OWN event loop (separate Node.js
+ *   process via child_process.fork()). This is critical because when the main
+ *   app's event loop is blocked, it can't measure its own latency. The sidecar
+ *   makes HTTP requests to the main app and measures response time externally.
+ *
+ * PORTING NOTES:
+ *   - The "sidecar" concept maps to any background process/thread:
+ *     Java: Separate thread with HttpClient; Python: subprocess or separate process.
+ *   - Socket.IO → any WebSocket library (Java: Spring WebSocket, Python: websockets)
+ *   - child_process.fork() → any process spawning API (Runtime.exec, subprocess)
+ *   - The key architectural decisions to preserve:
+ *     a) Real-time metrics via WebSocket (not polling)
+ *     b) Independent latency monitoring from a separate process/thread
+ *     c) Graceful shutdown with child process cleanup
  *
  * @module index
  */
@@ -22,6 +70,14 @@ import { LoadTestService } from './services/load-test.service';
 
 /**
  * Bootstrap and start the application server.
+ *
+ * This function:
+ * 1. Creates the Express app (HTTP routing)
+ * 2. Wraps it in an HTTP server (needed for Socket.IO to share the port)
+ * 3. Initializes Socket.IO on the same HTTP server
+ * 4. Wires up all real-time broadcasting (metrics, events, load test stats)
+ * 5. Starts the sidecar probe process
+ * 6. Begins listening on the configured port
  */
 async function main(): Promise<void> {
   const app = createApp();
@@ -30,7 +86,17 @@ async function main(): Promise<void> {
   // Create HTTP server
   const server = http.createServer(app);
 
-  // Initialize Socket.IO
+  // --------------------------------------------------------------------------
+  // SOCKET.IO INITIALIZATION
+  // Socket.IO provides WebSocket-based real-time communication between the
+  // server and the browser dashboard. It shares the same HTTP server/port.
+  //
+  // PORTING NOTES:
+  //   - Java: Use Spring WebSocket or javax.websocket
+  //   - Python: Use python-socketio or websockets library
+  //   - PHP: Use Ratchet or Laravel WebSockets (or server-sent events as alternative)
+  //   - C#: Use SignalR (similar push-based real-time framework)
+  // --------------------------------------------------------------------------
   const io = new SocketServer(server, {
     cors: {
       origin: '*',
@@ -43,7 +109,12 @@ async function main(): Promise<void> {
     pingInterval: 25000,   // 25s between keep-alive pings
   });
 
-  // Set up event broadcasting via Socket.IO
+  // --------------------------------------------------------------------------
+  // EVENT BROADCASTING SETUP
+  // Wire EventLogService to broadcast new events to all connected clients.
+  // This is the "pub" side of pub/sub — any code that logs an event
+  // automatically pushes it to all dashboard clients in real-time.
+  // --------------------------------------------------------------------------
   EventLogService.setBroadcaster((event) => {
     io.emit('event', {
       id: event.id,
@@ -66,7 +137,18 @@ async function main(): Promise<void> {
     });
   });
 
-  // Broadcast metrics at configured interval
+  // --------------------------------------------------------------------------
+  // PERIODIC METRICS BROADCAST
+  // Collects system metrics (CPU, memory, event loop, process info) at the
+  // configured interval (default 250ms) and pushes to all WebSocket clients.
+  // The dashboard uses this stream to update real-time charts.
+  //
+  // PORTING NOTES:
+  //   Use a scheduled timer/executor to periodically collect and push metrics.
+  //   Java: ScheduledExecutorService.scheduleAtFixedRate()
+  //   Python: asyncio.create_task() with while-loop and await asyncio.sleep()
+  //   C#: System.Threading.Timer or PeriodicTimer
+  // --------------------------------------------------------------------------
   setInterval(() => {
     const metrics = MetricsService.getMetrics();
     io.emit('metrics', {
@@ -95,8 +177,32 @@ async function main(): Promise<void> {
     });
 
     // -------------------------------------------------------------------
-    // Sidecar Probe Process
-    // Runs on its own event loop for accurate latency monitoring under load
+    // SIDECAR PROBE PROCESS
+    //
+    // WHY: The main Node.js process has a single event loop. When it's
+    // blocked (event loop blocking simulation), it can't measure its own
+    // latency. The sidecar runs as a SEPARATE OS process with its own
+    // event loop, making HTTP requests to the main app to measure
+    // response time externally.
+    //
+    // HOW IT WORKS:
+    // 1. Fork a child process running probe-sidecar.ts
+    // 2. Sidecar probes GET /api/metrics/probe every 100ms
+    // 3. Sidecar sends latency results back via Node.js IPC channel
+    // 4. Main process relays IPC messages to dashboard via Socket.IO
+    //
+    // RESILIENCE:
+    // - Auto-restarts if sidecar crashes (with 2s delay)
+    // - Graceful shutdown when main process exits
+    //
+    // PORTING NOTES:
+    //   The sidecar can be any background process that makes HTTP GET
+    //   requests to the main app and sends results back:
+    //   - Java: Separate thread with HttpClient + shared queue
+    //   - Python: subprocess or separate asyncio task
+    //   - C#: BackgroundService with HttpClient
+    //   The critical requirement is that it runs on a SEPARATE thread/process
+    //   so it can measure latency even when the main thread is blocked.
     // -------------------------------------------------------------------
     const sidecarScript = path.join(__dirname, 'sidecar', 'probe-sidecar.js');
     // For ts-node-dev, use the .ts source directly
@@ -171,7 +277,17 @@ async function main(): Promise<void> {
     startSidecar();
 
     // -------------------------------------------------------------------
-    // Curl probe for AppLens visibility (Azure only)
+    // AZURE APPLENSCURL PROBE (Azure-only)
+    //
+    // When running on Azure App Service, WEBSITE_HOSTNAME is set to the
+    // app's public hostname. This curl probe makes HTTPS requests through
+    // the Azure frontend load balancer, which makes the traffic visible
+    // in Azure's AppLens diagnostic tool (unlike internal localhost probes).
+    //
+    // PORTING NOTES:
+    //   This is Azure-specific. If deploying to other clouds, replace with
+    //   the equivalent external health check mechanism (AWS ALB health
+    //   checks, GCP load balancer probes, etc.).
     // -------------------------------------------------------------------
     const websiteHostname = process.env.WEBSITE_HOSTNAME;
     console.log(`[PerfSimNode] WEBSITE_HOSTNAME: ${websiteHostname || 'not set'}`);

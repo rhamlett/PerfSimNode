@@ -1,7 +1,35 @@
 /**
- * Metrics Service
+ * =============================================================================
+ * METRICS SERVICE — Real-Time System Metrics Collection
+ * =============================================================================
  *
- * Collects system metrics including CPU, memory, and event loop statistics.
+ * PURPOSE:
+ *   Collects system metrics (CPU, memory, event loop, process stats) and provides
+ *   them as a unified snapshot. Called periodically by the main server loop
+ *   (index.ts) and broadcast to all WebSocket clients for the dashboard.
+ *
+ * METRICS COLLECTED:
+ *   1. CPU Usage — System-wide percentage using os.cpus() idle/total comparison
+ *      between snapshots. Captures ALL processes (main + forked workers).
+ *   2. Memory — V8 heap (managed GC objects), RSS (total physical memory),
+ *      external (native C++ allocations), system total RAM.
+ *   3. Event Loop Lag — Two measurements:
+ *      a) Histogram mean from perf_hooks.monitorEventLoopDelay (precise but averaged)
+ *      b) Heartbeat lag: wall-clock time for setImmediate callback (intuitive, real-time)
+ *   4. Process — PID (for restart detection), handles, requests, uptime.
+ *
+ * SINGLETON PATTERN:
+ *   Instantiated once at module load time. The constructor starts the event loop
+ *   histogram and heartbeat monitor which run for the lifetime of the process.
+ *
+ * PORTING NOTES:
+ *   - Java: Create a MetricsService bean with @Scheduled collection.
+ *     CPU: OperatingSystemMXBean; Memory: MemoryMXBean; Threads: ThreadMXBean.
+ *   - Python: Use psutil for CPU/memory, asyncio loop time for event loop lag.
+ *   - C#: Use System.Diagnostics.Process and PerformanceCounter.
+ *   - PHP: Use sys_getloadavg(), memory_get_usage(), getmypid().
+ *   Key: System-wide CPU measurement (not just current process) because
+ *   CPU stress spawns child processes.
  *
  * @module services/metrics
  */
@@ -31,7 +59,13 @@ interface CpuSnapshot {
 /**
  * Service for collecting system metrics.
  *
- * Tracks CPU usage, memory consumption, event loop lag, and process stats.
+ * DESIGN: Maintains state between calls for delta-based calculations:
+ *   - lastCpuSnapshot: Previous CPU times for percentage calculation
+ *   - histogram: Running event loop delay histogram (reset-able)
+ *   - heartbeatLagMs: Latest setImmediate timing measurement
+ *
+ * All methods are synchronous (no async I/O) so they can be called
+ * from a setInterval without introducing concurrency issues.
  */
 class MetricsServiceClass {
   private histogram: IntervalHistogram;
@@ -55,7 +89,14 @@ class MetricsServiceClass {
   
   /**
    * Gets a snapshot of system-wide CPU times.
-   * Uses os.cpus() to capture all CPU activity including child processes.
+   * Uses os.cpus() to capture ALL CPU activity across all cores and processes.
+   * Returns aggregate idle and total time — the delta between two snapshots
+   * gives us CPU usage percentage.
+   *
+   * PORTING NOTES:
+   *   This is the key to measuring CPU from child worker processes.
+   *   In Java: ManagementFactory.getOperatingSystemMXBean().getSystemCpuLoad()
+   *   In Python: psutil.cpu_times() for per-CPU breakdowns
    */
   private getCpuSnapshot(): CpuSnapshot {
     const cpus = os.cpus();
@@ -72,8 +113,22 @@ class MetricsServiceClass {
   
   /**
    * Starts the heartbeat measurement loop.
-   * Schedules setImmediate callbacks and measures how long they take to fire.
-   * This provides real-time visibility into event loop blocking.
+   *
+   * ALGORITHM:
+   * 1. Record current time (Date.now())
+   * 2. Schedule a setImmediate callback
+   * 3. When callback fires, measure elapsed time
+   * 4. If event loop is idle: ~0-1ms. If blocked: equals the block duration.
+   *
+   * This provides an intuitive, real-time indicator of event loop health.
+   * The dashboard displays this value prominently for instant visual feedback.
+   *
+   * PORTING NOTES:
+   *   Concept: schedule a minimal callback and measure how long the runtime
+   *   takes to actually execute it. Long delay = main thread is blocked.
+   *   - Java: ScheduledExecutorService.schedule() with timing
+   *   - Python asyncio: loop.call_soon() with time measurement
+   *   - C#: ThreadPool.QueueUserWorkItem() with Stopwatch
    */
   private startHeartbeat(): void {
     const measureHeartbeat = () => {

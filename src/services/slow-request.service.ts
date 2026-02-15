@@ -1,10 +1,47 @@
 /**
- * Slow Request Service
+ * =============================================================================
+ * SLOW REQUEST SERVICE — Multiple Blocking Pattern Simulation
+ * =============================================================================
  *
- * Simulates slow HTTP responses using various blocking patterns:
- * - setTimeout: Non-blocking delay (server remains responsive)
- * - libuv: Saturates libuv thread pool (affects fs/dns operations)
- * - worker: Spawns blocking worker threads (similar to .NET ThreadPool)
+ * PURPOSE:
+ *   Simulates slow HTTP responses using multiple blocking strategies, each
+ *   demonstrating a different way requests can become slow in a real application.
+ *
+ * THREE BLOCKING PATTERNS:
+ *
+ *   1. setTimeout (default) — NON-BLOCKING ASYNC DELAY
+ *      The server remains fully responsive to other requests.
+ *      Simulates: Slow database queries, external API calls, file I/O.
+ *      The request handler awaits a timer, freeing the event loop.
+ *      Other runtimes: Thread.sleep() in a non-blocking way — releasing the
+ *      thread back to the pool while waiting.
+ *
+ *   2. libuv — I/O THREAD POOL SATURATION
+ *      Saturates Node.js's internal thread pool (libuv, default 4 threads)
+ *      with synchronous crypto operations. When all threads are busy, other
+ *      operations that use the pool (fs.readFile, dns.lookup, crypto.pbkdf2)
+ *      queue up, causing cascading slowdowns.
+ *      Other runtimes: Saturate the framework's worker thread pool
+ *      (Java ExecutorService, .NET ThreadPool, Python concurrent.futures).
+ *
+ *   3. worker — DEDICATED BLOCKING THREADS
+ *      Spawns a Worker Thread that blocks with CPU-heavy sync work.
+ *      Similar to .NET ThreadPool blocking or Java thread-per-request model
+ *      where each request holds a thread indefinitely.
+ *      The Worker Thread keeps one OS thread busy for the full duration.
+ *
+ * PORTING NOTES:
+ *   - Java: setTimeout → CompletableFuture.delayedExecutor();
+ *     libuv → saturate ForkJoinPool;
+ *     worker → new Thread with blocking work.
+ *   - Python: setTimeout → asyncio.sleep();
+ *     libuv → concurrent.futures.ThreadPoolExecutor saturation;
+ *     worker → threading.Thread with blocking work.
+ *   - C#: setTimeout → Task.Delay();
+ *     libuv → saturate ThreadPool with sync operations;
+ *     worker → new Thread with sync operations.
+ *   - PHP: setTimeout → sleep(); libuv → N/A (single-threaded);
+ *     worker → pcntl_fork() child process.
  *
  * @module services/slow-request
  */
@@ -90,8 +127,23 @@ class SlowRequestServiceClass {
 
   /**
    * Blocks using libuv thread pool saturation.
-   * Uses synchronous crypto operations that run on the libuv thread pool.
-   * When all 4 threads are busy, other fs/dns/crypto operations queue up.
+   *
+   * ALGORITHM:
+   * 1. Create N promises (N = UV_THREADPOOL_SIZE, default 4)
+   * 2. Each promise runs a loop that:
+   *    a) Yields via setImmediate (puts work on the libuv thread pool queue)
+   *    b) Executes pbkdf2Sync (~10-20ms per call, blocks one libuv thread)
+   * 3. With all 4 threads busy, other libuv operations queue up:
+   *    - fs.readFile, fs.writeFile (file I/O)
+   *    - dns.lookup (DNS resolution)
+   *    - crypto.pbkdf2 (async crypto)
+   * 4. Continue until total duration is reached
+   *
+   * PORTING NOTES:
+   *   The goal is to exhaust to the runtime's internal worker pool:
+   *   - Java: Submit Callable tasks to the common ForkJoinPool
+   *   - Python: Submit blocking callables to ThreadPoolExecutor
+   *   - C#: Queue work items to ThreadPool that never complete
    *
    * @param durationMs - How long to block in milliseconds
    */
@@ -119,8 +171,18 @@ class SlowRequestServiceClass {
   }
 
   /**
-   * Blocks using Worker Threads.
-   * Similar to .NET ThreadPool - spawns actual threads that block.
+   * Blocks using a Worker Thread.
+   *
+   * Spawns a separate Worker Thread (slow-request-worker.ts) that runs
+   * synchronous CPU-heavy work for the specified duration. The worker
+   * sends a 'completed' message when done.
+   *
+   * This simulates a blocked thread in thread-per-request models (.NET, Java).
+   *
+   * PORTING NOTES:
+   *   - Java: new Thread(() -> { doBlockingWork(); }).start(); thread.join();
+   *   - Python: threading.Thread(target=blocking_func).start(); thread.join()
+   *   - C#: Task.Run(() => { DoBlockingWork(); }).Wait();
    *
    * @param durationMs - How long to block in milliseconds
    */

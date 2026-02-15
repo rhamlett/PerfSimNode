@@ -1,16 +1,66 @@
 /**
- * Sidecar Probe Process
+ * =============================================================================
+ * SIDECAR PROBE PROCESS — Independent Latency Monitor
+ * =============================================================================
  *
- * A lightweight, independent process that monitors the main PerfSimNode app's
- * responsiveness. Because it runs on its own event loop, it can accurately
- * measure and report latency even when the main app's event loop is blocked.
+ * PURPOSE:
+ *   An independent child process that measures the main app's HTTP response
+ *   latency. Because it has its OWN event loop (separate OS process), it can
+ *   accurately detect and measure event loop blocking in the main app.
  *
- * Communication:
- * - Probes the main app via HTTP GET /api/metrics/probe
- * - Sends results to the parent process via IPC (process.send)
- * - Parent relays results to the dashboard via the main Socket.IO server
+ * WHY A SIDECAR:
+ *   If latency measurement ran inside the main app, it would be affected by
+ *   the same event loop blocking it's trying to detect. By running in a
+ *   separate process, the sidecar can send probes even when the main app
+ *   is completely frozen.
  *
- * This design works on Azure App Service where only one port is exposed.
+ * ARCHITECTURE:
+ *   ┌──────────────┐  HTTP GET /api/metrics/probe  ┌────────────────┐
+ *   │   Sidecar    │ ─────────────────────────────> │   Main App     │
+ *   │  (this file) │ <───────────────────────────── │  (port 3000)   │
+ *   │              │       JSON response            │                │
+ *   │              │                                │                │
+ *   │              │  IPC process.send()            │                │
+ *   │              │ ─────────────────────────────> │  Parent handler │
+ *   │              │   { latencyMs, timestamp }     │  → Socket.IO   │
+ *   └──────────────┘                                │  → Dashboard   │
+ *                                                   └────────────────┘
+ *
+ * DATA FLOW:
+ *   1. Sidecar probes main app via HTTP every PROBE_INTERVAL_MS (default 100ms)
+ *   2. Measures round-trip time for each probe request
+ *   3. Sends result to parent process via Node IPC (process.send)
+ *   4. Parent process (index.ts) relays result to dashboard via Socket.IO
+ *   5. Dashboard renders real-time latency chart (charts.js)
+ *
+ * PROBE BEHAVIOR DURING EVENT LOOP BLOCKING:
+ *   When the main app's event loop is blocked, incoming HTTP requests queue up.
+ *   The sidecar continues SENDING probes on schedule (its event loop is fine).
+ *   The probes queue on the main app's side. When the block ends, all queued
+ *   probes complete rapidly, each reporting their full wait time. This creates
+ *   a characteristic "ramp-down" pattern in the latency chart.
+ *
+ * AZURE APP SERVICE CONSTRAINT:
+ *   Azure App Service exposes only ONE port (80/443 → app port). The sidecar
+ *   cannot listen on a separate port. Instead, it probes the main app over
+ *   localhost and communicates results via IPC — both of which work fine
+ *   within the same App Service container.
+ *
+ * PORTING NOTES:
+ *   - Java: Use a ScheduledExecutorService with a Runnable that makes
+ *     HttpClient.send() calls. Communication via shared ConcurrentLinkedQueue
+ *     or a message broker.
+ *   - Python: asyncio.create_task() or a separate threading.Thread with
+ *     requests.get() calls. Use multiprocessing.Queue for IPC.
+ *   - C#: BackgroundService (IHostedService) with HttpClient in a timer loop.
+ *     Use Channel<T> or ConcurrentQueue<T> for communication.
+ *   - PHP: A separate CLI script invoked by the main process, or use
+ *     ReactPHP for an event-loop-based probe.
+ *
+ *   The key concept to preserve: the probe MUST run independently of the
+ *   main app's request processing. In thread-based runtimes (Java, C#),
+ *   a separate thread suffices. In single-threaded runtimes (Node, Python),
+ *   a separate process is required.
  *
  * @module sidecar/probe-sidecar
  */
@@ -32,7 +82,13 @@ let probeErrors = 0;
 let lastProbeLatency = 0;
 
 /**
- * Send a message to the parent process via IPC.
+ * Send a structured message to the parent process via Node.js IPC channel.
+ *
+ * The IPC channel is automatically established when the parent uses
+ * child_process.fork(). Messages are serialized/deserialized automatically.
+ *
+ * PORTING: In Java/C#, use a shared queue or message broker instead of IPC.
+ * In Python multiprocessing, use multiprocessing.Queue.
  */
 function sendToParent(type: string, data: Record<string, unknown>): void {
   if (process.send) {
@@ -41,12 +97,30 @@ function sendToParent(type: string, data: Record<string, unknown>): void {
 }
 
 /**
- * Starts the probe loop. Sends results to parent via IPC.
- * Uses setInterval to fire probes at a fixed rate regardless of whether
- * previous probes have completed. During event loop blocking, probes
- * queue up on the main app's side — when the block ends, they all
- * complete with their actual wait times, producing a ramp-down pattern
- * in the chart that shows the full duration of the block.
+ * Starts the probe loop — the core monitoring logic.
+ *
+ * TIMING MODEL:
+ *   Uses setInterval to fire probes at a FIXED RATE (not fixed delay).
+ *   This means probes are sent every PROBE_INTERVAL_MS regardless of
+ *   whether previous probes have completed. This is important because:
+ *
+ *   - During normal operation: probes complete in ~1-5ms, well within interval
+ *   - During event loop blocking: probes queue on main app's socket
+ *   - When block ends: all queued probes complete rapidly, each reporting
+ *     their actual wall-clock wait time
+ *   - Result: the latency chart shows a "ramp-down" pattern that reveals
+ *     the total duration of the block
+ *
+ * LOAD TEST DETECTION:
+ *   The probe endpoint (/api/metrics/probe) also returns load test status.
+ *   The sidecar parses this to track whether a load test is active and how
+ *   many concurrent requests are in flight. This information is forwarded
+ *   to the dashboard for display alongside latency data.
+ *
+ * PORTING: The fixed-rate timer concept is the same across all platforms:
+ *   - Java: ScheduledExecutorService.scheduleAtFixedRate()
+ *   - Python: asyncio loop or threading.Timer in a loop
+ *   - C#: System.Threading.Timer or PeriodicTimer (.NET 6+)
  */
 function startProbeLoop(): void {
   console.log(`[Sidecar] Monitoring main app on port ${MAIN_APP_PORT}`);
