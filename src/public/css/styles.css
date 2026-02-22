@@ -470,15 +470,16 @@ section h2, section h3 {
   border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  border: 1px solid #d0d0d0;
   border-left: 4px solid transparent;
   overflow: hidden;
 }
 
 .metric-tile:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
 }
 
 .metric-tile.cpu { border-left-color: var(--color-cpu); }
@@ -575,7 +576,8 @@ section h2, section h3 {
   background: var(--color-card);
   border-radius: var(--radius-md);
   padding: 1rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  border: 1px solid #d0d0d0;
 }
 
 .chart-card h3 {
@@ -615,7 +617,8 @@ section h2, section h3 {
   background: var(--color-card);
   border-radius: var(--radius-md);
   padding: 1rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  border: 1px solid #d0d0d0;
 }
 
 .latency-card h3 {
@@ -941,7 +944,8 @@ section h2, section h3 {
   background: var(--color-card);
   border-radius: var(--radius-md);
   padding: 1rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  border: 1px solid #d0d0d0;
 }
 
 .active-card h3 {
