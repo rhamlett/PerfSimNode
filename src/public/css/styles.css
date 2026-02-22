@@ -6,20 +6,20 @@
    CSS Variables / Theme
    -------------------------------------------------------------------------- */
 :root {
-  --color-primary: #336633;
-  --color-primary-dark: #336633;
-  --color-success: #107c10;
+  --color-primary: #395f39;
+  --color-primary-dark: #395f39;
+  --color-success: #1d6f1d;
   --color-warning: #ffb900;
   --color-danger: #d13438;
   --color-secondary: #6c757d;
   
-  --color-bg: #F5F8ED;
+  --color-bg: #E0EBE0;
   --color-card: #ffffff;
   --color-text: #323130;
   --color-text-muted: #605e5c;
   
   --color-cpu: #0078d4;
-  --color-memory: #107c10;
+  --color-memory: #1d6f1d;
   --color-eventloop: #8764b8;
   --color-latency: #ffb900;
   
@@ -66,7 +66,7 @@ section[id] {
    Header
    -------------------------------------------------------------------------- */
 header {
-  background: #336633;
+  background: #395f39;
   color: white;
   padding: 0.75rem 1.5rem;
   display: flex;
@@ -92,7 +92,7 @@ header h1 {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  background: #5a9a5a;
+  background: #629262;
   color: white;
   padding: 0.35rem 1rem;
   border-radius: 20px;
@@ -113,20 +113,20 @@ header nav {
   padding: 0.5rem 1rem;
   border-radius: var(--radius-sm);
   font-size: 0.875rem;
-  background: #4a8a4a;
+  background: #528252;
   transition: background var(--transition-fast);
 }
 
 .nav-link:hover {
-  background: #5a9a5a;
+  background: #629262;
 }
 
 .nav-link.active {
-  background: #5a9a5a;
+  background: #629262;
 }
 
 .btn-panel-toggle {
-  background: #5a9a5a;
+  background: #629262;
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -139,7 +139,7 @@ header nav {
 }
 
 .btn-panel-toggle:hover {
-  background: #6aaa6a;
+  background: #6ea26e;
 }
 
 .btn-panel-toggle.active {
@@ -216,10 +216,10 @@ header nav {
 
 @keyframes bars-highlight {
   0% {
-    background: #90EE90;
+    background: #91de91;
   }
   70% {
-    background: #90EE90;
+    background: #91de91;
   }
   100% {
     background: white;
@@ -250,7 +250,7 @@ header nav {
   left: 0;
   width: 280px;
   height: 100vh;
-  background: #2d5a2d;
+  background: #335533;
   z-index: 300;
   transform: translateX(-100%);
   transition: transform var(--transition-normal);
@@ -314,7 +314,7 @@ header nav {
 
 .sidebar-nav-item:hover {
   background: rgba(255,255,255,0.1);
-  border-left-color: #90EE90;
+  border-left-color: #91de91;
 }
 
 .sidebar-nav-item.active {
@@ -350,7 +350,7 @@ header nav {
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: rgba(255,255,255,0.5);
+  color: white;
   font-weight: 600;
 }
 
@@ -383,7 +383,7 @@ header nav {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #90EE90;
+  background: #91de91;
   display: inline-block;
 }
 
@@ -685,7 +685,7 @@ section h2, section h3 {
   display: flex;
   align-items: baseline;
   gap: 0.4rem;
-  border: 2px solid transparent;
+  border: 2px solid var(--color-primary);
   transition: border-color var(--transition-fast);
 }
 
@@ -1251,7 +1251,7 @@ button:disabled {
 }
 
 .btn-memory:hover:not(:disabled) {
-  background: #0b5e0b;
+  background: #155315;
 }
 
 .btn-release {
@@ -1598,7 +1598,7 @@ footer a:hover {
 .docs-right-sidebar .sidebar-links a.active {
   background: var(--color-primary);
   color: white;
-  border-left-color: var(--color-primary-dark, #1a5a1a);
+  border-left-color: var(--color-primary-dark, #225222);
 }
 
 @media (max-width: 1024px) {
