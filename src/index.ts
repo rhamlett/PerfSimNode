@@ -58,7 +58,7 @@
 import './instrumentation';
 
 import http from 'http';
-import { exec, fork, ChildProcess } from 'child_process';
+import { fork, ChildProcess } from 'child_process';
 import path from 'path';
 import { cpus } from 'os';
 import { Server as SocketServer } from 'socket.io';
@@ -223,6 +223,7 @@ async function main(): Promise<void> {
           MAIN_APP_PORT: String(port),
           PROBE_INTERVAL_MS: '100',
           PROBE_TIMEOUT_MS: '10000',
+          WEBSITE_HOSTNAME: process.env.WEBSITE_HOSTNAME || '',
         },
         execArgv,
         stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
@@ -275,51 +276,12 @@ async function main(): Promise<void> {
     process.on('exit', shutdownSidecar);
 
     startSidecar();
-
-    // -------------------------------------------------------------------
-    // AZURE APPLENSCURL PROBE (Azure-only)
-    //
-    // When running on Azure App Service, WEBSITE_HOSTNAME is set to the
-    // app's public hostname. This curl probe makes HTTPS requests through
-    // the Azure frontend load balancer, which makes the traffic visible
-    // in Azure's AppLens diagnostic tool (unlike internal localhost probes).
-    //
-    // PORTING NOTES:
-    //   This is Azure-specific. If deploying to other clouds, replace with
-    //   the equivalent external health check mechanism (AWS ALB health
-    //   checks, GCP load balancer probes, etc.).
-    // -------------------------------------------------------------------
-    const websiteHostname = process.env.WEBSITE_HOSTNAME;
-    console.log(`[PerfSimNode] WEBSITE_HOSTNAME: ${websiteHostname || 'not set'}`);
-
-    let curlSuccessCount = 0;
-    let curlErrorCount = 0;
-
-    if (websiteHostname) {
-      const curlUrl = `https://${websiteHostname}/api/metrics/probe`;
-      console.log(`[PerfSimNode] Sidecar probing main app, curl every 1s for AppLens`);
-      console.log(`[PerfSimNode] Curl URL for AppLens: ${curlUrl}`);
-      
-      setInterval(() => {
-        exec(`curl -s -o /dev/null -w "%{time_total}" "${curlUrl}"`, { timeout: 5000 }, (error) => {
-          if (error) {
-            curlErrorCount++;
-            if (curlErrorCount <= 5 || curlErrorCount % 100 === 0) {
-              console.error(`[PerfSimNode] Curl probe error #${curlErrorCount}: ${error.message}`);
-            }
-          } else {
-            curlSuccessCount++;
-          }
-        });
-      }, 1000);
-    } else {
-      console.log(`[PerfSimNode] Local mode: sidecar probes only`);
-    }
     
     // Log probe stats every 60 seconds
+    const websiteHostname = process.env.WEBSITE_HOSTNAME;
     setInterval(() => {
-      const curlStats = websiteHostname ? `, Curl: ${curlSuccessCount}/${curlErrorCount}` : '';
-      console.log(`[PerfSimNode] Sidecar running${curlStats}`);
+      const probeMode = websiteHostname ? 'external (through frontend)' : 'localhost';
+      console.log(`[PerfSimNode] Sidecar running, probing ${probeMode}`);
     }, 60000);
   });
 }

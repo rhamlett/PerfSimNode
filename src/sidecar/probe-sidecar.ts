@@ -17,8 +17,8 @@
  * ARCHITECTURE:
  *   ┌──────────────┐  HTTP GET /api/metrics/probe  ┌────────────────┐
  *   │   Sidecar    │ ─────────────────────────────> │   Main App     │
- *   │  (this file) │ <───────────────────────────── │  (port 3000)   │
- *   │              │       JSON response            │                │
+ *   │  (this file) │ <───────────────────────────── │  (via frontend │
+ *   │              │       JSON response            │   or localhost)│
  *   │              │                                │                │
  *   │              │  IPC process.send()            │                │
  *   │              │ ─────────────────────────────> │  Parent handler │
@@ -28,10 +28,13 @@
  *
  * DATA FLOW:
  *   1. Sidecar probes main app via HTTP every PROBE_INTERVAL_MS (default 100ms)
- *   2. Measures round-trip time for each probe request
- *   3. Sends result to parent process via Node IPC (process.send)
- *   4. Parent process (index.ts) relays result to dashboard via Socket.IO
- *   5. Dashboard renders real-time latency chart (charts.js)
+ *   2. When WEBSITE_HOSTNAME is set (Azure), probes go through the frontend
+ *      load balancer for realistic latency measurement visible in AppLens
+ *   3. When running locally, probes go directly to localhost
+ *   4. Measures round-trip time for each probe request
+ *   5. Sends result to parent process via Node IPC (process.send)
+ *   6. Parent process (index.ts) relays result to dashboard via Socket.IO
+ *   7. Dashboard renders real-time latency chart (charts.js)
  *
  * PROBE BEHAVIOR DURING EVENT LOOP BLOCKING:
  *   When the main app's event loop is blocked, incoming HTTP requests queue up.
@@ -40,11 +43,10 @@
  *   probes complete rapidly, each reporting their full wait time. This creates
  *   a characteristic "ramp-down" pattern in the latency chart.
  *
- * AZURE APP SERVICE CONSTRAINT:
- *   Azure App Service exposes only ONE port (80/443 → app port). The sidecar
- *   cannot listen on a separate port. Instead, it probes the main app over
- *   localhost and communicates results via IPC — both of which work fine
- *   within the same App Service container.
+ * AZURE INTEGRATION:
+ *   WEBSITE_HOSTNAME is automatically set by Azure App Service to the app's
+ *   public hostname (e.g., myapp.azurewebsites.net). When set, probes go
+ *   through Azure's frontend, making traffic visible in AppLens diagnostics.
  *
  * PORTING NOTES:
  *   - Java: Use a ScheduledExecutorService with a Runnable that makes
@@ -54,8 +56,7 @@
  *     requests.get() calls. Use multiprocessing.Queue for IPC.
  *   - C#: BackgroundService (IHostedService) with HttpClient in a timer loop.
  *     Use Channel<T> or ConcurrentQueue<T> for communication.
- *   - PHP: A separate CLI script invoked by the main process, or use
- *     ReactPHP for an event-loop-based probe.
+ *   - PHP: A separate bash script (self-probe.sh) using curl in a loop.
  *
  *   The key concept to preserve: the probe MUST run independently of the
  *   main app's request processing. In thread-based runtimes (Java, C#),
@@ -66,11 +67,21 @@
  */
 
 import http from 'http';
+import https from 'https';
 
 // Configuration from environment (set by parent process)
 const MAIN_APP_PORT = parseInt(process.env.MAIN_APP_PORT || '3000', 10);
 const PROBE_INTERVAL_MS = parseInt(process.env.PROBE_INTERVAL_MS || '100', 10);
 const PROBE_TIMEOUT_MS = parseInt(process.env.PROBE_TIMEOUT_MS || '10000', 10);
+
+// WEBSITE_HOSTNAME is automatically set by Azure App Service
+const WEBSITE_HOSTNAME = process.env.WEBSITE_HOSTNAME || '';
+
+// Determine probe target: external (through Azure frontend) or localhost
+const useExternalProbe = WEBSITE_HOSTNAME.length > 0;
+const probeHostname = useExternalProbe ? WEBSITE_HOSTNAME : 'localhost';
+const probePort = useExternalProbe ? 443 : MAIN_APP_PORT;
+const probeProtocol = useExternalProbe ? https : http;
 
 // Track if a load test is active (detected from main app probe responses)
 let loadTestActive = false;
@@ -123,16 +134,19 @@ function sendToParent(type: string, data: Record<string, unknown>): void {
  *   - C#: System.Threading.Timer or PeriodicTimer (.NET 6+)
  */
 function startProbeLoop(): void {
-  console.log(`[Sidecar] Monitoring main app on port ${MAIN_APP_PORT}`);
+  const probeTarget = useExternalProbe 
+    ? `https://${probeHostname}/api/metrics/probe (through Azure frontend)`
+    : `http://localhost:${MAIN_APP_PORT}/api/metrics/probe`;
+  console.log(`[Sidecar] Monitoring main app at ${probeTarget}`);
   console.log(`[Sidecar] Probe interval: ${PROBE_INTERVAL_MS}ms, timeout: ${PROBE_TIMEOUT_MS}ms`);
 
   setInterval(() => {
     const startTime = Date.now();
     const timestamp = Date.now();
 
-    const req = http.get({
-      hostname: 'localhost',
-      port: MAIN_APP_PORT,
+    const req = probeProtocol.get({
+      hostname: probeHostname,
+      port: probePort,
       path: '/api/metrics/probe',
       headers: { 'X-Sidecar-Probe': 'true' },
       timeout: PROBE_TIMEOUT_MS,
