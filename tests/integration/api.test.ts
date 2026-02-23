@@ -68,21 +68,21 @@ describe('API Integration Tests', () => {
     it('should start CPU stress simulation with valid parameters', async () => {
       const response = await request(app)
         .post('/api/simulations/cpu')
-        .send({ targetLoadPercent: 50, durationSeconds: 5 });
+        .send({ intensity: 'moderate', durationSeconds: 5 });
 
       expect(response.status).toBe(201);
       expect(response.body.id).toBeDefined();
       expect(response.body.type).toBe('CPU_STRESS');
-      expect(response.body.message).toContain('50%');
+      expect(response.body.message).toContain('moderate');
 
       // Cleanup
       await request(app).delete(`/api/simulations/cpu/${response.body.id}`);
     });
 
-    it('should reject invalid targetLoadPercent', async () => {
+    it('should reject invalid intensity', async () => {
       const response = await request(app)
         .post('/api/simulations/cpu')
-        .send({ targetLoadPercent: 150, durationSeconds: 10 });
+        .send({ intensity: 'invalid', durationSeconds: 10 });
 
       expect(response.status).toBe(400);
       expect(response.body.error).toBeDefined();
@@ -91,7 +91,7 @@ describe('API Integration Tests', () => {
     it('should reject invalid durationSeconds', async () => {
       const response = await request(app)
         .post('/api/simulations/cpu')
-        .send({ targetLoadPercent: 50, durationSeconds: 100000 }); // Exceeds 86400 limit
+        .send({ intensity: 'moderate', durationSeconds: 100000 }); // Exceeds 86400 limit
 
       expect(response.status).toBe(400);
     });

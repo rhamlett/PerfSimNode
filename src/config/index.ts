@@ -88,14 +88,6 @@ export const APP_NAME = 'PerfSimNode';
  * These provide a good out-of-box experience for demo/training scenarios.
  */
 export const defaults = {
-  /** Default CPU stress target load percentage */
-  cpuTargetLoadPercent: 50,
-  /** Default CPU stress duration in seconds */
-  cpuDurationSeconds: 30,
-  /** Default memory allocation size in MB */
-  memorySizeMb: 100,
-  /** Default event loop blocking duration in seconds */
-  eventLoopDurationSeconds: 5,
   /** Default slow request delay in seconds */
   slowRequestDelaySeconds: 5,
 };
