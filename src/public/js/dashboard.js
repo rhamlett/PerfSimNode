@@ -409,6 +409,20 @@ async function stopCpuSimulation(id) {
 }
 
 /**
+ * Stops all active CPU stress simulations.
+ */
+async function stopAllCpuSimulations() {
+  const ids = Array.from(activeSimulations.cpu.keys());
+  if (ids.length === 0) {
+    return;
+  }
+  
+  for (const id of ids) {
+    await stopCpuSimulation(id);
+  }
+}
+
+/**
  * Allocates memory.
  */
 async function allocateMemory(sizeMb) {

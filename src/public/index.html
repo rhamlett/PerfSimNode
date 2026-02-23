@@ -217,7 +217,10 @@
                 <option value="high" selected>High</option>
               </select>
             </label>
-            <button type="submit" class="btn-trigger btn-cpu">🔥 Trigger CPU Stress</button>
+            <div class="button-row">
+              <button type="submit" class="btn-trigger btn-cpu">🔥 Trigger CPU Stress</button>
+              <button type="button" class="btn-stop" id="cpu-stop-btn" onclick="stopAllCpuSimulations()">⬜ Stop</button>
+            </div>
           </form>
           <div id="cpu-active" class="active-simulations"></div>
         </div>

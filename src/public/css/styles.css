@@ -1247,6 +1247,22 @@ button:disabled {
   padding: 0.5rem 0.75rem;
 }
 
+.button-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.button-row .btn-trigger {
+  flex: 1;
+  width: auto;
+}
+
+.button-row .btn-stop {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+}
+
 .btn-cpu {
   background: var(--color-cpu);
 }
