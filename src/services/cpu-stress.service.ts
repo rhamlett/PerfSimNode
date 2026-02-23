@@ -47,6 +47,12 @@ import { EventLogService } from './event-log.service';
 const activeProcesses: Map<string, ChildProcess[]> = new Map();
 const activeTimeouts: Map<string, NodeJS.Timeout> = new Map();
 
+/** Maps intensity levels to internal target percentages */
+const INTENSITY_MAP = {
+  moderate: 65,
+  high: 100,
+} as const;
+
 /**
  * CPU Stress Service
  *
@@ -66,7 +72,8 @@ class CpuStressServiceClass {
    * @returns The created simulation
    */
   start(params: CpuStressParams): Simulation {
-    const { targetLoadPercent, durationSeconds } = params;
+    const { intensity, durationSeconds } = params;
+    const targetLoadPercent = INTENSITY_MAP[intensity];
 
     // Create simulation record
     const simulation = SimulationTrackerService.createSimulation(
@@ -76,10 +83,10 @@ class CpuStressServiceClass {
     );
 
     // Log the start
-    EventLogService.info('SIMULATION_STARTED', `CPU stress simulation started at ${targetLoadPercent}% for ${durationSeconds}s`, {
+    EventLogService.info('SIMULATION_STARTED', `CPU stress simulation started (${intensity}) for ${durationSeconds}s`, {
       simulationId: simulation.id,
       simulationType: 'CPU_STRESS',
-      details: { targetLoadPercent, durationSeconds },
+      details: { intensity, durationSeconds },
     });
 
     // Start the CPU burn processes

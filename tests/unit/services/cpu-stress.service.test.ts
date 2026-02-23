@@ -20,7 +20,7 @@ describe('CpuStressService', () => {
   describe('start', () => {
     it('should create a CPU stress simulation', () => {
       const simulation = CpuStressService.start({
-        targetLoadPercent: 50,
+        intensity: 'moderate',
         durationSeconds: 5,
       });
 
@@ -30,7 +30,7 @@ describe('CpuStressService', () => {
       expect(simulation.status).toBe('ACTIVE');
       expect(simulation.parameters).toEqual({
         type: 'CPU_STRESS',
-        targetLoadPercent: 50,
+        intensity: 'moderate',
         durationSeconds: 5,
       });
 
@@ -39,8 +39,8 @@ describe('CpuStressService', () => {
     });
 
     it('should allow multiple concurrent simulations', () => {
-      const sim1 = CpuStressService.start({ targetLoadPercent: 30, durationSeconds: 5 });
-      const sim2 = CpuStressService.start({ targetLoadPercent: 40, durationSeconds: 5 });
+      const sim1 = CpuStressService.start({ intensity: 'moderate', durationSeconds: 5 });
+      const sim2 = CpuStressService.start({ intensity: 'high', durationSeconds: 5 });
 
       expect(sim1.id).not.toBe(sim2.id);
       expect(CpuStressService.getActiveSimulations().length).toBe(2);
@@ -53,7 +53,7 @@ describe('CpuStressService', () => {
   describe('stop', () => {
     it('should stop an active simulation', () => {
       const simulation = CpuStressService.start({
-        targetLoadPercent: 50,
+        intensity: 'moderate',
         durationSeconds: 60,
       });
 
@@ -76,7 +76,7 @@ describe('CpuStressService', () => {
     });
 
     it('should return only CPU stress simulations', () => {
-      const sim = CpuStressService.start({ targetLoadPercent: 50, durationSeconds: 5 });
+      const sim = CpuStressService.start({ intensity: 'moderate', durationSeconds: 5 });
 
       const active = CpuStressService.getActiveSimulations();
 
@@ -94,7 +94,7 @@ describe('CpuStressService', () => {
     });
 
     it('should return true when simulation is active', () => {
-      const sim = CpuStressService.start({ targetLoadPercent: 50, durationSeconds: 5 });
+      const sim = CpuStressService.start({ intensity: 'moderate', durationSeconds: 5 });
 
       expect(CpuStressService.hasActiveSimulations()).toBe(true);
 
@@ -106,9 +106,9 @@ describe('CpuStressService', () => {
 
   describe('stopAll', () => {
     it('should stop all active CPU simulations', () => {
-      CpuStressService.start({ targetLoadPercent: 30, durationSeconds: 60 });
-      CpuStressService.start({ targetLoadPercent: 40, durationSeconds: 60 });
-      CpuStressService.start({ targetLoadPercent: 50, durationSeconds: 60 });
+      CpuStressService.start({ intensity: 'moderate', durationSeconds: 60 });
+      CpuStressService.start({ intensity: 'high', durationSeconds: 60 });
+      CpuStressService.start({ intensity: 'moderate', durationSeconds: 60 });
 
       expect(CpuStressService.getActiveSimulations().length).toBe(3);
 

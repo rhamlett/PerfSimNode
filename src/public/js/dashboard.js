@@ -248,7 +248,7 @@ function renderActiveCpuSimulations() {
         .map(
           (sim) => `
           <div class="active-simulation">
-            <span>${sim.parameters.targetLoadPercent}% for ${sim.parameters.durationSeconds}s</span>
+            <span>${sim.parameters.intensity} for ${sim.parameters.durationSeconds}s</span>
             <span class="sim-id">${sim.id.slice(0, 8)}...</span>
             <button class="btn-stop" onclick="stopCpuSimulation('${sim.id}')">Stop</button>
           </div>
@@ -312,7 +312,7 @@ function renderActiveSimulationsList() {
     badges.push(`
       <div class="simulation-badge cpu">
         <span class="spinner"></span>
-        <span>CPU Stress (${sim.parameters.targetLoadPercent}%)</span>
+        <span>CPU Stress (${sim.parameters.intensity})</span>
       </div>
     `);
   });
@@ -333,12 +333,12 @@ function renderActiveSimulationsList() {
 /**
  * Starts a CPU stress simulation.
  */
-async function startCpuStress(targetLoadPercent, durationSeconds) {
+async function startCpuStress(intensity, durationSeconds) {
   try {
     const response = await fetch('/api/simulations/cpu', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ targetLoadPercent, durationSeconds }),
+      body: JSON.stringify({ intensity, durationSeconds }),
     });
 
     const data = await response.json();
@@ -353,7 +353,7 @@ async function startCpuStress(targetLoadPercent, durationSeconds) {
       id: data.id,
       type: 'CPU_STRESS',
       status: 'ACTIVE',
-      parameters: { targetLoadPercent, durationSeconds },
+      parameters: { intensity, durationSeconds },
     });
     renderActiveCpuSimulations();
 
@@ -362,7 +362,7 @@ async function startCpuStress(targetLoadPercent, durationSeconds) {
       timestamp: new Date().toISOString(),
       level: 'info',
       event: 'SIMULATION_STARTED',
-      message: `CPU stress started: ${targetLoadPercent}% for ${durationSeconds}s`,
+      message: `CPU stress started: ${intensity} for ${durationSeconds}s`,
     });
 
     // Auto-remove simulation after duration completes
@@ -374,7 +374,7 @@ async function startCpuStress(targetLoadPercent, durationSeconds) {
           timestamp: new Date().toISOString(),
           level: 'info',
           event: 'SIMULATION_COMPLETED',
-          message: `CPU stress completed: ${targetLoadPercent}% for ${durationSeconds}s`,
+          message: `CPU stress completed: ${intensity} for ${durationSeconds}s`,
         });
       }
     }, durationSeconds * 1000);
@@ -878,7 +878,7 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const formData = new FormData(cpuForm);
       startCpuStress(
-        parseInt(formData.get('targetLoadPercent')),
+        formData.get('intensity'),
         parseInt(formData.get('durationSeconds'))
       );
     });
@@ -991,19 +991,28 @@ async function loadEnvironmentInfo() {
 }
 
 /**
- * Loads build info and updates the footer.
+ * Loads footer info (credits and build time) from the server.
  */
 async function loadBuildInfo() {
   try {
-    const response = await fetch('/api/health/build');
-    const build = await response.json();
+    const response = await fetch('/api/health/footer');
+    const data = await response.json();
+    
+    const footerCredits = document.getElementById('footer-credits');
+    if (footerCredits) {
+      if (data.footer) {
+        footerCredits.innerHTML = data.footer;
+      } else {
+        footerCredits.style.display = 'none';
+      }
+    }
     
     const buildInfo = document.getElementById('build-info');
     if (buildInfo) {
-      buildInfo.textContent = `Build: ${build.buildTime}`;
+      buildInfo.textContent = `Build: ${data.buildTime}`;
     }
   } catch (error) {
-    console.log('[Dashboard] Could not load build info');
+    console.log('[Dashboard] Could not load footer info');
   }
 }
 

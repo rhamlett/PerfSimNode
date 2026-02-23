@@ -108,7 +108,7 @@ describe('API Integration Tests', () => {
       // Start a simulation
       const startResponse = await request(app)
         .post('/api/simulations/cpu')
-        .send({ targetLoadPercent: 50, durationSeconds: 60 });
+        .send({ intensity: 'moderate', durationSeconds: 60 });
 
       const id = startResponse.body.id;
 
@@ -189,7 +189,7 @@ describe('API Integration Tests', () => {
       // Start some simulations
       const cpuResponse = await request(app)
         .post('/api/simulations/cpu')
-        .send({ targetLoadPercent: 30, durationSeconds: 60 });
+        .send({ intensity: 'moderate', durationSeconds: 60 });
 
       const memResponse = await request(app)
         .post('/api/simulations/memory')

@@ -100,6 +100,23 @@ healthRouter.get('/build', (_req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/health/footer
+ *
+ * Returns footer content from PAGE_FOOTER environment variable.
+ * If not set, returns null so the client can display a default.
+ *
+ * @route GET /api/health/footer
+ * @returns {Object} Footer HTML content or null
+ */
+healthRouter.get('/footer', (_req: Request, res: Response) => {
+  const pageFooter = process.env.PAGE_FOOTER || null;
+  res.json({
+    footer: pageFooter,
+    buildTime: BUILD_TIMESTAMP,
+  });
+});
+
+/**
  * GET /api/health/probe
  *
  * Ultra-lightweight endpoint for heartbeat detection.

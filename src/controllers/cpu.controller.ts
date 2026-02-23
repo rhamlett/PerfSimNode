@@ -8,7 +8,7 @@
  *   Delegates all business logic to CpuStressService.
  *
  * ENDPOINTS:
- *   POST   /api/simulations/cpu     → Start CPU stress (body: targetLoadPercent, durationSeconds)
+ *   POST   /api/simulations/cpu     → Start CPU stress (body: intensity, durationSeconds)
  *   DELETE /api/simulations/cpu/:id → Stop a running simulation
  *   GET    /api/simulations/cpu     → List active CPU simulations
  *
@@ -43,25 +43,25 @@ export const cpuRouter = Router();
  * Starts a new CPU stress simulation.
  *
  * @route POST /api/simulations/cpu
- * @body {number} targetLoadPercent - Target CPU load percentage (1-100)
+ * @body {string} intensity - CPU stress intensity ('moderate' or 'high')
  * @body {number} durationSeconds - Duration in seconds (no limit)
  * @returns {SimulationResponse} Created simulation details
  */
 cpuRouter.post('/', (req: Request, res: Response, next: NextFunction) => {
   try {
     // Validate input parameters
-    const { targetLoadPercent, durationSeconds } = validateCpuStressParams(
-      req.body.targetLoadPercent,
+    const { intensity, durationSeconds } = validateCpuStressParams(
+      req.body.intensity,
       req.body.durationSeconds
     );
 
     // Start the simulation
-    const simulation = CpuStressService.start({ targetLoadPercent, durationSeconds });
+    const simulation = CpuStressService.start({ intensity, durationSeconds });
 
     res.status(201).json({
       id: simulation.id,
       type: simulation.type,
-      message: `CPU stress simulation started at ${targetLoadPercent}% for ${durationSeconds}s`,
+      message: `CPU stress simulation started (${intensity}) for ${durationSeconds}s`,
       parameters: simulation.parameters,
       scheduledEndAt: simulation.scheduledEndAt.toISOString(),
     });

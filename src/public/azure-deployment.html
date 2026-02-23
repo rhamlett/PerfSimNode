@@ -487,6 +487,32 @@ az webapp log tail --name $APP_NAME --resource-group $RESOURCE_GROUP
 az webapp log deployment show --name $APP_NAME --resource-group $RESOURCE_GROUP</code></pre>
     </section>
 
+    <section id="optional-config" class="card">
+      <h2>Optional Configuration</h2>
+      
+      <h3>Custom Footer (PAGE_FOOTER)</h3>
+      <p>You can customize the footer displayed on all pages by setting the <code>PAGE_FOOTER</code> application setting. The value supports HTML including links.</p>
+      
+      <h4>Setting via Azure Portal</h4>
+      <ol>
+        <li>Navigate to your App Service in the Azure Portal</li>
+        <li>Go to <strong>Settings → Environment variables</strong></li>
+        <li>Click <strong>+ Add</strong></li>
+        <li>Set Name: <code>PAGE_FOOTER</code></li>
+        <li>Set Value (example):
+          <pre><code>Created by &lt;a href="https://speckit.org/" target="_blank"&gt;SpecKit&lt;/a&gt; and &lt;a href="https://github.com/copilot" target="_blank"&gt;Github Copilot&lt;/a&gt; in collaboration with &lt;a href="mailto:rhamlett@microsoft.com"&gt;Richard Hamlett&lt;/a&gt;</code></pre>
+        </li>
+        <li>Click <strong>Apply</strong> and then <strong>Confirm</strong> to restart the app</li>
+      </ol>
+
+      <h4>Setting via Azure CLI</h4>
+      <pre><code># Set the PAGE_FOOTER application setting
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings 'PAGE_FOOTER=Created by &lt;a href="https://speckit.org/" target="_blank"&gt;SpecKit&lt;/a&gt; and &lt;a href="https://github.com/copilot" target="_blank"&gt;Github Copilot&lt;/a&gt; in collaboration with &lt;a href="mailto:rhamlett@microsoft.com"&gt;Richard Hamlett&lt;/a&gt;'</code></pre>
+
+      <p><strong>Note:</strong> If <code>PAGE_FOOTER</code> is not set, the footer will display only the app description and build timestamp.</p>
+    </section>
+
     <section id="quick-reference" class="card">
       <h2>Quick Reference - CLI One-Liner</h2>
       <p>Complete setup script (customize variables at top):</p>
@@ -547,14 +573,17 @@ echo "AZURE_SUBSCRIPTION_ID=$SUB_ID"</code></pre>
       <div class="sidebar-section-label">REFERENCE</div>
       <ul class="sidebar-links" id="page-nav-ref">
         <li><a href="#troubleshooting">🚨 Troubleshooting</a></li>
+        <li><a href="#optional-config">⚙️ Optional Configuration</a></li>
         <li><a href="#quick-reference">📋 Quick Reference</a></li>
       </ul>
     </div>
   </aside>
   </div><!-- /docs-page-wrapper -->
 
-  <footer style="text-align: center; padding: 2rem; color: var(--color-text-muted);">
-    <p>PerfSimNode - Azure Deployment Guide | <a href="/">Back to Dashboard</a></p>
+  <footer>
+    <p>Performance Problem Simulator — Educational Tool for Azure App Service Diagnostics</p>
+    <p id="footer-credits"></p>
+    <p id="build-info">Build: Loading...</p>
   </footer>
 
   <script>
@@ -564,6 +593,23 @@ echo "AZURE_SUBSCRIPTION_ID=$SUB_ID"</code></pre>
       .then(env => {
         const badge = document.getElementById('sku-badge');
         if (badge) badge.textContent = 'SKU: ' + env.sku;
+      })
+      .catch(() => {});
+
+    // Load footer info (credits and build time)
+    fetch('/api/health/footer')
+      .then(r => r.json())
+      .then(data => {
+        const footerCredits = document.getElementById('footer-credits');
+        if (footerCredits) {
+          if (data.footer) {
+            footerCredits.innerHTML = data.footer;
+          } else {
+            footerCredits.style.display = 'none';
+          }
+        }
+        const buildInfo = document.getElementById('build-info');
+        if (buildInfo) buildInfo.textContent = 'Build: ' + data.buildTime;
       })
       .catch(() => {});
 

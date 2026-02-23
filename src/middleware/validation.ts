@@ -99,22 +99,22 @@ export function validateOptionalInteger(
 /**
  * Validates CPU stress parameters.
  *
- * @param targetLoadPercent - Target CPU load percentage
+ * @param intensity - CPU stress intensity ('moderate' or 'high')
  * @param durationSeconds - Duration in seconds
  * @returns Validated parameters
  * @throws ValidationError if validation fails
  */
 export function validateCpuStressParams(
-  targetLoadPercent: unknown,
+  intensity: unknown,
   durationSeconds: unknown
-): { targetLoadPercent: number; durationSeconds: number } {
+): { intensity: 'moderate' | 'high'; durationSeconds: number } {
+  // Validate intensity
+  if (intensity !== 'moderate' && intensity !== 'high') {
+    throw new ValidationError('intensity must be "moderate" or "high"');
+  }
+  
   return {
-    targetLoadPercent: validateInteger(
-      targetLoadPercent,
-      'targetLoadPercent',
-      limits.minCpuLoadPercent,
-      limits.maxCpuLoadPercent
-    ),
+    intensity,
     durationSeconds: validateInteger(
       durationSeconds,
       'durationSeconds',

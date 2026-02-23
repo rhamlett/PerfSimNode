@@ -17,7 +17,7 @@ describe('SimulationTrackerService', () => {
     it('should create a simulation with correct properties', () => {
       const simulation = SimulationTrackerService.createSimulation(
         'CPU_STRESS',
-        { type: 'CPU_STRESS', targetLoadPercent: 50, durationSeconds: 30 },
+        { type: 'CPU_STRESS', intensity: 'moderate', durationSeconds: 30 },
         30
       );
 
@@ -32,12 +32,12 @@ describe('SimulationTrackerService', () => {
     it('should generate unique IDs for each simulation', () => {
       const sim1 = SimulationTrackerService.createSimulation(
         'CPU_STRESS',
-        { type: 'CPU_STRESS', targetLoadPercent: 50, durationSeconds: 10 },
+        { type: 'CPU_STRESS', intensity: 'moderate', durationSeconds: 10 },
         10
       );
       const sim2 = SimulationTrackerService.createSimulation(
         'CPU_STRESS',
-        { type: 'CPU_STRESS', targetLoadPercent: 50, durationSeconds: 10 },
+        { type: 'CPU_STRESS', intensity: 'moderate', durationSeconds: 10 },
         10
       );
 
@@ -69,7 +69,7 @@ describe('SimulationTrackerService', () => {
     it('should return only active simulations', () => {
       const sim1 = SimulationTrackerService.createSimulation(
         'CPU_STRESS',
-        { type: 'CPU_STRESS', targetLoadPercent: 50, durationSeconds: 60 },
+        { type: 'CPU_STRESS', intensity: 'moderate', durationSeconds: 60 },
         60
       );
       const sim2 = SimulationTrackerService.createSimulation(
@@ -91,7 +91,7 @@ describe('SimulationTrackerService', () => {
     it('should filter by simulation type', () => {
       SimulationTrackerService.createSimulation(
         'CPU_STRESS',
-        { type: 'CPU_STRESS', targetLoadPercent: 50, durationSeconds: 60 },
+        { type: 'CPU_STRESS', intensity: 'moderate', durationSeconds: 60 },
         60
       );
       SimulationTrackerService.createSimulation(
@@ -101,7 +101,7 @@ describe('SimulationTrackerService', () => {
       );
       SimulationTrackerService.createSimulation(
         'CPU_STRESS',
-        { type: 'CPU_STRESS', targetLoadPercent: 70, durationSeconds: 60 },
+        { type: 'CPU_STRESS', intensity: 'high', durationSeconds: 60 },
         60
       );
 
@@ -118,7 +118,7 @@ describe('SimulationTrackerService', () => {
     it('should update status to STOPPED', () => {
       const simulation = SimulationTrackerService.createSimulation(
         'CPU_STRESS',
-        { type: 'CPU_STRESS', targetLoadPercent: 50, durationSeconds: 60 },
+        { type: 'CPU_STRESS', intensity: 'moderate', durationSeconds: 60 },
         60
       );
 
@@ -131,7 +131,7 @@ describe('SimulationTrackerService', () => {
     it('should return undefined for already stopped simulation', () => {
       const simulation = SimulationTrackerService.createSimulation(
         'CPU_STRESS',
-        { type: 'CPU_STRESS', targetLoadPercent: 50, durationSeconds: 60 },
+        { type: 'CPU_STRESS', intensity: 'moderate', durationSeconds: 60 },
         60
       );
 
@@ -146,7 +146,7 @@ describe('SimulationTrackerService', () => {
     it('should update status to COMPLETED', () => {
       const simulation = SimulationTrackerService.createSimulation(
         'CPU_STRESS',
-        { type: 'CPU_STRESS', targetLoadPercent: 50, durationSeconds: 60 },
+        { type: 'CPU_STRESS', intensity: 'moderate', durationSeconds: 60 },
         60
       );
 
@@ -160,7 +160,7 @@ describe('SimulationTrackerService', () => {
     it('should update status to FAILED', () => {
       const simulation = SimulationTrackerService.createSimulation(
         'CPU_STRESS',
-        { type: 'CPU_STRESS', targetLoadPercent: 50, durationSeconds: 60 },
+        { type: 'CPU_STRESS', intensity: 'moderate', durationSeconds: 60 },
         60
       );
 
@@ -176,7 +176,7 @@ describe('SimulationTrackerService', () => {
 
       SimulationTrackerService.createSimulation(
         'CPU_STRESS',
-        { type: 'CPU_STRESS', targetLoadPercent: 50, durationSeconds: 60 },
+        { type: 'CPU_STRESS', intensity: 'moderate', durationSeconds: 60 },
         60
       );
 
@@ -196,7 +196,7 @@ describe('SimulationTrackerService', () => {
     it('should remove all simulations', () => {
       SimulationTrackerService.createSimulation(
         'CPU_STRESS',
-        { type: 'CPU_STRESS', targetLoadPercent: 50, durationSeconds: 60 },
+        { type: 'CPU_STRESS', intensity: 'moderate', durationSeconds: 60 },
         60
       );
       SimulationTrackerService.createSimulation(

@@ -946,8 +946,8 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
   </div><!-- /docs-page-wrapper -->
 
   <footer>
-    <p>Performance Problem Simulator - Educational Tool for Azure App Service Diagnostics</p>
-    <p>Created by <a href="https://speckit.org/" target="_blank">SpecKit</a> in collaboration with <a href="mailto:rhamlett@microsoft.com">Richard Hamlett</a></p>
+    <p>Performance Problem Simulator — Educational Tool for Azure App Service Diagnostics</p>
+    <p id="footer-credits"></p>
     <p id="build-info">Build: Loading...</p>
   </footer>
   <script>
@@ -960,12 +960,20 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
       })
       .catch(() => {});
     
-    // Load build info for footer
-    fetch('/api/health/build')
+    // Load footer info (credits and build time)
+    fetch('/api/health/footer')
       .then(r => r.json())
-      .then(build => {
+      .then(data => {
+        const footerCredits = document.getElementById('footer-credits');
+        if (footerCredits) {
+          if (data.footer) {
+            footerCredits.innerHTML = data.footer;
+          } else {
+            footerCredits.style.display = 'none';
+          }
+        }
         const buildInfo = document.getElementById('build-info');
-        if (buildInfo) buildInfo.textContent = 'Build: ' + build.buildTime;
+        if (buildInfo) buildInfo.textContent = 'Build: ' + data.buildTime;
       })
       .catch(() => {});
 

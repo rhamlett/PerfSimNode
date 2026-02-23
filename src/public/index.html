@@ -59,7 +59,7 @@
       </a>
     </nav>
     <div class="sidebar-footer">
-      PerfSimNode v1.0 • Node.js 24 LTS
+      <div id="sidebar-build-info">Build: Loading...</div>
     </div>
   </aside>
 
@@ -203,23 +203,21 @@
       <div class="panel-content">
         <!-- CPU Stress -->
         <div class="control-section cpu-section">
-          <h3>🔥 CPU Stress <span class="info-icon" title="Uses child_process.fork() to spawn separate OS processes. Each process runs 100% on a CPU core. For 75% on 2 cores: spawns 1-2 processes.">ℹ️</span></h3>
+          <h3>🔥 CPU Stress <span class="info-icon" title="Uses child_process.fork() to spawn separate OS processes. Each process runs 100% on a CPU core.">ℹ️</span></h3>
           <p class="control-description">Spawns child processes running crypto.pbkdf2Sync(). Server stays responsive - work is isolated from the event loop.</p>
           <form id="cpu-form">
             <label>
               Duration (s):
-              <input type="number" name="durationSeconds" value="10" min="1" max="300">
+              <input type="number" name="durationSeconds" value="30" min="1" max="300">
             </label>
             <label>
-              Target Load:
-              <select name="targetLoadPercent" class="wide-select">
-                <option value="25">Low (~25%)</option>
-                <option value="50">Medium (~50%)</option>
-                <option value="75" selected>High (~75%)</option>
-                <option value="100">Maximum (100%)</option>
+              Intensity:
+              <select name="intensity" class="wide-select">
+                <option value="moderate">Moderate</option>
+                <option value="high" selected>High</option>
               </select>
             </label>
-            <button type="submit" class="btn-trigger btn-cpu">🔥 Trigger High CPU</button>
+            <button type="submit" class="btn-trigger btn-cpu">🔥 Trigger CPU Stress</button>
           </form>
           <div id="cpu-active" class="active-simulations"></div>
         </div>
@@ -325,8 +323,8 @@
   </div>
 
   <footer>
-    <p>Performance Problem Simulator - Educational Tool for Azure App Service Diagnostics</p>
-    <p>Created by <a href="https://speckit.org/" target="_blank">SpecKit</a> in collaboration with <a href="mailto:rhamlett@microsoft.com">Richard Hamlett</a></p>
+    <p>Performance Problem Simulator — Educational Tool for Azure App Service Diagnostics</p>
+    <p id="footer-credits"></p>
     <p id="build-info">Build: Loading...</p>
   </footer>
 
@@ -356,6 +354,14 @@
     hamburgerBtn.addEventListener('click', openSidebar);
     sidebarOverlay.addEventListener('click', closeSidebar);
     sidebarClose.addEventListener('click', closeSidebar);
+
+    // Sync build info to sidebar when it updates
+    const buildInfoEl = document.getElementById('build-info');
+    const sidebarBuildInfo = document.getElementById('sidebar-build-info');
+    const observer = new MutationObserver(() => {
+      sidebarBuildInfo.textContent = buildInfoEl.textContent;
+    });
+    observer.observe(buildInfoEl, { childList: true, characterData: true, subtree: true });
 
     // Close on Escape key
     document.addEventListener('keydown', (e) => {

@@ -114,8 +114,8 @@ export type EventType =
  *   the load is visible in system-wide CPU metrics.
  */
 export interface CpuStressParams {
-  /** Target CPU load percentage (1-100). Controls how many worker processes are spawned. */
-  targetLoadPercent: number;
+  /** CPU stress intensity level. 'moderate' targets ~65%, 'high' targets ~100%. */
+  intensity: 'moderate' | 'high';
   /** Duration in seconds. After this, worker processes are killed and simulation completes. */
   durationSeconds: number;
 }

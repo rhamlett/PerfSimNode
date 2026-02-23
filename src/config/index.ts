@@ -111,10 +111,6 @@ export const defaults = {
  *   In Java, use Spring's @Min/@Max annotations; in Python, Pydantic Field(ge=, le=).
  */
 export const limits = {
-  /** Minimum CPU load percentage */
-  minCpuLoadPercent: 1,
-  /** Maximum CPU load percentage */
-  maxCpuLoadPercent: 100,
   /** Minimum duration for timed simulations (seconds) */
   minDurationSeconds: 1,
   /** Maximum duration for timed simulations (seconds) */
