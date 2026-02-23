@@ -1258,9 +1258,22 @@ button:disabled {
   width: auto;
 }
 
-.button-row .btn-stop {
-  padding: 0.5rem 0.75rem;
+.button-row .btn-stop-red {
+  flex: 0 0 auto;
+  padding: 0.5rem 1rem;
   font-size: 0.8rem;
+}
+
+.btn-stop-red {
+  background: #c82333;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-stop-red:hover:not(:disabled) {
+  background: #a71d2a;
 }
 
 .btn-cpu {
