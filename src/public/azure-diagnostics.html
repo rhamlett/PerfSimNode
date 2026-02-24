@@ -21,6 +21,9 @@
     }
     .diag-container {
       max-width: 900px;
+      display: block;
+      margin: 0;
+      padding: 0;
     }
     .doc-toc {
       width: 280px;
@@ -357,10 +360,10 @@
       <span></span>
       <span></span>
     </button>
-    <h1>🔥 Performance Problem Simulator - Node 24 on Linux</h1>
+    <h1>&#x2601;&#xFE0F; Azure Diagnostics Guide</h1>
     <span id="sku-badge" class="sku-badge">SKU: Local</span>
     <nav>
-      <a href="/" class="btn-panel-toggle">🎮 Dashboard</a>
+      <a href="/" class="btn-panel-toggle">&#x1F3AE; Dashboard</a>
     </nav>
   </header>
 
@@ -1098,7 +1101,7 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
         if (badge) badge.textContent = 'SKU: ' + env.sku;
       })
       .catch(() => {});
-    
+
     // Load footer info (credits and build time)
     fetch('/api/health/footer')
       .then(r => r.json())
