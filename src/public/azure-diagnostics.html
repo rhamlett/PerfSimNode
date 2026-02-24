@@ -7,47 +7,139 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/css/styles.css">
   <style>
-    .diag-container {
-      max-width: 1100px;
+    /* Doc Layout - Main + TOC Sidebar */
+    .doc-layout {
+      display: flex;
+      gap: 2rem;
+      max-width: 1400px;
       margin: 0 auto;
       padding: 2rem;
+    }
+    .doc-main {
       flex: 1;
       min-width: 0;
     }
-    .diag-header {
+    .diag-container {
+      max-width: 900px;
+    }
+    .doc-toc {
+      width: 280px;
+      flex-shrink: 0;
+    }
+    .doc-toc-sticky {
+      position: sticky;
+      top: 80px;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+    }
+    .doc-toc-card {
+      background: var(--color-card);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      padding: 1.25rem;
+    }
+    .doc-toc-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--color-bg);
+    }
+    .doc-toc ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .doc-toc-item {
+      margin-bottom: 0.25rem;
+    }
+    .doc-toc-item a {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      color: var(--color-text-muted);
+      font-size: 0.875rem;
+      transition: all var(--transition-fast);
+      border-left: 2px solid transparent;
+    }
+    .doc-toc-item a:hover {
+      background: rgba(57, 95, 57, 0.08);
+      color: var(--color-primary);
+      border-left-color: var(--color-primary);
+    }
+    .doc-toc-item a.active {
+      background: rgba(57, 95, 57, 0.12);
+      color: var(--color-primary);
+      font-weight: 500;
+      border-left-color: var(--color-primary);
+    }
+    .toc-icon {
+      font-size: 1rem;
+      width: 1.25rem;
       text-align: center;
+      flex-shrink: 0;
+    }
+    .doc-toc-divider {
+      height: 1px;
+      background: var(--color-bg);
+      margin: 0.75rem 0;
+    }
+    .doc-toc-section-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      padding: 0.5rem 0.75rem 0.25rem;
+      opacity: 0.7;
+    }
+
+    /* Page Content Styles */
+    .diag-header {
       margin-bottom: 2rem;
     }
     .diag-header h1 {
-      color: var(--primary-color);
+      color: var(--color-primary);
       margin-bottom: 0.5rem;
+      font-size: 2rem;
     }
     .diag-header p {
-      color: var(--text-secondary);
+      color: var(--color-text-muted);
       font-size: 1.1rem;
     }
     .card {
-      background: var(--card-background);
-      border-radius: 8px;
+      background: var(--color-card);
+      border-radius: var(--radius-md);
       padding: 1.5rem 2rem;
       margin-bottom: 1.5rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      box-shadow: var(--shadow-sm);
+      scroll-margin-top: 80px;
     }
     .card h2 {
-      color: var(--primary-color);
-      border-bottom: 2px solid var(--border-color);
+      color: var(--color-primary);
+      border-bottom: 2px solid var(--color-bg);
       padding-bottom: 0.5rem;
       margin-bottom: 1rem;
     }
     .card h3 {
-      color: var(--text-color);
+      color: var(--color-text);
       margin-top: 1.5rem;
       margin-bottom: 0.75rem;
     }
     .card h4 {
-      color: var(--text-secondary);
+      color: var(--color-text-muted);
       margin-top: 1rem;
       margin-bottom: 0.5rem;
+    }
+    .card p, .card li {
+      line-height: 1.6;
+      color: var(--color-text-muted);
     }
     .metric-explanation {
       display: grid;
@@ -56,8 +148,8 @@
       margin: 1rem 0;
     }
     .metric-box {
-      border-left: 4px solid var(--primary-color);
-      background: var(--background-color);
+      border-left: 4px solid var(--color-primary);
+      background: var(--color-bg);
       padding: 1rem;
       border-radius: 0 8px 8px 0;
     }
@@ -67,12 +159,12 @@
     .metric-box.latency { border-color: #107c10; }
     .metric-box h4 {
       margin: 0 0 0.5rem 0;
-      color: var(--text-color);
+      color: var(--color-text);
     }
     .metric-box p {
       margin: 0;
       font-size: 0.9rem;
-      color: var(--text-secondary);
+      color: var(--color-text-muted);
     }
     .scenario-grid {
       display: grid;
@@ -81,7 +173,7 @@
       margin: 1rem 0;
     }
     .scenario-card {
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--color-bg);
       border-radius: 8px;
       overflow: hidden;
     }
@@ -117,13 +209,13 @@
       margin: 1rem 0;
     }
     .tool-card {
-      background: var(--background-color);
+      background: var(--color-bg);
       border-radius: 8px;
       padding: 1rem;
     }
     .tool-card h4 {
       margin: 0 0 0.5rem;
-      color: var(--primary-color);
+      color: var(--color-primary);
     }
     .tool-card p {
       margin: 0 0 0.5rem;
@@ -143,12 +235,12 @@
       font-size: 0.9rem;
     }
     .comparison-table th, .comparison-table td {
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--color-bg);
       padding: 0.75rem;
       text-align: left;
     }
     .comparison-table th {
-      background: var(--background-color);
+      background: var(--color-bg);
       font-weight: 600;
     }
     .comparison-table tr:nth-child(even) {
@@ -160,16 +252,16 @@
       margin: 1rem 0;
     }
     .alert-box.info {
-      background: #e6f3ff;
-      border-left: 4px solid var(--primary-color);
+      background: rgba(0, 120, 212, 0.1);
+      border-left: 4px solid var(--color-cpu);
     }
     .alert-box.warning {
-      background: #fff4ce;
-      border-left: 4px solid var(--warning-color);
+      background: rgba(255, 185, 0, 0.15);
+      border-left: 4px solid var(--color-warning);
     }
     .alert-box.success {
-      background: #dff6dd;
-      border-left: 4px solid var(--success-color);
+      background: rgba(29, 111, 29, 0.1);
+      border-left: 4px solid var(--color-success);
     }
     .alert-box strong {
       display: block;
@@ -179,23 +271,26 @@
       background: #1e1e1e;
       color: #d4d4d4;
       padding: 1rem;
-      border-radius: 6px;
+      border-radius: var(--radius-md);
       overflow-x: auto;
       font-size: 0.85rem;
       margin: 1rem 0;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
     }
     code {
-      background: var(--background-color);
+      background: var(--color-bg);
       padding: 0.15rem 0.4rem;
       border-radius: 3px;
-      font-family: 'Consolas', 'Monaco', monospace;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      color: var(--color-danger);
     }
     pre code {
       background: none;
       padding: 0;
+      color: inherit;
     }
     .flowchart {
-      background: var(--background-color);
+      background: var(--color-bg);
       border-radius: 8px;
       padding: 1.5rem;
       margin: 1rem 0;
@@ -204,16 +299,54 @@
     .flowchart .step {
       display: inline-block;
       padding: 0.75rem 1rem;
-      background: var(--card-background);
-      border: 2px solid var(--primary-color);
+      background: var(--color-card);
+      border: 2px solid var(--color-primary);
       border-radius: 6px;
       margin: 0.25rem;
     }
     .flowchart .arrow {
       display: inline-block;
-      color: var(--primary-color);
+      color: var(--color-primary);
       font-weight: bold;
       margin: 0 0.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .doc-layout {
+        flex-direction: column;
+      }
+      .doc-toc {
+        width: 100%;
+        order: -1;
+      }
+      .doc-toc-sticky {
+        position: relative;
+        top: 0;
+        max-height: none;
+      }
+      .doc-toc ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .doc-toc-item {
+        margin-bottom: 0;
+      }
+      .doc-toc-item a {
+        padding: 0.375rem 0.625rem;
+        border-left: none;
+        border-radius: var(--radius-md);
+        background: var(--color-bg);
+      }
+      .doc-toc-divider,
+      .doc-toc-section-label {
+        display: none;
+      }
+    }
+    @media (max-width: 768px) {
+      .doc-layout {
+        padding: 1rem;
+      }
     }
   </style>
 </head>
@@ -270,7 +403,8 @@
     </div>
   </aside>
 
-  <div class="docs-page-wrapper">
+  <div class="doc-layout">
+  <div class="doc-main">
   <main class="diag-container">
     <div class="diag-header">
       <h1>☁️ Azure Diagnostics Guide</h1>
@@ -920,30 +1054,35 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
     </section>
 
   </main>
+  </div><!-- /doc-main -->
 
   <!-- Right Sidebar: On This Page -->
-  <aside class="docs-right-sidebar">
-    <div class="sidebar-card">
-      <div class="sidebar-title">ON THIS PAGE</div>
-      <ul class="sidebar-links" id="page-nav">
-        <li><a href="#understanding-metrics">📊 Understanding Metrics</a></li>
-        <li><a href="#diagnostic-scenarios">🔍 Diagnostic Scenarios</a></li>
-      </ul>
-      <div class="sidebar-section-label">TOOLS</div>
-      <ul class="sidebar-links" id="page-nav-tools">
-        <li><a href="#azure-tools">🛠️ Azure Tools</a></li>
-        <li><a href="#diagnostic-workflow">🔄 Diagnostic Workflow</a></li>
-        <li><a href="#kudu-console">🖥️ Kudu Console</a></li>
-        <li><a href="#v8-profiling">🔬 V8 Profiling</a></li>
-      </ul>
-      <div class="sidebar-section-label">MONITORING</div>
-      <ul class="sidebar-links" id="page-nav-mon">
-        <li><a href="#app-insights">📈 Application Insights</a></li>
-        <li><a href="#load-testing">⚙️ Azure Load Testing</a></li>
-      </ul>
+  <aside class="doc-toc">
+    <div class="doc-toc-sticky">
+      <div class="doc-toc-card">
+        <div class="doc-toc-title">ON THIS PAGE</div>
+        <ul>
+          <li class="doc-toc-item"><a href="#understanding-metrics"><span class="toc-icon">📊</span> Understanding Metrics</a></li>
+          <li class="doc-toc-item"><a href="#diagnostic-scenarios"><span class="toc-icon">🔍</span> Diagnostic Scenarios</a></li>
+        </ul>
+        <div class="doc-toc-divider"></div>
+        <div class="doc-toc-section-label">TOOLS</div>
+        <ul>
+          <li class="doc-toc-item"><a href="#azure-tools"><span class="toc-icon">🛠️</span> Azure Tools</a></li>
+          <li class="doc-toc-item"><a href="#diagnostic-workflow"><span class="toc-icon">🔄</span> Diagnostic Workflow</a></li>
+          <li class="doc-toc-item"><a href="#kudu-console"><span class="toc-icon">🖥️</span> Kudu Console</a></li>
+          <li class="doc-toc-item"><a href="#v8-profiling"><span class="toc-icon">🔬</span> V8 Profiling</a></li>
+        </ul>
+        <div class="doc-toc-divider"></div>
+        <div class="doc-toc-section-label">MONITORING</div>
+        <ul>
+          <li class="doc-toc-item"><a href="#app-insights"><span class="toc-icon">📈</span> Application Insights</a></li>
+          <li class="doc-toc-item"><a href="#load-testing"><span class="toc-icon">⚙️</span> Azure Load Testing</a></li>
+        </ul>
+      </div>
     </div>
   </aside>
-  </div><!-- /docs-page-wrapper -->
+  </div><!-- /doc-layout -->
 
   <footer>
     <p>Performance Problem Simulator — Educational Tool for Azure App Service Diagnostics</p>
@@ -1006,7 +1145,7 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
 
     // Scroll-spy: highlight active section in right sidebar
     (function() {
-      const links = document.querySelectorAll('#page-nav a, #page-nav-tools a, #page-nav-mon a');
+      const links = document.querySelectorAll('.doc-toc-item a');
       const sections = [];
       links.forEach(link => {
         const id = link.getAttribute('href').slice(1);
