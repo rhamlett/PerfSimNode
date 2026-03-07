@@ -70,6 +70,7 @@ healthRouter.get('/environment', (_req: Request, res: Response) => {
   const websiteSku = process.env.WEBSITE_SKU;
   const websiteSiteName = process.env.WEBSITE_SITE_NAME;
   const websiteInstanceId = process.env.WEBSITE_INSTANCE_ID;
+  const computerName = process.env.COMPUTERNAME || process.env.HOSTNAME || null;
   
   const isAzure = !!(websiteSiteName || websiteInstanceId);
   
@@ -78,6 +79,7 @@ healthRouter.get('/environment', (_req: Request, res: Response) => {
     sku: websiteSku || (isAzure ? 'Unknown' : 'Local'),
     siteName: websiteSiteName || null,
     instanceId: websiteInstanceId ? websiteInstanceId.slice(0, 8) : null,
+    computerName,
   });
 });
 

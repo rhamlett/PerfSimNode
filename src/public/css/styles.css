@@ -714,6 +714,14 @@ section h2, section h3 {
   font-weight: 700;
   color: var(--color-text);
   transition: color var(--transition-fast);
+  display: inline-block;
+  min-width: 4.5em;
+  text-align: right;
+}
+
+/* Count-only badges (not time display) need smaller width */
+#latency-critical {
+  min-width: 1.5em;
 }
 
 .stat-value.good { color: var(--color-success); }
@@ -908,7 +916,7 @@ section h2, section h3 {
    -------------------------------------------------------------------------- */
 .eventloop-education {
   background: rgba(135, 100, 184, 0.1);
-  border: 1px dashed var(--color-eventloop);
+  border: 1px solid var(--color-eventloop);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.75rem;
   margin-bottom: 0.75rem;
@@ -1118,12 +1126,12 @@ section h2, section h3 {
 }
 
 .slow-section {
-  border: 2px dashed #ff8c00;
+  border: 2px solid #ff8c00;
   background: rgba(255, 140, 0, 0.05);
 }
 
 .crash-section {
-  border: 2px dashed var(--color-danger);
+  border: 2px solid var(--color-danger);
   background: rgba(209, 52, 56, 0.05);
 }
 
@@ -1460,6 +1468,15 @@ button:disabled {
 .log-entry.warning { color: var(--color-warning); }
 .log-entry.error { color: var(--color-danger); }
 .log-entry.danger { color: var(--color-danger); }
+
+/* Simulation-type-specific log entry colors */
+.log-entry.cpu { color: var(--color-cpu); }
+.log-entry.memory { color: var(--color-memory); }
+.log-entry.eventloop { color: var(--color-eventloop); }
+.log-entry.slow { color: #ff8c00; }
+.log-entry.crash { color: var(--color-danger); }
+.log-entry.loadtest { color: var(--color-primary); }
+.log-entry.restart { color: var(--color-danger); }
 
 .log-time {
   color: var(--color-text-muted);

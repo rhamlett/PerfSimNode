@@ -523,7 +523,7 @@ class LoadTestServiceClass {
     // Write to event log so it appears in the dashboard
     EventLogService.info(
       'LOAD_TEST_STATS',
-      `📊 Load Test Stats (60s): ${requestsCompleted} requests`,
+      `Load Test Stats (60s): ${requestsCompleted} requests`,
       {
         details: {
           requestsCompleted,

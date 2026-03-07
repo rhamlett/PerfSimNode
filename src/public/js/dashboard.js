@@ -55,6 +55,19 @@ const maxEventLogEntries = 100;
 let initialLoadComplete = false;
 
 /**
+ * Returns a color based on metric value and thresholds.
+ * @param {number} value - The metric value
+ * @param {number} warningThreshold - Value at which to show yellow/warning
+ * @param {number} dangerThreshold - Value at which to show red/danger
+ * @returns {string} CSS color value
+ */
+function getMetricColor(value, warningThreshold, dangerThreshold) {
+  if (value >= dangerThreshold) return '#d13438';  // Red
+  if (value >= warningThreshold) return '#ffb900'; // Yellow
+  return '';  // Default (inherit from CSS)
+}
+
+/**
  * Called when Socket.IO connection is established.
  */
 function onSocketConnected() {
@@ -76,7 +89,7 @@ function onMetricsUpdate(metrics) {
     if (lastProcessId !== null && lastProcessId !== metrics.process.pid) {
       addEventToLog({
         level: 'danger',
-        message: `🔄 APPLICATION RESTARTED! Process ID changed from ${lastProcessId} to ${metrics.process.pid}. This may indicate an unexpected crash (OOM, StackOverflow, etc.)`
+        message: `APPLICATION RESTARTED! Process ID changed from ${lastProcessId} to ${metrics.process.pid}. This may indicate an unexpected crash (OOM, StackOverflow, etc.)`
       });
       // Clear active simulations since app restarted
       activeSimulations.cpu.clear();
@@ -87,16 +100,31 @@ function onMetricsUpdate(metrics) {
     lastProcessId = metrics.process.pid;
   }
 
-  // Update metric display values
-  document.getElementById('cpu-value').textContent = metrics.cpu.usagePercent.toFixed(1);
-  document.getElementById('memory-value').textContent = metrics.memory.heapUsedMb.toFixed(1);
+  // Update metric display values with stress-based colors
+  const cpuEl = document.getElementById('cpu-value');
+  cpuEl.textContent = metrics.cpu.usagePercent.toFixed(1);
+  cpuEl.style.color = getMetricColor(metrics.cpu.usagePercent, 60, 80);
+
+  const memoryEl = document.getElementById('memory-value');
+  memoryEl.textContent = metrics.memory.heapUsedMb.toFixed(1);
+  const totalMb = metrics.memory.totalSystemMb || 4096;
+  const memoryPercent = (metrics.memory.heapUsedMb / totalMb) * 100;
+  memoryEl.style.color = getMetricColor(memoryPercent, 60, 80);
   
   // Update total memory display
   const totalGb = (metrics.memory.totalSystemMb / 1024).toFixed(1);
   document.getElementById('memory-total').textContent = `of ${totalGb} GB`;
+
   // Use heartbeatLagMs for real-time event loop blocking visibility
-  document.getElementById('eventloop-value').textContent = metrics.eventLoop.heartbeatLagMs.toFixed(2);
-  document.getElementById('rss-value').textContent = metrics.memory.rssMb.toFixed(1);
+  const eventloopEl = document.getElementById('eventloop-value');
+  eventloopEl.textContent = metrics.eventLoop.heartbeatLagMs.toFixed(2);
+  // Event loop: yellow at 100ms, red at 1000ms
+  eventloopEl.style.color = getMetricColor(metrics.eventLoop.heartbeatLagMs, 100, 1000);
+
+  const rssEl = document.getElementById('rss-value');
+  rssEl.textContent = metrics.memory.rssMb.toFixed(1);
+  const rssPercent = (metrics.memory.rssMb / totalMb) * 100;
+  rssEl.style.color = getMetricColor(rssPercent, 60, 80);
 
   // Update charts
   if (typeof updateCharts === 'function') {
@@ -157,7 +185,9 @@ function addEventToLog(event, skipRender = false) {
   const logEntry = {
     timestamp: event.timestamp || new Date().toISOString(),
     level: event.level || 'info',
-    message: event.message || (event.event ? `${event.event}: ${event.message}` : '')
+    message: event.message || (event.event ? `${event.event}: ${event.message}` : ''),
+    simulationType: event.simulationType || null,
+    eventType: event.event || null
   };
   
   eventLog.unshift(logEntry);
@@ -167,6 +197,48 @@ function addEventToLog(event, skipRender = false) {
   if (!skipRender) {
     renderEventLog();
   }
+}
+
+/**
+ * Gets the icon and CSS class for an event based on its simulation type.
+ * @param {Object} event - Event object with simulationType, eventType, and message
+ * @returns {Object} Object with icon (emoji) and colorClass properties
+ */
+function getEventIconAndClass(event) {
+  const message = event.message || '';
+  
+  // Check for application restart/PID change
+  if (message.includes('RESTARTED') || message.includes('Process ID changed')) {
+    return { icon: '🔄', colorClass: 'restart' };
+  }
+  
+  // Check for load test stats
+  if (event.eventType === 'LOAD_TEST_STATS') {
+    return { icon: '📈', colorClass: 'loadtest' };
+  }
+  
+  // Map simulation types to icons and color classes
+  const simType = event.simulationType;
+  if (simType) {
+    if (simType === 'CPU_STRESS') {
+      return { icon: '🔥', colorClass: 'cpu' };
+    }
+    if (simType === 'MEMORY_PRESSURE') {
+      return { icon: '📊', colorClass: 'memory' };
+    }
+    if (simType === 'EVENT_LOOP_BLOCKING') {
+      return { icon: '🧵', colorClass: 'eventloop' };
+    }
+    if (simType === 'SLOW_REQUEST') {
+      return { icon: '🐌', colorClass: 'slow' };
+    }
+    if (simType.startsWith('CRASH_')) {
+      return { icon: '💥', colorClass: 'crash' };
+    }
+  }
+  
+  // Connection events and system messages - no icon, use default level color
+  return { icon: '', colorClass: event.level };
 }
 
 /**
@@ -183,9 +255,11 @@ function renderEventLog() {
   container.innerHTML = eventLog
     .map((event) => {
       const time = formatUtcTime(new Date(event.timestamp));
-      return `<div class="log-entry ${event.level}">
+      const { icon, colorClass } = getEventIconAndClass(event);
+      const iconPart = icon ? `${icon} ` : '';
+      return `<div class="log-entry ${colorClass}">
         <span class="log-time">${time} UTC</span>
-        <span class="log-message">${event.message}</span>
+        <span class="log-message">${iconPart}${event.message}</span>
       </div>`;
     })
     .join('');
@@ -230,6 +304,23 @@ async function loadEventLog() {
   // Add startup messages
   addEventToLog({ level: 'success', message: 'Connected to metrics hub' }, true);
   addEventToLog({ level: 'info', message: 'Dashboard initialized' }, true);
+  
+  // Add environment info message
+  try {
+    const response = await fetch('/api/health/environment');
+    const env = await response.json();
+    let envMessage;
+    if (env.isAzure && env.computerName) {
+      envMessage = `Application is currently running on ${env.sku} SKU on worker ${env.computerName}`;
+    } else if (env.isAzure) {
+      envMessage = `Application is currently running on ${env.sku} SKU`;
+    } else {
+      envMessage = 'Application is currently running on Local';
+    }
+    addEventToLog({ level: 'info', message: envMessage }, true);
+  } catch (error) {
+    console.log('[Dashboard] Could not load environment info for event log');
+  }
   
   renderEventLog();
 }
@@ -357,25 +448,12 @@ async function startCpuStress(intensity, durationSeconds) {
     });
     renderActiveCpuSimulations();
 
-    // Add event to log
-    addEventToLog({
-      timestamp: new Date().toISOString(),
-      level: 'info',
-      event: 'SIMULATION_STARTED',
-      message: `CPU stress started: ${intensity} for ${durationSeconds}s`,
-    });
-
     // Auto-remove simulation after duration completes
+    // (backend broadcasts SIMULATION_COMPLETED event via WebSocket)
     setTimeout(() => {
       if (activeSimulations.cpu.has(data.id)) {
         activeSimulations.cpu.delete(data.id);
         renderActiveCpuSimulations();
-        addEventToLog({
-          timestamp: new Date().toISOString(),
-          level: 'info',
-          event: 'SIMULATION_COMPLETED',
-          message: `CPU stress completed: ${intensity} for ${durationSeconds}s`,
-        });
       }
     }, durationSeconds * 1000);
   } catch (error) {
@@ -448,13 +526,7 @@ async function allocateMemory(sizeMb) {
       parameters: { sizeMb },
     });
     renderActiveMemorySimulations();
-
-    addEventToLog({
-      timestamp: new Date().toISOString(),
-      level: 'info',
-      event: 'MEMORY_ALLOCATED',
-      message: `Allocated ${sizeMb}MB of memory`,
-    });
+    // Backend broadcasts MEMORY_ALLOCATING and MEMORY_ALLOCATED events via WebSocket
   } catch (error) {
     console.error('[Dashboard] Failed to allocate memory:', error);
     alert('Failed to allocate memory');
@@ -484,14 +556,7 @@ async function releaseMemory(id) {
     // Remove from active simulations and update UI
     activeSimulations.memory.delete(id);
     renderActiveMemorySimulations();
-
-    // Log the release
-    addEventToLog({
-      timestamp: new Date().toISOString(),
-      level: 'info',
-      event: 'MEMORY_RELEASED',
-      message: data.message || `Released ${sizeMb}MB of memory`,
-    });
+    // Backend broadcasts MEMORY_RELEASED event via WebSocket
   } catch (error) {
     console.error('[Dashboard] Failed to release memory:', error);
     alert('Failed to release memory');
@@ -516,13 +581,8 @@ async function blockEventLoop(durationSeconds, chunkMs) {
   const startTime = Date.now();
   
   try {
-    addEventToLog({
-      timestamp: new Date().toISOString(),
-      level: 'warn',
-      event: 'SIMULATION_STARTED',
-      message: `🧵 Blocking event loop for ${durationSeconds}s - watch the probe dots!`,
-    });
-
+    // Backend broadcasts SIMULATION_STARTED event via WebSocket
+    
     // Fire concurrent test requests to demonstrate queuing
     const concurrentRequests = [];
     for (let i = 0; i < 3; i++) {
@@ -565,13 +625,7 @@ async function blockEventLoop(durationSeconds, chunkMs) {
         recordSlowRequestLatency(result.duration);
       }
     }
-    
-    addEventToLog({
-      timestamp: new Date().toISOString(),
-      level: 'info',
-      event: 'SIMULATION_COMPLETED',
-      message: `✅ Event loop unblocked after ${data.actualDurationMs}ms`,
-    });
+    // Backend broadcasts SIMULATION_COMPLETED event via WebSocket
     
     // Show impact results
     if (impactEl) {
@@ -591,9 +645,10 @@ async function blockEventLoop(durationSeconds, chunkMs) {
     
     addEventToLog({
       timestamp: new Date().toISOString(),
-      level: 'danger',
+      level: 'error',
+      simulationType: 'EVENT_LOOP_BLOCKING',
       event: 'SIMULATION_FAILED',
-      message: `❌ Event loop block failed: ${errorMessage}`,
+      message: `Event loop block failed: ${errorMessage}`,
     });
     
     if (impactEl) {
@@ -641,7 +696,8 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
   addEventToLog({
     timestamp: new Date().toISOString(),
     level: 'info',
-    message: `🐌 Starting Slow Request simulation: ${maxRequests} requests × ${delaySeconds}s delay @ ${intervalSeconds}s intervals (${patternDesc})`
+    simulationType: 'SLOW_REQUEST',
+    message: `Starting Slow Request simulation: ${maxRequests} requests × ${delaySeconds}s delay @ ${intervalSeconds}s intervals (${patternDesc})`
   });
   
   let sentRequests = 0;
@@ -667,7 +723,8 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
     addEventToLog({
       timestamp: new Date().toISOString(),
       level: 'info',
-      message: `🐌 Request ${requestNum}/${maxRequests} started (${delaySeconds}s delay, ${patternDesc})`
+      simulationType: 'SLOW_REQUEST',
+      message: `Request ${requestNum}/${maxRequests} started (${delaySeconds}s delay, ${patternDesc})`
     });
     
     updateStatus();
@@ -690,8 +747,9 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
         // Log request completion with actual latency
         addEventToLog({
           timestamp: new Date().toISOString(),
-          level: 'success',
-          message: `✅ Request ${requestNum}/${maxRequests} completed: ${(latency / 1000).toFixed(1)}s actual latency`
+          level: 'info',
+          simulationType: 'SLOW_REQUEST',
+          message: `Request ${requestNum}/${maxRequests} completed: ${(latency / 1000).toFixed(1)}s actual latency`
         });
         
         updateStatus();
@@ -702,8 +760,9 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
           console.error('[Dashboard] Slow request failed:', error);
           addEventToLog({
             timestamp: new Date().toISOString(),
-            level: 'danger',
-            message: `❌ Request ${requestNum}/${maxRequests} failed: ${error.message}`
+            level: 'error',
+            simulationType: 'SLOW_REQUEST',
+            message: `Request ${requestNum}/${maxRequests} failed: ${error.message}`
           });
         }
         updateStatus();
@@ -755,8 +814,9 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
     // Log completion summary
     addEventToLog({
       timestamp: new Date().toISOString(),
-      level: 'success',
-      message: `🏁 Slow Request simulation complete: ${completedRequests}/${maxRequests} requests, avg latency ${avgLatency}s`
+      level: 'info',
+      simulationType: 'SLOW_REQUEST',
+      message: `Slow Request simulation complete: ${completedRequests}/${maxRequests} requests, avg latency ${avgLatency}s`
     });
   }
 }
@@ -783,7 +843,8 @@ function stopSlowRequests() {
     addEventToLog({
       timestamp: new Date().toISOString(),
       level: 'warning',
-      message: `⚠️ Slow Request simulation stopped by user`
+      simulationType: 'SLOW_REQUEST',
+      message: `Slow Request simulation stopped by user`
     });
     
     // Update status
@@ -833,7 +894,8 @@ async function triggerCrash(crashType) {
     // Log crash initiation before the request (in case connection is lost)
     addEventToLog({
       level: 'error',
-      message: `💥 CRASH: ${description} - Connection will be lost!`
+      simulationType: 'CRASH_' + crashType.toUpperCase(),
+      message: `CRASH: ${description} - Connection will be lost!`
     });
     
     await fetch(crashEndpoints[crashType], { method: 'POST' });
