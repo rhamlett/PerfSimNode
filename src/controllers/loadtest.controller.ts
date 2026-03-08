@@ -25,8 +25,8 @@
  *   - baselineDelayMs  (default: 1000)   → Minimum request duration
  *   - softLimit        (default: 20)     → Max concurrent before degradation
  *   - degradationFactor (default: 1000)  → Delay per request over limit
- *   - errorAfter       (default: 120)    → Seconds of processing time before random errors may occur
- *   - errorPercent     (default: 20)     → Percentage chance of error per check
+ *   - errorAboveConcurrent (default: 0)  → Concurrent threshold for random errors (0 = disabled)
+ *   - errorPercent     (default: 20)     → Percentage chance of error when above threshold
  *
  * @module controllers/loadtest
  */
@@ -51,17 +51,14 @@ export const loadtestRouter = Router();
  * - baselineDelayMs (default: 1000)   Minimum request duration in ms
  * - softLimit     (default: 20)       Concurrent requests before degradation begins
  * - degradationFactor (default: 1000) Additional delay (ms) per request over soft limit
- * - errorAfter    (default: 120)      Seconds of processing time after which random errors may be thrown (see note below)
- * - errorPercent  (default: 20)       Percentage chance (0-100) of error per check after errorAfter
+ * - errorAboveConcurrent (default: 0) Concurrent request threshold for error injection (0 = disabled)
+ * - errorPercent  (default: 20)       Percentage chance (0-100) of error when above threshold
  *
- * NOTE ON errorAfter TIMING (Node.js limitation):
- * The errorAfter parameter measures PROCESSING TIME, not total request time observed by clients.
- * In Node.js, all JavaScript runs on a single event loop. When the event loop is blocked,
- * incoming HTTP requests queue before our code can run. This queue time is NOT included in
- * errorAfter calculations. For example, if requests queue for 60 seconds before processing,
- * errorAfter=30 will never trigger because processing starts fresh at T=0.
- * For accurate total latency measurement, use the Request Latency Monitor (sidecar-measured)
- * or Azure Application Insights.
+ * CONCURRENCY-BASED ERROR INJECTION:
+ * When concurrent requests exceed errorAboveConcurrent, each request has an errorPercent
+ * chance of throwing a random exception. This simulates system instability under high load.
+ * Set errorAboveConcurrent to 0 (default) to disable, or to a value like softLimit+5
+ * to start injecting errors when the system is stressed.
  *
  * Total delay formula:
  *   totalDelay = baselineDelayMs + max(0, currentConcurrent - softLimit) * degradationFactor
@@ -85,7 +82,7 @@ loadtestRouter.get('/', async (req: Request, res: Response, next: NextFunction) 
       baselineDelayMs: parseOptionalInt(req.query.baselineDelayMs as string | undefined),
       softLimit: parseOptionalInt(req.query.softLimit as string | undefined),
       degradationFactor: parseOptionalInt(req.query.degradationFactor as string | undefined),
-      errorAfter: parseOptionalInt(req.query.errorAfter as string | undefined),
+      errorAboveConcurrent: parseOptionalInt(req.query.errorAboveConcurrent as string | undefined),
       errorPercent: parseOptionalInt(req.query.errorPercent as string | undefined),
     };
 

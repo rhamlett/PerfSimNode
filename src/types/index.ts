@@ -91,9 +91,6 @@ export type EventType =
   | 'CLIENT_CONNECTED'
   | 'CLIENT_DISCONNECTED'
   | 'LOAD_TEST_STATS'
-  | 'LOAD_TEST_REQUEST'
-  | 'LOAD_TEST_ERROR_CHECK'
-  | 'LOAD_TEST_DICE_ROLL'
   | 'LOAD_TEST_ERROR_INJECTED';
 
 // =============================================================================
@@ -507,8 +504,8 @@ export interface SimulationResponse {
  *   1. Allocates memory (split 50/50 between managed heap and native buffers)
  *   2. Calculates response delay based on concurrency: baselineDelayMs + max(0, concurrent - softLimit) * degradationFactor
  *   3. Interleaves CPU work with brief async sleeps in a loop until total delay elapsed
- *   4. After errorAfter seconds (default 120s), has errorPercent chance (default 20%)
- *      per cycle of throwing a random exception. Errors occur AFTER blocking delays.
+ *   4. When concurrent requests exceed errorAboveConcurrent threshold, has errorPercent
+ *      chance of throwing a random exception (chaos testing under load)
  *   5. Returns timing diagnostics in the response
  *
  * PORTING NOTES:
@@ -528,15 +525,17 @@ export interface LoadTestRequest {
   /** Additional delay (ms) per request over soft limit. Default: 1000 */
   degradationFactor: number;
   /** 
-   * Seconds of PROCESSING TIME after which random errors may be thrown. Default: 120
+   * Concurrent request threshold above which random errors may be thrown. Default: 0 (disabled)
    * 
-   * NOTE: Due to Node.js's single-threaded architecture, this measures processing
-   * time only, not total request time. When the event loop is blocked, requests
-   * queue at the HTTP layer before our code runs, so queue delay is not included.
-   * For accurate total latency, see the Request Latency Monitor (sidecar-measured).
+   * When the current concurrent request count exceeds this value, each request
+   * has an errorPercent chance of throwing a random exception. This simulates
+   * system instability under high load.
+   * 
+   * Set to 0 to disable error injection. Set to a value like softLimit+5 to
+   * start injecting errors when the system is under stress.
    */
-  errorAfter: number;
-  /** Percentage chance (0-100) of throwing error per check after errorAfter threshold. Default: 20 */
+  errorAboveConcurrent: number;
+  /** Percentage chance (0-100) of throwing error when above errorAboveConcurrent threshold. Default: 20 */
   errorPercent: number;
 }
 

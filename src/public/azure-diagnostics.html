@@ -981,7 +981,7 @@ process.on('SIGUSR2', takeHeapSnapshot);</code></pre>
         <li>Perform sustained CPU work (interleaved spin-loop cycles)</li>
         <li>Hold memory buffers for entire request duration (creates visible memory pressure)</li>
         <li>Degrade gracefully as concurrent requests increase (soft limit pattern)</li>
-        <li>Throw random exceptions after <code>errorAfter</code> seconds (configurable, default 120s) with <code>errorPercent</code>% probability (configurable, default 20%)</li>
+        <li>Throw random exceptions when concurrent requests exceed a configurable threshold (via <code>errorAboveConcurrent</code>) with <code>errorPercent</code>% probability (configurable, default 20%)</li>
         <li>Eventually trigger Azure's 230-second timeout under extreme load</li>
       </ul>
 
@@ -1008,8 +1008,8 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
         <li><code>baselineDelayMs</code> - Minimum request duration in ms (default: 1000)</li>
         <li><code>softLimit</code> - Concurrent requests before degradation (default: 20)</li>
         <li><code>degradationFactor</code> - Delay ms per request over limit (default: 1000)</li>
-        <li><code>errorAfter</code> - Seconds after which random errors may be thrown (default: 120)</li>
-        <li><code>errorPercent</code> - Percentage chance (0-100) of error per check after errorAfter (default: 20)</li>
+        <li><code>errorAboveConcurrent</code> - Concurrent request threshold for error injection (default: 0 = disabled)</li>
+        <li><code>errorPercent</code> - Percentage chance (0-100) of error when above threshold (default: 20)</li>
       </ul>
 
       <ol start="3">
@@ -1061,8 +1061,8 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
         <tr><td><code>baselineDelayMs</code></td><td>1000</td><td><strong>Event Loop</strong></td><td>Minimum request duration (ms). CPU work and sleep interleaved throughout.</td></tr>
         <tr><td><code>softLimit</code></td><td>20</td><td><strong>Concurrency</strong></td><td>Concurrent requests before degradation. Lower = faster degradation.</td></tr>
         <tr><td><code>degradationFactor</code></td><td>1000</td><td><strong>Concurrency</strong></td><td>Additional delay (ms) per request over softLimit.</td></tr>
-        <tr><td><code>errorAfter</code></td><td>120</td><td><strong>Chaos</strong></td><td>Seconds of processing time after which random errors may be thrown. See note below about Node.js timing limitation.</td></tr>
-        <tr><td><code>errorPercent</code></td><td>20</td><td><strong>Chaos</strong></td><td>Percentage chance (0-100) of throwing a random exception per check after errorAfter threshold.</td></tr>
+        <tr><td><code>errorAboveConcurrent</code></td><td>0</td><td><strong>Chaos</strong></td><td>Concurrent request threshold for error injection. When concurrent requests exceed this value, errors may be thrown. 0 = disabled.</td></tr>
+        <tr><td><code>errorPercent</code></td><td>20</td><td><strong>Chaos</strong></td><td>Percentage chance (0-100) of throwing a random exception when above errorAboveConcurrent threshold.</td></tr>
       </table>
 
       <h3>Tuning Parameters for Different Scenarios</h3>
@@ -1080,26 +1080,22 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
       </table>
 
       <h4>Chaos Testing Examples</h4>
-      <p>Use <code>errorAfter</code> and <code>errorPercent</code> to inject unpredictable failures:</p>
-      <pre><code># Early errors (30s) with high probability (50%)
-/api/loadtest?errorAfter=30&amp;errorPercent=50
+      <p>Use <code>errorAboveConcurrent</code> and <code>errorPercent</code> to inject unpredictable failures under high load:</p>
+      <pre><code># Errors when concurrent requests exceed 10 (50% chance each)
+/api/loadtest?errorAboveConcurrent=10&amp;errorPercent=50
 
-# Rare errors (120s) with low probability (5%)
-/api/loadtest?errorAfter=120&amp;errorPercent=5
+# Errors when concurrent requests exceed 25 (rare, 5% chance)
+/api/loadtest?errorAboveConcurrent=25&amp;errorPercent=5
 
-# No random errors
-/api/loadtest?errorPercent=0</code></pre>
+# No random errors (disabled by default)
+/api/loadtest?errorAboveConcurrent=0</code></pre>
 
-      <div class="alert-box caution">
-        <h4>⚠️ Node.js Timing Limitation</h4>
-        <p>The <code>errorAfter</code> parameter measures <strong>processing time</strong>, not total request time 
-        observed by clients. In Node.js, all JavaScript runs on a single event loop. When the event loop is 
-        blocked by other work, incoming requests queue at the HTTP layer before our code can run. This 
-        queue time is not included in <code>errorAfter</code> calculations.</p>
-        <p><strong>Example:</strong> If requests queue for 60 seconds before processing begins, 
-        <code>errorAfter=30</code> will never trigger because the timer starts when processing begins, not when 
-        the request arrived. For accurate total latency measurement, use the Request Latency Monitor (sidecar-measured) 
-        or Azure Application Insights.</p>
+      <div class="alert-box info">
+        <h4>💡 Concurrency-Based Error Injection</h4>
+        <p>Error injection triggers when the number of concurrent requests exceeds <code>errorAboveConcurrent</code>.
+        Set this value equal to or slightly above your <code>softLimit</code> to simulate failures that occur
+        when the system is already under stress. For example, with <code>softLimit=20</code>, use 
+        <code>errorAboveConcurrent=20</code> to start injecting errors at the degradation point.</p>
       </div>
     </section>
 

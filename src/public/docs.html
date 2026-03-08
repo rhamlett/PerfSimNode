@@ -686,17 +686,17 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
         <tr><td><code>baselineDelayMs</code></td><td>1000</td><td>Minimum request duration (ms)</td></tr>
         <tr><td><code>softLimit</code></td><td>20</td><td>Concurrent requests before degradation begins</td></tr>
         <tr><td><code>degradationFactor</code></td><td>1000</td><td>Delay ms added per request over soft limit</td></tr>
-        <tr><td><code>errorAfter</code></td><td>120</td><td>Seconds of processing time after which random errors may be thrown *</td></tr>
-        <tr><td><code>errorPercent</code></td><td>20</td><td>Percentage chance (0-100) of error per check after errorAfter</td></tr>
+        <tr><td><code>errorAboveConcurrent</code></td><td>0</td><td>Concurrent request threshold for error injection (0 = disabled)</td></tr>
+        <tr><td><code>errorPercent</code></td><td>20</td><td>Percentage chance (0-100) of error when above threshold</td></tr>
       </table>
-      <p><small>* <strong>Node.js limitation:</strong> <code>errorAfter</code> measures processing time only, not total request time. Queue delays (when the event loop is blocked) are not included. For accurate total latency, see the Request Latency Monitor.</small></p>
+      <p><small><strong>Concurrency-based errors:</strong> When concurrent requests exceed <code>errorAboveConcurrent</code>, each request has an <code>errorPercent</code>% chance of throwing a random exception. Set <code>errorAboveConcurrent=0</code> (default) to disable.</small></p>
 
       <h3>Behavior (Sustained Resource Consumption)</h3>
       <ul>
         <li><strong>Memory:</strong> Allocated up front and held for entire request duration (visible in Azure Memory metrics)</li>
         <li><strong>CPU:</strong> Interleaved work cycles (spin loop + sleep) creating sustained CPU usage per active request</li>
         <li><strong>Degradation:</strong> Blocking delay = baselineDelayMs + max(0, concurrent - softLimit) &times; degradationFactor</li>
-        <li><strong>Random Errors:</strong> After <code>errorAfter</code> seconds of processing time (default 120s), <code>errorPercent</code>% chance (default 20%) of throwing a random exception. Note: measures processing time only due to Node.js single-threaded architecture.</li>
+        <li><strong>Random Errors:</strong> When concurrent requests exceed <code>errorAboveConcurrent</code>, each request has an <code>errorPercent</code>% chance (default 20%) of throwing a random exception. Set <code>errorAboveConcurrent</code> to your <code>softLimit</code> value to trigger errors when the system is under load.</li>
         <li><strong>Extreme load:</strong> Can reach Azure's 230-second timeout threshold</li>
       </ul>
 
@@ -705,7 +705,7 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
         <li><strong>CPU</strong> &mdash; Sustained spin loop cycles per active thread</li>
         <li><strong>Memory</strong> &mdash; Buffers held for entire request duration</li>
         <li><strong>Event Loop</strong> &mdash; Graceful degradation under concurrent load</li>
-        <li><strong>Timeouts</strong> &mdash; Random exceptions after <code>errorAfter</code> seconds (<code>errorPercent</code>% probability)</li>
+        <li><strong>Error Injection</strong> &mdash; Random exceptions when concurrent requests exceed threshold (<code>errorPercent</code>% probability)</li>
       </ul>
 
       <div class="info-box">

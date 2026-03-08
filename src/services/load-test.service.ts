@@ -21,22 +21,11 @@
  *      - CPU work: spin loop for (workIterations/10)ms per cycle
  *      - Sleep: 50ms yield to event loop between cycles
  *      - Touch memory each cycle to prevent GC/OS page reclamation
- *   5. RANDOM EXCEPTIONS (configurable via errorAfter and errorPercent params):
- *      After errorAfter seconds of PROCESSING TIME (default 120s), errorPercent
- *      chance (default 20%) per cycle of throwing a random exception from a pool
- *      of realistic error types. Error checks occur AFTER blocking delays.
- *
- *      IMPORTANT NODE.JS LIMITATION: The errorAfter timer measures processing time,
- *      NOT total request time observed by clients. In Node.js, all JavaScript runs
- *      on a single event loop. When the event loop is blocked (by other work),
- *      incoming requests queue at the HTTP layer and our code cannot timestamp
- *      them until the event loop unblocks. This means:
- *        - Client sends request at T=0
- *        - Request queues for 15 seconds (event loop blocked)
- *        - Our handler runs at T=15s, starts errorAfter timer at 0
- *        - Client observes 15s+ latency, but errorAfter only sees processing time
- *      For accurate total latency measurement, use the sidecar probe or Azure
- *      Application Insights, which measure from outside the blocked event loop.
+ *   5. CONCURRENCY-BASED ERROR INJECTION (configurable via errorAboveConcurrent and errorPercent):
+ *      When concurrent requests exceed errorAboveConcurrent threshold, errorPercent
+ *      chance of throwing a random exception from a pool of realistic error types.
+ *      This simulates system instability under high load - the more overloaded
+ *      the system, the more likely errors occur.
  *   6. DECREMENT counter in finally block; return timing diagnostics
  *
  * EXCEPTION POOL:
@@ -60,6 +49,7 @@
  *     delay = baseline + max(0, current - softLimit) * factor
  *   - Exception pool: use the target language's exception hierarchy
  *   - Stats broadcasting: periodic timer that emits to WebSocket/SSE
+ *   - Concurrency-based errors: check concurrent count against threshold
  *
  * @module services/load-test
  */
@@ -137,7 +127,7 @@ const DEFAULT_REQUEST: LoadTestRequest = {
   baselineDelayMs: 1000,
   softLimit: 20,
   degradationFactor: 1000,
-  errorAfter: 120,
+  errorAboveConcurrent: 0,  // Disabled by default
   errorPercent: 20,
 };
 
@@ -288,15 +278,9 @@ class LoadTestServiceClass {
       baselineDelayMs: request.baselineDelayMs ?? DEFAULT_REQUEST.baselineDelayMs,
       softLimit: request.softLimit ?? DEFAULT_REQUEST.softLimit,
       degradationFactor: request.degradationFactor ?? DEFAULT_REQUEST.degradationFactor,
-      errorAfter: request.errorAfter ?? DEFAULT_REQUEST.errorAfter,
+      errorAboveConcurrent: request.errorAboveConcurrent ?? DEFAULT_REQUEST.errorAboveConcurrent,
       errorPercent: request.errorPercent ?? DEFAULT_REQUEST.errorPercent,
     };
-
-    // DEBUG: Log every request's error params
-    EventLogService.info(
-      'LOAD_TEST_REQUEST',
-      `Request params: errorAfter=${params.errorAfter}s (raw: ${request.errorAfter}), errorPercent=${params.errorPercent}% (raw: ${request.errorPercent})`
-    );
 
     // Increment concurrent counter
     this.concurrentRequests++;
@@ -368,17 +352,7 @@ class LoadTestServiceClass {
       const cpuWorkMsPerCycle = params.workIterations / 10;
 
       // Work loop uses workStartTime so it runs for full duration even after queue delay
-      let loopIteration = 0;
       while (Date.now() - workStartTime < totalDurationMs) {
-        loopIteration++;
-        // DEBUG: Log loop entry
-        if (loopIteration <= 3) {
-          EventLogService.info(
-            'LOAD_TEST_ERROR_CHECK',
-            `Loop iteration ${loopIteration}: workStartTime=${workStartTime}, now=${Date.now()}, elapsed=${Date.now() - workStartTime}ms, totalDuration=${totalDurationMs}ms`
-          );
-        }
-
         // CPU work phase
         if (cpuWorkMsPerCycle > 0) {
           this.performCpuWork(cpuWorkMsPerCycle);
@@ -389,10 +363,6 @@ class LoadTestServiceClass {
         this.touchHeapMemory(heapMemory);
         this.touchNativeBuffer(nativeBuffer);
 
-        // Check for timeout exception using statsStartTime (includes queue time)
-        // so errors trigger "after X seconds" from when client sent request
-        this.checkAndThrowTimeoutException(statsStartTime, params.errorAfter, params.errorPercent);
-
         // Sleep phase (yield to event loop, prevents 100% CPU)
         const remainingMs = totalDurationMs - (Date.now() - workStartTime);
         const sleepMs = Math.min(SLEEP_PER_CYCLE_MS, Math.max(0, remainingMs));
@@ -401,12 +371,9 @@ class LoadTestServiceClass {
         }
       }
 
-      // DEBUG: Log loop completion stats
-      const finalElapsed = (Date.now() - statsStartTime) / 1000;
-      EventLogService.info(
-        'LOAD_TEST_ERROR_CHECK',
-        `Loop completed: ${loopIteration} iterations, finalElapsed=${finalElapsed.toFixed(1)}s, errorAfter=${params.errorAfter}s, wouldTrigger=${finalElapsed > params.errorAfter}`
-      );
+      // Check for concurrency-based error injection after work completes
+      // This simulates system instability under high load
+      this.checkAndThrowConcurrencyException(currentConcurrent, params.errorAboveConcurrent, params.errorPercent);
 
       // Final memory touch before returning
       this.touchHeapMemory(heapMemory);
@@ -555,40 +522,34 @@ class LoadTestServiceClass {
   }
 
   /**
-   * Checks if elapsed time exceeds the configured threshold and randomly throws an exception.
-   * The error check happens after blocking delays to ensure errors occur "after" the specified time.
+   * Checks if concurrent requests exceed threshold and randomly throws an exception.
+   * This simulates system instability under high load - the more overloaded
+   * the system becomes, the more likely errors occur.
    * 
-   * @param startTime - Request start timestamp in milliseconds
-   * @param errorAfterSeconds - Seconds after which exceptions may be thrown (default: 120)
-   * @param errorPercent - Percentage chance (0-100) of throwing exception per check (default: 20)
+   * @param currentConcurrent - Current number of concurrent requests
+   * @param errorAboveConcurrent - Threshold above which errors may be thrown (0 = disabled)
+   * @param errorPercent - Percentage chance (0-100) of throwing exception when above threshold
    */
-  private checkAndThrowTimeoutException(
-    startTime: number,
-    errorAfterSeconds: number = 120,
-    errorPercent: number = 20
+  private checkAndThrowConcurrencyException(
+    currentConcurrent: number,
+    errorAboveConcurrent: number,
+    errorPercent: number
   ): void {
-    const elapsedSeconds = (Date.now() - startTime) / 1000;
-    const probability = errorPercent / 100;
+    // Skip if error injection is disabled (threshold is 0 or percent is 0)
+    if (errorAboveConcurrent <= 0 || errorPercent <= 0) {
+      return;
+    }
 
-    // DEBUG: Log every check cycle
-    EventLogService.info(
-      'LOAD_TEST_ERROR_CHECK',
-      `Error check: elapsed=${elapsedSeconds.toFixed(1)}s, threshold=${errorAfterSeconds}s, percent=${errorPercent}, pastThreshold=${elapsedSeconds > errorAfterSeconds}`
-    );
-
-    if (elapsedSeconds > errorAfterSeconds && errorPercent > 0) {
-      const roll = Math.random();
-      EventLogService.info(
-        'LOAD_TEST_DICE_ROLL',
-        `Past threshold! Rolling dice: ${roll.toFixed(3)} < ${probability} = ${roll < probability}`
-      );
-      if (roll < probability) {
+    // Only throw errors when concurrency exceeds threshold
+    if (currentConcurrent > errorAboveConcurrent) {
+      const probability = errorPercent / 100;
+      if (Math.random() < probability) {
         const idx = Math.floor(Math.random() * EXCEPTION_FACTORIES.length);
         const exception = EXCEPTION_FACTORIES[idx]();
         // Log to event log so it appears in dashboard
         EventLogService.warn(
           'LOAD_TEST_ERROR_INJECTED',
-          `Injecting error after ${elapsedSeconds.toFixed(1)}s: ${exception.message}`
+          `Injecting error (concurrent=${currentConcurrent} > threshold=${errorAboveConcurrent}): ${exception.message}`
         );
         throw exception;
       }
