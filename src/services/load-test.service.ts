@@ -292,6 +292,12 @@ class LoadTestServiceClass {
       errorPercent: request.errorPercent ?? DEFAULT_REQUEST.errorPercent,
     };
 
+    // DEBUG: Log every request's error params
+    EventLogService.info(
+      'LOAD_TEST_REQUEST',
+      `Request params: errorAfter=${params.errorAfter}s (raw: ${request.errorAfter}), errorPercent=${params.errorPercent}% (raw: ${request.errorPercent})`
+    );
+
     // Increment concurrent counter
     this.concurrentRequests++;
     const currentConcurrent = this.concurrentRequests;
@@ -547,12 +553,25 @@ class LoadTestServiceClass {
     const elapsedSeconds = (Date.now() - startTime) / 1000;
     const probability = errorPercent / 100;
 
+    // DEBUG: Log every check cycle
+    EventLogService.info(
+      'LOAD_TEST_ERROR_CHECK',
+      `Error check: elapsed=${elapsedSeconds.toFixed(1)}s, threshold=${errorAfterSeconds}s, percent=${errorPercent}, pastThreshold=${elapsedSeconds > errorAfterSeconds}`
+    );
+
     if (elapsedSeconds > errorAfterSeconds && errorPercent > 0) {
-      if (Math.random() < probability) {
+      const roll = Math.random();
+      EventLogService.info(
+        'LOAD_TEST_DICE_ROLL',
+        `Past threshold! Rolling dice: ${roll.toFixed(3)} < ${probability} = ${roll < probability}`
+      );
+      if (roll < probability) {
         const idx = Math.floor(Math.random() * EXCEPTION_FACTORIES.length);
         const exception = EXCEPTION_FACTORIES[idx]();
-        console.log(
-          `[LoadTest] Throwing random exception after ${elapsedSeconds.toFixed(1)}s: ${exception.message}`
+        // Log to event log so it appears in dashboard
+        EventLogService.warn(
+          'LOAD_TEST_ERROR_INJECTED',
+          `Injecting error after ${elapsedSeconds.toFixed(1)}s: ${exception.message}`
         );
         throw exception;
       }
