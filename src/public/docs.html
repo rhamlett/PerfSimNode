@@ -682,7 +682,7 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
       <table>
         <tr><th>Parameter</th><th>Default</th><th>Description</th></tr>
         <tr><td><code>workIterations</code></td><td>700</td><td>CPU spin iterations per work cycle (ms per cycle = workIterations/10)</td></tr>
-        <tr><td><code>bufferSizeKb</code></td><td>100000</td><td>Memory buffer held for entire request duration (KB)</td></tr>
+        <tr><td><code>bufferSizeKb</code></td><td>10000</td><td>Memory buffer held for entire request duration (KB)</td></tr>
         <tr><td><code>baselineDelayMs</code></td><td>1000</td><td>Minimum request duration (ms)</td></tr>
         <tr><td><code>softLimit</code></td><td>20</td><td>Concurrent requests before degradation begins</td></tr>
         <tr><td><code>degradationFactor</code></td><td>1000</td><td>Delay ms added per request over soft limit</td></tr>

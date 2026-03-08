@@ -133,7 +133,7 @@ const BROADCAST_INTERVAL_SECONDS = 60;
 
 const DEFAULT_REQUEST: LoadTestRequest = {
   workIterations: 700,
-  bufferSizeKb: 100000,
+  bufferSizeKb: 10000,
   baselineDelayMs: 1000,
   softLimit: 20,
   degradationFactor: 1000,
@@ -325,11 +325,25 @@ class LoadTestServiceClass {
       const heapKb = Math.ceil(params.bufferSizeKb / 2);
       const nativeKb = params.bufferSizeKb - heapKb;
 
+      // Capture memory before allocation for diagnostics
+      const memBefore = process.memoryUsage();
+
       heapMemory = this.allocateHeapMemory(heapKb);
       this.touchHeapMemory(heapMemory);
 
       nativeBuffer = Buffer.alloc(nativeKb * 1024);
       this.touchNativeBuffer(nativeBuffer);
+
+      // Log allocation results (helps diagnose bufferSizeKb issues)
+      const memAfter = process.memoryUsage();
+      const heapDeltaMb = (memAfter.heapUsed - memBefore.heapUsed) / (1024 * 1024);
+      const rssDeltaMb = (memAfter.rss - memBefore.rss) / (1024 * 1024);
+      console.log(
+        `[LoadTest] Memory allocated: requested=${params.bufferSizeKb}KB ` +
+        `(${heapKb}KB heap, ${nativeKb}KB native), ` +
+        `actual delta: heap=${heapDeltaMb.toFixed(1)}MB, rss=${rssDeltaMb.toFixed(1)}MB, ` +
+        `concurrent=${currentConcurrent}`
+      );
 
       // -----------------------------------------------------------------
       // STEP 2: CALCULATE TOTAL REQUEST DURATION

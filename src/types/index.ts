@@ -513,15 +513,15 @@ export interface SimulationResponse {
  *   thread-safe types (AtomicInteger in Java, Interlocked in C#).
  */
 export interface LoadTestRequest {
-  /** CPU work intensity (workIterations / 100 = ms of spin per cycle). Default: 200 */
+  /** CPU work intensity (workIterations / 10 = ms of spin per cycle). Default: 700 */
   workIterations: number;
-  /** Memory buffer held for request duration in KB. Default: 20000 */
+  /** Memory buffer held for request duration in KB. Default: 10000 (10 MB) */
   bufferSizeKb: number;
-  /** Minimum request duration in ms. Default: 500 */
+  /** Minimum request duration in ms. Default: 1000 */
   baselineDelayMs: number;
-  /** Concurrent requests before degradation begins. Default: 25 */
+  /** Concurrent requests before degradation begins. Default: 20 */
   softLimit: number;
-  /** Additional delay (ms) per request over soft limit. Default: 500 */
+  /** Additional delay (ms) per request over soft limit. Default: 1000 */
   degradationFactor: number;
   /** 
    * Seconds of PROCESSING TIME after which random errors may be thrown. Default: 120

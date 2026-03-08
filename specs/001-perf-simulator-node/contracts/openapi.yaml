@@ -400,7 +400,7 @@ paths:
           description: Memory buffer held for request duration in KB
           schema:
             type: integer
-            default: 100000
+            default: 10000
         - name: baselineDelayMs
           in: query
           required: false

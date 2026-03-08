@@ -21,7 +21,7 @@
  *
  * QUERY PARAMETERS (all optional with defaults):
  *   - workIterations   (default: 700)    → CPU work per cycle (ms = value/10)
- *   - bufferSizeKb     (default: 100000) → Memory held per request
+ *   - bufferSizeKb     (default: 10000)  → Memory held per request (10 MB)
  *   - baselineDelayMs  (default: 1000)   → Minimum request duration
  *   - softLimit        (default: 20)     → Max concurrent before degradation
  *   - degradationFactor (default: 1000)  → Delay per request over limit
@@ -47,7 +47,7 @@ export const loadtestRouter = Router();
  *
  * Query Parameters:
  * - workIterations (default: 700)     CPU work intensity (ms per cycle = workIterations/10)
- * - bufferSizeKb  (default: 100000)   Memory buffer held for request duration in KB
+ * - bufferSizeKb  (default: 10000)    Memory buffer held for request duration in KB
  * - baselineDelayMs (default: 1000)   Minimum request duration in ms
  * - softLimit     (default: 20)       Concurrent requests before degradation begins
  * - degradationFactor (default: 1000) Additional delay (ms) per request over soft limit
