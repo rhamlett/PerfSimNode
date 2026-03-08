@@ -368,7 +368,17 @@ class LoadTestServiceClass {
       const cpuWorkMsPerCycle = params.workIterations / 10;
 
       // Work loop uses workStartTime so it runs for full duration even after queue delay
+      let loopIteration = 0;
       while (Date.now() - workStartTime < totalDurationMs) {
+        loopIteration++;
+        // DEBUG: Log loop entry
+        if (loopIteration <= 3) {
+          EventLogService.info(
+            'LOAD_TEST_ERROR_CHECK',
+            `Loop iteration ${loopIteration}: workStartTime=${workStartTime}, now=${Date.now()}, elapsed=${Date.now() - workStartTime}ms, totalDuration=${totalDurationMs}ms`
+          );
+        }
+
         // CPU work phase
         if (cpuWorkMsPerCycle > 0) {
           this.performCpuWork(cpuWorkMsPerCycle);
@@ -390,6 +400,13 @@ class LoadTestServiceClass {
           await this.sleep(sleepMs);
         }
       }
+
+      // DEBUG: Log loop completion stats
+      const finalElapsed = (Date.now() - statsStartTime) / 1000;
+      EventLogService.info(
+        'LOAD_TEST_ERROR_CHECK',
+        `Loop completed: ${loopIteration} iterations, finalElapsed=${finalElapsed.toFixed(1)}s, errorAfter=${params.errorAfter}s, wouldTrigger=${finalElapsed > params.errorAfter}`
+      );
 
       // Final memory touch before returning
       this.touchHeapMemory(heapMemory);
