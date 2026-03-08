@@ -523,7 +523,14 @@ export interface LoadTestRequest {
   softLimit: number;
   /** Additional delay (ms) per request over soft limit. Default: 500 */
   degradationFactor: number;
-  /** Seconds after which random errors may be thrown. Default: 120 */
+  /** 
+   * Seconds of PROCESSING TIME after which random errors may be thrown. Default: 120
+   * 
+   * NOTE: Due to Node.js's single-threaded architecture, this measures processing
+   * time only, not total request time. When the event loop is blocked, requests
+   * queue at the HTTP layer before our code runs, so queue delay is not included.
+   * For accurate total latency, see the Request Latency Monitor (sidecar-measured).
+   */
   errorAfter: number;
   /** Percentage chance (0-100) of throwing error per check after errorAfter threshold. Default: 20 */
   errorPercent: number;

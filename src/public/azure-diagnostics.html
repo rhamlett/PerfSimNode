@@ -267,9 +267,23 @@
       background: rgba(29, 111, 29, 0.1);
       border-left: 4px solid var(--color-success);
     }
+    .alert-box.caution {
+      background: rgba(255, 185, 0, 0.1);
+      border-left: 4px solid var(--color-danger);
+      margin-top: 20px;
+    }
     .alert-box strong {
       display: block;
       margin-bottom: 0.25rem;
+    }
+    .alert-box h4 {
+      margin-top: 0;
+    }
+    .alert-box p:last-child {
+      margin-bottom: 0;
+    }
+    .alert-box p + p {
+      margin-top: 10px;
     }
     .alert-box ol,
     .alert-box ul {
@@ -1047,7 +1061,7 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
         <tr><td><code>baselineDelayMs</code></td><td>1000</td><td><strong>Event Loop</strong></td><td>Minimum request duration (ms). CPU work and sleep interleaved throughout.</td></tr>
         <tr><td><code>softLimit</code></td><td>20</td><td><strong>Concurrency</strong></td><td>Concurrent requests before degradation. Lower = faster degradation.</td></tr>
         <tr><td><code>degradationFactor</code></td><td>1000</td><td><strong>Concurrency</strong></td><td>Additional delay (ms) per request over softLimit.</td></tr>
-        <tr><td><code>errorAfter</code></td><td>120</td><td><strong>Chaos</strong></td><td>Seconds after which random errors may be thrown. Errors occur AFTER blocking delays.</td></tr>
+        <tr><td><code>errorAfter</code></td><td>120</td><td><strong>Chaos</strong></td><td>Seconds of processing time after which random errors may be thrown. See note below about Node.js timing limitation.</td></tr>
         <tr><td><code>errorPercent</code></td><td>20</td><td><strong>Chaos</strong></td><td>Percentage chance (0-100) of throwing a random exception per check after errorAfter threshold.</td></tr>
       </table>
 
@@ -1075,6 +1089,18 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
 
 # No random errors
 /api/loadtest?errorPercent=0</code></pre>
+
+      <div class="alert-box caution">
+        <h4>⚠️ Node.js Timing Limitation</h4>
+        <p>The <code>errorAfter</code> parameter measures <strong>processing time</strong>, not total request time 
+        observed by clients. In Node.js, all JavaScript runs on a single event loop. When the event loop is 
+        blocked by other work, incoming requests queue at the HTTP layer before our code can run. This 
+        queue time is not included in <code>errorAfter</code> calculations.</p>
+        <p><strong>Example:</strong> If requests queue for 60 seconds before processing begins, 
+        <code>errorAfter=30</code> will never trigger because the timer starts when processing begins, not when 
+        the request arrived. For accurate total latency measurement, use the Request Latency Monitor (sidecar-measured) 
+        or Azure Application Insights.</p>
+      </div>
     </section>
 
   </main>

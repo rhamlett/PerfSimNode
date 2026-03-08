@@ -25,7 +25,7 @@
  *   - baselineDelayMs  (default: 1000)   → Minimum request duration
  *   - softLimit        (default: 20)     → Max concurrent before degradation
  *   - degradationFactor (default: 1000)  → Delay per request over limit
- *   - errorAfter       (default: 120)    → Seconds before random errors may occur
+ *   - errorAfter       (default: 120)    → Seconds of processing time before random errors may occur
  *   - errorPercent     (default: 20)     → Percentage chance of error per check
  *
  * @module controllers/loadtest
@@ -51,8 +51,17 @@ export const loadtestRouter = Router();
  * - baselineDelayMs (default: 1000)   Minimum request duration in ms
  * - softLimit     (default: 20)       Concurrent requests before degradation begins
  * - degradationFactor (default: 1000) Additional delay (ms) per request over soft limit
- * - errorAfter    (default: 120)      Seconds after which random errors may be thrown
+ * - errorAfter    (default: 120)      Seconds of processing time after which random errors may be thrown (see note below)
  * - errorPercent  (default: 20)       Percentage chance (0-100) of error per check after errorAfter
+ *
+ * NOTE ON errorAfter TIMING (Node.js limitation):
+ * The errorAfter parameter measures PROCESSING TIME, not total request time observed by clients.
+ * In Node.js, all JavaScript runs on a single event loop. When the event loop is blocked,
+ * incoming HTTP requests queue before our code can run. This queue time is NOT included in
+ * errorAfter calculations. For example, if requests queue for 60 seconds before processing,
+ * errorAfter=30 will never trigger because processing starts fresh at T=0.
+ * For accurate total latency measurement, use the Request Latency Monitor (sidecar-measured)
+ * or Azure Application Insights.
  *
  * Total delay formula:
  *   totalDelay = baselineDelayMs + max(0, currentConcurrent - softLimit) * degradationFactor

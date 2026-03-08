@@ -22,9 +22,21 @@
  *      - Sleep: 50ms yield to event loop between cycles
  *      - Touch memory each cycle to prevent GC/OS page reclamation
  *   5. RANDOM EXCEPTIONS (configurable via errorAfter and errorPercent params):
- *      After errorAfter seconds elapsed (default 120s), errorPercent chance
- *      (default 20%) per cycle of throwing a random exception from a pool
+ *      After errorAfter seconds of PROCESSING TIME (default 120s), errorPercent
+ *      chance (default 20%) per cycle of throwing a random exception from a pool
  *      of realistic error types. Error checks occur AFTER blocking delays.
+ *
+ *      IMPORTANT NODE.JS LIMITATION: The errorAfter timer measures processing time,
+ *      NOT total request time observed by clients. In Node.js, all JavaScript runs
+ *      on a single event loop. When the event loop is blocked (by other work),
+ *      incoming requests queue at the HTTP layer and our code cannot timestamp
+ *      them until the event loop unblocks. This means:
+ *        - Client sends request at T=0
+ *        - Request queues for 15 seconds (event loop blocked)
+ *        - Our handler runs at T=15s, starts errorAfter timer at 0
+ *        - Client observes 15s+ latency, but errorAfter only sees processing time
+ *      For accurate total latency measurement, use the sidecar probe or Azure
+ *      Application Insights, which measure from outside the blocked event loop.
  *   6. DECREMENT counter in finally block; return timing diagnostics
  *
  * EXCEPTION POOL:
