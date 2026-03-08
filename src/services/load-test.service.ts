@@ -249,11 +249,15 @@ class LoadTestServiceClass {
     const currentConcurrent = this.concurrentRequests;
     this.updatePeakConcurrent(currentConcurrent);
 
-    // Use arrival time if provided, otherwise use now.
-    // Arrival time captures HTTP queue delays under load.
-    const startTime = arrivalTime ?? Date.now();
+    // Track two separate timestamps:
+    // 1. arrivalTime - when Express received the request (includes HTTP queue delay)
+    //    Used for stats to match what Azure Load Testing observes
+    // 2. workStartTime - when executeWork actually starts running
+    //    Used for work loop duration so requests still do their intended work
+    const statsStartTime = arrivalTime ?? Date.now();
+    const workStartTime = Date.now();
     const requestId = this.nextRequestId++;
-    this.inFlightRequestIds.set(requestId, startTime);
+    this.inFlightRequestIds.set(requestId, statsStartTime);
     let totalCpuWorkDone = 0;
     let workCompleted = false;
     let heapMemory: number[][] | null = null;
@@ -295,7 +299,8 @@ class LoadTestServiceClass {
       // -----------------------------------------------------------------
       const cpuWorkMsPerCycle = params.workIterations / 10;
 
-      while (Date.now() - startTime < totalDurationMs) {
+      // Work loop uses workStartTime so it runs for full duration even after queue delay
+      while (Date.now() - workStartTime < totalDurationMs) {
         // CPU work phase
         if (cpuWorkMsPerCycle > 0) {
           this.performCpuWork(cpuWorkMsPerCycle);
@@ -306,11 +311,12 @@ class LoadTestServiceClass {
         this.touchHeapMemory(heapMemory);
         this.touchNativeBuffer(nativeBuffer);
 
-        // Check for timeout exception after blocking delays (parameterized threshold and probability)
-        this.checkAndThrowTimeoutException(startTime, params.errorAfter, params.errorPercent);
+        // Check for timeout exception using statsStartTime (includes queue time)
+        // so errors trigger "after X seconds" from when client sent request
+        this.checkAndThrowTimeoutException(statsStartTime, params.errorAfter, params.errorPercent);
 
         // Sleep phase (yield to event loop, prevents 100% CPU)
-        const remainingMs = totalDurationMs - (Date.now() - startTime);
+        const remainingMs = totalDurationMs - (Date.now() - workStartTime);
         const sleepMs = Math.min(SLEEP_PER_CYCLE_MS, Math.max(0, remainingMs));
         if (sleepMs > 0) {
           await this.sleep(sleepMs);
@@ -322,7 +328,8 @@ class LoadTestServiceClass {
       this.touchNativeBuffer(nativeBuffer);
 
       workCompleted = true;
-      const elapsedMs = Date.now() - startTime;
+      // Use statsStartTime for elapsed time to match Azure Load Testing measurement
+      const elapsedMs = Date.now() - statsStartTime;
 
       return this.buildResult(
         elapsedMs,
@@ -335,7 +342,7 @@ class LoadTestServiceClass {
         null
       );
     } catch (error) {
-      const elapsedMs = Date.now() - startTime;
+      const elapsedMs = Date.now() - statsStartTime;
       this.totalExceptionsThrown++;
       this.periodExceptions++;
 
@@ -356,7 +363,8 @@ class LoadTestServiceClass {
       // Counter updates
       this.concurrentRequests--;
       this.totalRequestsProcessed++;
-      const elapsedMs = Date.now() - startTime;
+      // Use statsStartTime for elapsed time to match Azure Load Testing measurement
+      const elapsedMs = Date.now() - statsStartTime;
       this.totalResponseTimeMs += elapsedMs;
 
       // Period stats
