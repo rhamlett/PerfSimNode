@@ -90,7 +90,11 @@ export type EventType =
   | 'SERVER_STARTED'
   | 'CLIENT_CONNECTED'
   | 'CLIENT_DISCONNECTED'
-  | 'LOAD_TEST_STATS';
+  | 'LOAD_TEST_STATS'
+  | 'LOAD_TEST_REQUEST'
+  | 'LOAD_TEST_ERROR_CHECK'
+  | 'LOAD_TEST_DICE_ROLL'
+  | 'LOAD_TEST_ERROR_INJECTED';
 
 // =============================================================================
 // SIMULATION PARAMETER TYPES
