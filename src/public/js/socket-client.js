@@ -6,10 +6,11 @@
  * PURPOSE:
  *   Manages the WebSocket connection from the browser to the main server.
  *   All real-time data flows through this single connection:
- *   - 'metrics'       → System metrics updates (~1/second)
- *   - 'event'         → Event log entries (simulation start/stop, errors)
- *   - 'simulation'    → Simulation state changes (started/completed/failed)
- *   - 'sidecarProbe'  → Latency probe results from the sidecar process
+ *   - 'metrics'         → System metrics updates (~1/second)
+ *   - 'event'           → Event log entries (simulation start/stop, errors)
+ *   - 'simulation'      → Simulation state changes (started/completed/failed)
+ *   - 'sidecarProbe'    → Latency probe results from the sidecar process
+ *   - 'loadTestLatency' → Sampled load test request latencies (1:10 sampling)
  *
  * SCRIPT LOADING ORDER:
  *   This file must be loaded BEFORE dashboard.js and charts.js in index.html.
@@ -128,6 +129,14 @@ function initSocket() {
   socket.on('sidecarProbe', (data) => {
     if (typeof onProbeLatency === 'function') {
       onProbeLatency(data);
+    }
+  });
+
+  // Listen for load test latency samples (1:10 sampling)
+  // These are individual load test request latencies sent to the latency monitor
+  socket.on('loadTestLatency', (data) => {
+    if (typeof onLoadTestLatency === 'function') {
+      onLoadTestLatency(data);
     }
   });
 }

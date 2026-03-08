@@ -76,7 +76,7 @@
                 <div class="tile-value"><span id="cpu-value">0.0</span> <span class="tile-unit">%</span></div>
               </div>
             </div>
-            <div class="metric-bar"><div class="metric-bar-fill" id="cpu-bar" style="width: 0%;"></div></div>
+            <div class="metric-bar"><div class="metric-bar-fill" id="cpu-bar"></div></div>
           </div>
           <div class="metric-tile memory">
             <div class="tile-content">
@@ -86,7 +86,7 @@
                 <div class="tile-value"><span id="memory-value">0</span> <span class="tile-unit">MB</span> <span id="memory-total" class="tile-subtext">of -- GB</span></div>
               </div>
             </div>
-            <div class="metric-bar"><div class="metric-bar-fill" id="memory-bar" style="width: 0%;"></div></div>
+            <div class="metric-bar"><div class="metric-bar-fill" id="memory-bar"></div></div>
           </div>
           <div class="metric-tile eventloop">
             <div class="tile-content">
@@ -96,7 +96,7 @@
                 <div class="tile-value"><span id="eventloop-value">0.0</span> <span class="tile-unit">ms</span></div>
               </div>
             </div>
-            <div class="metric-bar"><div class="metric-bar-fill" id="eventloop-bar" style="width: 0%;"></div></div>
+            <div class="metric-bar"><div class="metric-bar-fill" id="eventloop-bar"></div></div>
           </div>
           <div class="metric-tile latency">
             <div class="tile-content">
@@ -106,7 +106,7 @@
                 <div class="tile-value"><span id="rss-value">0</span> <span class="tile-unit">MB</span></div>
               </div>
             </div>
-            <div class="metric-bar"><div class="metric-bar-fill" id="rss-bar" style="width: 0%;"></div></div>
+            <div class="metric-bar"><div class="metric-bar-fill" id="rss-bar"></div></div>
           </div>
         </div>
       </section>
@@ -117,16 +117,16 @@
           <div class="chart-card">
             <h3>📈 CPU & Memory Over Time</h3>
             <div class="chart-legend">
-              <span class="legend-item"><span class="legend-color" style="background: #0078d4;"></span> CPU %</span>
-              <span class="legend-item"><span class="legend-color" style="background: #107c10;"></span> Memory MB</span>
+              <span class="legend-item"><span class="legend-color cpu"></span> CPU %</span>
+              <span class="legend-item"><span class="legend-color memory"></span> Memory MB</span>
             </div>
             <canvas id="cpu-memory-chart"></canvas>
           </div>
           <div class="chart-card">
             <h3>🧵 Event Loop & RSS Memory</h3>
             <div class="chart-legend">
-              <span class="legend-item"><span class="legend-color" style="background: #8764b8;"></span> Lag (ms)</span>
-              <span class="legend-item"><span class="legend-color" style="background: #ffb900;"></span> RSS (MB)</span>
+              <span class="legend-item"><span class="legend-color eventloop"></span> Lag (ms)</span>
+              <span class="legend-item"><span class="legend-color rss"></span> RSS (MB)</span>
             </div>
             <canvas id="eventloop-chart"></canvas>
           </div>

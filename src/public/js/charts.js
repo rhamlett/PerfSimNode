@@ -478,6 +478,30 @@ function recordSlowRequestLatency(latencyMs) {
 }
 
 /**
+ * Handles load test latency samples from the server.
+ * Called by socket-client.js when loadTestLatency events arrive.
+ * These are sampled at 1:10 server-side to avoid flooding the monitor.
+ * @param {Object} data - Object with latencyMs and timestamp
+ */
+function onLoadTestLatency(data) {
+  const latencyMs = data.latencyMs;
+  
+  // Add to main latency stats
+  addLatencyEntry(latencyMs);
+  
+  // Add to the latency chart
+  addLatencyToChart(latencyMs);
+  
+  // Track critical latencies (>30s)
+  if (latencyMs > 30000) {
+    latencyStats.critical++;
+  }
+  
+  // Update the stats display
+  updateLatencyDisplay();
+}
+
+/**
  * Updates the server responsiveness UI elements.
  * The probe dots visualization now shows responsiveness status.
  */

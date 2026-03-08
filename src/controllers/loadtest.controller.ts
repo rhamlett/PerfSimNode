@@ -25,6 +25,8 @@
  *   - baselineDelayMs  (default: 1000)   → Minimum request duration
  *   - softLimit        (default: 20)     → Max concurrent before degradation
  *   - degradationFactor (default: 1000)  → Delay per request over limit
+ *   - errorAfter       (default: 120)    → Seconds before random errors may occur
+ *   - errorPercent     (default: 20)     → Percentage chance of error per check
  *
  * @module controllers/loadtest
  */
@@ -49,6 +51,8 @@ export const loadtestRouter = Router();
  * - baselineDelayMs (default: 1000)   Minimum request duration in ms
  * - softLimit     (default: 20)       Concurrent requests before degradation begins
  * - degradationFactor (default: 1000) Additional delay (ms) per request over soft limit
+ * - errorAfter    (default: 120)      Seconds after which random errors may be thrown
+ * - errorPercent  (default: 20)       Percentage chance (0-100) of error per check after errorAfter
  *
  * Total delay formula:
  *   totalDelay = baselineDelayMs + max(0, currentConcurrent - softLimit) * degradationFactor
@@ -68,6 +72,8 @@ loadtestRouter.get('/', async (req: Request, res: Response, next: NextFunction) 
       baselineDelayMs: parseOptionalInt(req.query.baselineDelayMs as string | undefined),
       softLimit: parseOptionalInt(req.query.softLimit as string | undefined),
       degradationFactor: parseOptionalInt(req.query.degradationFactor as string | undefined),
+      errorAfter: parseOptionalInt(req.query.errorAfter as string | undefined),
+      errorPercent: parseOptionalInt(req.query.errorPercent as string | undefined),
     };
 
     // Remove undefined values so service defaults apply

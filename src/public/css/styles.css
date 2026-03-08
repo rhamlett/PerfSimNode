@@ -556,6 +556,7 @@ section h2, section h3 {
   height: 100%;
   border-radius: 2px;
   transition: width var(--transition-normal);
+  width: 0%; /* Default state, updated dynamically via JS */
 }
 
 .metric-tile.cpu .metric-bar-fill { background: var(--color-cpu); }
@@ -610,6 +611,11 @@ section h2, section h3 {
   height: 12px;
   border-radius: 2px;
 }
+
+.legend-color.cpu { background: var(--color-cpu); }
+.legend-color.memory { background: var(--color-memory); }
+.legend-color.eventloop { background: var(--color-eventloop); }
+.legend-color.rss { background: var(--color-latency); }
 
 .chart-card canvas {
   width: 100% !important;

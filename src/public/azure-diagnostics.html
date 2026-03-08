@@ -271,6 +271,11 @@
       display: block;
       margin-bottom: 0.25rem;
     }
+    .alert-box ol,
+    .alert-box ul {
+      margin: 0.5rem 0 0;
+      padding-left: 1.25rem;
+    }
     pre {
       background: #1e1e1e;
       color: #d4d4d4;
@@ -716,7 +721,7 @@
       <h3>Step 3: Deep Dive Tools by Issue</h3>
       <div class="alert-box success">
         <strong>🔥 High CPU</strong>
-        <ol style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+        <ol>
           <li>Kudu Process Explorer → Identify process</li>
           <li>App Service Diagnostics → CPU Drill Down</li>
           <li>Profile with <code>node --prof</code> or <code>--inspect</code></li>
@@ -724,7 +729,7 @@
       </div>
       <div class="alert-box success">
         <strong>🧵 Event Loop Blocking</strong>
-        <ol style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+        <ol>
           <li>Check Application Insights for correlated slow requests</li>
           <li>Look for sync operations in code (fs.readFileSync, etc.)</li>
           <li>Add monitoring with <code>perf_hooks.monitorEventLoopDelay()</code></li>
@@ -732,7 +737,7 @@
       </div>
       <div class="alert-box success">
         <strong>📊 Memory Leak</strong>
-        <ol style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+        <ol>
           <li>Take heap snapshot via Kudu or remote debugging</li>
           <li>Compare snapshots over time</li>
           <li>Look for growing object counts</li>
@@ -905,7 +910,7 @@ process.on('SIGUSR2', takeHeapSnapshot);</code></pre>
 
       <div class="alert-box info">
         <strong>💡 Quick Reference</strong>
-        <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+        <ul>
           <li><strong>CPU slow?</strong> → Use <code>--prof</code> or Profiler tab to find hot functions</li>
           <li><strong>Memory growing?</strong> → Take heap snapshots and compare over time</li>
           <li><strong>Event loop blocked?</strong> → CPU profile during the block shows what's running</li>
@@ -962,7 +967,7 @@ process.on('SIGUSR2', takeHeapSnapshot);</code></pre>
         <li>Perform sustained CPU work (interleaved spin-loop cycles)</li>
         <li>Hold memory buffers for entire request duration (creates visible memory pressure)</li>
         <li>Degrade gracefully as concurrent requests increase (soft limit pattern)</li>
-        <li>Throw random exceptions after 120 seconds (20% probability)</li>
+        <li>Throw random exceptions after <code>errorAfter</code> seconds (configurable, default 120s) with <code>errorPercent</code>% probability (configurable, default 20%)</li>
         <li>Eventually trigger Azure's 230-second timeout under extreme load</li>
       </ul>
 
@@ -984,11 +989,13 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=2000&amp;bufferSi
 https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeKb=100</code></pre>
       <p><strong>Query Parameters:</strong></p>
       <ul>
-        <li><code>workIterations</code> - CPU spin iterations per work cycle (default: 700, ms per cycle = workIterations/100)</li>
+        <li><code>workIterations</code> - CPU spin iterations per work cycle (default: 700, ms per cycle = workIterations/10)</li>
         <li><code>bufferSizeKb</code> - Memory buffer held for request duration in KB (default: 100000)</li>
         <li><code>baselineDelayMs</code> - Minimum request duration in ms (default: 1000)</li>
         <li><code>softLimit</code> - Concurrent requests before degradation (default: 20)</li>
         <li><code>degradationFactor</code> - Delay ms per request over limit (default: 1000)</li>
+        <li><code>errorAfter</code> - Seconds after which random errors may be thrown (default: 120)</li>
+        <li><code>errorPercent</code> - Percentage chance (0-100) of error per check after errorAfter (default: 20)</li>
       </ul>
 
       <ol start="3">
@@ -1040,6 +1047,8 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
         <tr><td><code>baselineDelayMs</code></td><td>1000</td><td><strong>Event Loop</strong></td><td>Minimum request duration (ms). CPU work and sleep interleaved throughout.</td></tr>
         <tr><td><code>softLimit</code></td><td>20</td><td><strong>Concurrency</strong></td><td>Concurrent requests before degradation. Lower = faster degradation.</td></tr>
         <tr><td><code>degradationFactor</code></td><td>1000</td><td><strong>Concurrency</strong></td><td>Additional delay (ms) per request over softLimit.</td></tr>
+        <tr><td><code>errorAfter</code></td><td>120</td><td><strong>Chaos</strong></td><td>Seconds after which random errors may be thrown. Errors occur AFTER blocking delays.</td></tr>
+        <tr><td><code>errorPercent</code></td><td>20</td><td><strong>Chaos</strong></td><td>Percentage chance (0-100) of throwing a random exception per check after errorAfter threshold.</td></tr>
       </table>
 
       <h3>Tuning Parameters for Different Scenarios</h3>
@@ -1055,6 +1064,17 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
         <tr><td>Balanced (default)</td><td>700</td><td>100000</td><td>1000</td><td>20</td><td>1000</td><td>Balanced resource consumption</td></tr>
         <tr><td>High concurrency</td><td>350</td><td>50000</td><td>400</td><td>200</td><td>100</td><td>Gradual degradation under high load</td></tr>
       </table>
+
+      <h4>Chaos Testing Examples</h4>
+      <p>Use <code>errorAfter</code> and <code>errorPercent</code> to inject unpredictable failures:</p>
+      <pre><code># Early errors (30s) with high probability (50%)
+/api/loadtest?errorAfter=30&amp;errorPercent=50
+
+# Rare errors (120s) with low probability (5%)
+/api/loadtest?errorAfter=120&amp;errorPercent=5
+
+# No random errors
+/api/loadtest?errorPercent=0</code></pre>
     </section>
 
   </main>

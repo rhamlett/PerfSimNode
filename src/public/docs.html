@@ -681,11 +681,13 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
       <h3>Query Parameters</h3>
       <table>
         <tr><th>Parameter</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>workIterations</code></td><td>200</td><td>CPU spin iterations per work cycle (ms per cycle = workIterations/10)</td></tr>
-        <tr><td><code>bufferSizeKb</code></td><td>20000</td><td>Memory buffer held for entire request duration (KB)</td></tr>
-        <tr><td><code>baselineDelayMs</code></td><td>500</td><td>Minimum request duration (ms)</td></tr>
-        <tr><td><code>softLimit</code></td><td>25</td><td>Concurrent requests before degradation begins</td></tr>
-        <tr><td><code>degradationFactor</code></td><td>500</td><td>Delay ms added per request over soft limit</td></tr>
+        <tr><td><code>workIterations</code></td><td>700</td><td>CPU spin iterations per work cycle (ms per cycle = workIterations/10)</td></tr>
+        <tr><td><code>bufferSizeKb</code></td><td>100000</td><td>Memory buffer held for entire request duration (KB)</td></tr>
+        <tr><td><code>baselineDelayMs</code></td><td>1000</td><td>Minimum request duration (ms)</td></tr>
+        <tr><td><code>softLimit</code></td><td>20</td><td>Concurrent requests before degradation begins</td></tr>
+        <tr><td><code>degradationFactor</code></td><td>1000</td><td>Delay ms added per request over soft limit</td></tr>
+        <tr><td><code>errorAfter</code></td><td>120</td><td>Seconds after which random errors may be thrown</td></tr>
+        <tr><td><code>errorPercent</code></td><td>20</td><td>Percentage chance (0-100) of error per check after errorAfter</td></tr>
       </table>
 
       <h3>Behavior (Sustained Resource Consumption)</h3>
@@ -693,7 +695,7 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
         <li><strong>Memory:</strong> Allocated up front and held for entire request duration (visible in Azure Memory metrics)</li>
         <li><strong>CPU:</strong> Interleaved work cycles (spin loop + sleep) creating sustained CPU usage per active request</li>
         <li><strong>Degradation:</strong> Blocking delay = baselineDelayMs + max(0, concurrent - softLimit) &times; degradationFactor</li>
-        <li><strong>After 120 seconds:</strong> 20% chance of throwing a random exception per check interval</li>
+        <li><strong>Random Errors:</strong> After <code>errorAfter</code> seconds (default 120s), <code>errorPercent</code>% chance (default 20%) of throwing a random exception per check interval. Errors occur AFTER blocking delays for unpredictable chaos.</li>
         <li><strong>Extreme load:</strong> Can reach Azure's 230-second timeout threshold</li>
       </ul>
 
@@ -702,7 +704,7 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
         <li><strong>CPU</strong> &mdash; Sustained spin loop cycles per active thread</li>
         <li><strong>Memory</strong> &mdash; Buffers held for entire request duration</li>
         <li><strong>Event Loop</strong> &mdash; Graceful degradation under concurrent load</li>
-        <li><strong>Timeouts</strong> &mdash; Random exceptions after 120s (20% probability)</li>
+        <li><strong>Timeouts</strong> &mdash; Random exceptions after <code>errorAfter</code> seconds (<code>errorPercent</code>% probability)</li>
       </ul>
 
       <div class="info-box">

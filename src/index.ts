@@ -33,7 +33,8 @@
  *   1. Metrics: MetricsService.getMetrics() → io.emit('metrics') every 250ms
  *   2. Events:  EventLogService.log() → broadcaster → io.emit('event')
  *   3. Latency: Sidecar HTTP probe → IPC message → io.emit('sidecarProbe')
- *   4. Load Test: LoadTestService stats → io.emit('loadTestStats') every 60s
+ *   4. Load Test Stats: LoadTestService stats → io.emit('loadTestStats') every 60s
+ *   5. Load Test Latency: Individual request latency (1:10 sampling) → io.emit('loadTestLatency')
  *
  * SIDECAR PATTERN:
  *   The sidecar probe process runs on its OWN event loop (separate Node.js
@@ -163,6 +164,13 @@ async function main(): Promise<void> {
   // Wire up load test stats broadcaster to Socket.IO
   LoadTestService.setStatsBroadcaster((data) => {
     io.emit('loadTestStats', data);
+  });
+
+  // Wire up load test latency broadcaster to Socket.IO (1:10 sampling)
+  // This sends sampled individual load test request latencies to the dashboard
+  // latency monitor for visualization without flooding the display
+  LoadTestService.setLatencyBroadcaster((latencyMs) => {
+    io.emit('loadTestLatency', { latencyMs, timestamp: new Date().toISOString() });
   });
 
   // Start server

@@ -21,8 +21,10 @@
  *      - CPU work: spin loop for (workIterations/10)ms per cycle
  *      - Sleep: 50ms yield to event loop between cycles
  *      - Touch memory each cycle to prevent GC/OS page reclamation
- *   5. RANDOM EXCEPTIONS: After 120s elapsed, 20% chance per cycle of
- *      throwing a random exception from a pool of realistic error types
+ *   5. RANDOM EXCEPTIONS (configurable via errorAfter and errorPercent params):
+ *      After errorAfter seconds elapsed (default 120s), errorPercent chance
+ *      (default 20%) per cycle of throwing a random exception from a pool
+ *      of realistic error types. Error checks occur AFTER blocking delays.
  *   6. DECREMENT counter in finally block; return timing diagnostics
  *
  * EXCEPTION POOL:
@@ -107,12 +109,6 @@ const EXCEPTION_FACTORIES: Array<() => Error> = [
 // CONSTANTS
 // =============================================================================
 
-/** Time threshold in seconds after which exceptions may be thrown */
-const EXCEPTION_THRESHOLD_SECONDS = 120;
-
-/** Probability (0.0 to 1.0) of throwing exception per check after threshold */
-const EXCEPTION_PROBABILITY = 0.20;
-
 /** Milliseconds of sleep per cycle in the sustained work loop */
 const SLEEP_PER_CYCLE_MS = 50;
 
@@ -129,6 +125,8 @@ const DEFAULT_REQUEST: LoadTestRequest = {
   baselineDelayMs: 1000,
   softLimit: 20,
   degradationFactor: 1000,
+  errorAfter: 120,
+  errorPercent: 20,
 };
 
 // =============================================================================
@@ -149,6 +147,11 @@ const DEFAULT_REQUEST: LoadTestRequest = {
  *   Two tiers of statistics:
  *   1. Lifetime counters — never reset, used for /api/loadtest/stats endpoint
  *   2. Period counters — reset every 60s after broadcasting via Socket.IO
+ *
+ * LATENCY SAMPLING:
+ *   Individual load test request latencies are sampled at 1:10 (10%) and
+ *   broadcast via Socket.IO for the dashboard latency monitor. This prevents
+ *   flooding the monitor while still showing representative latency data.
  */
 class LoadTestServiceClass {
   // ---- Lifetime counters ----
@@ -164,9 +167,14 @@ class LoadTestServiceClass {
   private periodPeakConcurrent = 0;
   private periodExceptions = 0;
 
+  // ---- Latency sampling (1 in 10 requests to avoid flooding monitor) ----
+  private requestSampleCounter = 0;
+  private readonly LATENCY_SAMPLE_RATE = 10; // 1 in 10 requests sampled
+
   // ---- Broadcast timer ----
   private broadcastTimer: NodeJS.Timeout | null = null;
   private statsBroadcaster: ((data: LoadTestStatsData) => void) | null = null;
+  private latencyBroadcaster: ((latencyMs: number) => void) | null = null;
 
   constructor() {
     // Start periodic broadcast timer (60 seconds)
@@ -186,6 +194,15 @@ class LoadTestServiceClass {
    */
   setStatsBroadcaster(fn: (data: LoadTestStatsData) => void): void {
     this.statsBroadcaster = fn;
+  }
+
+  /**
+   * Sets the broadcaster function for individual request latencies.
+   * Used to feed sampled load test latencies to the dashboard latency monitor.
+   * Sampling is 1:10 (10% of requests) to avoid flooding the monitor.
+   */
+  setLatencyBroadcaster(fn: (latencyMs: number) => void): void {
+    this.latencyBroadcaster = fn;
   }
 
   /**
@@ -213,6 +230,8 @@ class LoadTestServiceClass {
       baselineDelayMs: request.baselineDelayMs ?? DEFAULT_REQUEST.baselineDelayMs,
       softLimit: request.softLimit ?? DEFAULT_REQUEST.softLimit,
       degradationFactor: request.degradationFactor ?? DEFAULT_REQUEST.degradationFactor,
+      errorAfter: request.errorAfter ?? DEFAULT_REQUEST.errorAfter,
+      errorPercent: request.errorPercent ?? DEFAULT_REQUEST.errorPercent,
     };
 
     // Increment concurrent counter
@@ -273,8 +292,8 @@ class LoadTestServiceClass {
         this.touchHeapMemory(heapMemory);
         this.touchNativeBuffer(nativeBuffer);
 
-        // Check for timeout exception (20% chance after 120s)
-        this.checkAndThrowTimeoutException(startTime);
+        // Check for timeout exception after blocking delays (parameterized threshold and probability)
+        this.checkAndThrowTimeoutException(startTime, params.errorAfter, params.errorPercent);
 
         // Sleep phase (yield to event loop, prevents 100% CPU)
         const remainingMs = totalDurationMs - (Date.now() - startTime);
@@ -327,6 +346,16 @@ class LoadTestServiceClass {
       this.periodRequestsCompleted++;
       this.periodResponseTimeSum += elapsedMs;
       this.updateMaxResponseTime(elapsedMs);
+
+      // Latency sampling (1 in 10 requests) for dashboard latency monitor
+      // This prevents flooding the monitor while still showing load test latencies
+      this.requestSampleCounter++;
+      if (this.requestSampleCounter >= this.LATENCY_SAMPLE_RATE) {
+        this.requestSampleCounter = 0;
+        if (this.latencyBroadcaster) {
+          this.latencyBroadcaster(elapsedMs);
+        }
+      }
 
       // Allow memory to be GC'd / released
       heapMemory = null;
@@ -416,14 +445,23 @@ class LoadTestServiceClass {
   }
 
   /**
-   * Checks if elapsed time exceeds 120s threshold and randomly throws an exception.
-   * 20% probability per check after threshold.
+   * Checks if elapsed time exceeds the configured threshold and randomly throws an exception.
+   * The error check happens after blocking delays to ensure errors occur "after" the specified time.
+   * 
+   * @param startTime - Request start timestamp in milliseconds
+   * @param errorAfterSeconds - Seconds after which exceptions may be thrown (default: 120)
+   * @param errorPercent - Percentage chance (0-100) of throwing exception per check (default: 20)
    */
-  private checkAndThrowTimeoutException(startTime: number): void {
+  private checkAndThrowTimeoutException(
+    startTime: number,
+    errorAfterSeconds: number = 120,
+    errorPercent: number = 20
+  ): void {
     const elapsedSeconds = (Date.now() - startTime) / 1000;
+    const probability = errorPercent / 100;
 
-    if (elapsedSeconds > EXCEPTION_THRESHOLD_SECONDS) {
-      if (Math.random() < EXCEPTION_PROBABILITY) {
+    if (elapsedSeconds > errorAfterSeconds && errorPercent > 0) {
+      if (Math.random() < probability) {
         const idx = Math.floor(Math.random() * EXCEPTION_FACTORIES.length);
         const exception = EXCEPTION_FACTORIES[idx]();
         console.log(
@@ -520,10 +558,16 @@ class LoadTestServiceClass {
       `[LoadTest] Broadcasting stats: ${requestsCompleted} requests, ${avgResponseTime.toFixed(1)}ms avg, ${maxResponseTime}ms max, ${requestsPerSecond.toFixed(2)} RPS`
     );
 
+    // Calculate error percentage for display
+    const errorPercent = requestsCompleted > 0 
+      ? ((exceptions / requestsCompleted) * 100).toFixed(1)
+      : '0.0';
+
     // Write to event log so it appears in the dashboard
+    // Format: "Load test period stats: X requests, Y avg ms, Z max ms, R RPS, E% errors"
     EventLogService.info(
       'LOAD_TEST_STATS',
-      `Load Test Stats (60s): ${requestsCompleted} requests`,
+      `Load test period stats: ${requestsCompleted} requests, ${statsData.avgResponseTimeMs} avg ms, ${maxResponseTime} max ms, ${statsData.requestsPerSecond} RPS, ${errorPercent}% errors`,
       {
         details: {
           requestsCompleted,
@@ -533,6 +577,7 @@ class LoadTestServiceClass {
           peakConcurrent,
           requestsPerSecond: statsData.requestsPerSecond,
           exceptionCount: exceptions,
+          errorPercent: parseFloat(errorPercent),
         },
       }
     );

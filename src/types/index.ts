@@ -503,7 +503,8 @@ export interface SimulationResponse {
  *   1. Allocates memory (split 50/50 between managed heap and native buffers)
  *   2. Calculates response delay based on concurrency: baselineDelayMs + max(0, concurrent - softLimit) * degradationFactor
  *   3. Interleaves CPU work with brief async sleeps in a loop until total delay elapsed
- *   4. After 120s elapsed, has a 20% chance per cycle of throwing a random exception
+ *   4. After errorAfter seconds (default 120s), has errorPercent chance (default 20%)
+ *      per cycle of throwing a random exception. Errors occur AFTER blocking delays.
  *   5. Returns timing diagnostics in the response
  *
  * PORTING NOTES:
@@ -522,6 +523,10 @@ export interface LoadTestRequest {
   softLimit: number;
   /** Additional delay (ms) per request over soft limit. Default: 500 */
   degradationFactor: number;
+  /** Seconds after which random errors may be thrown. Default: 120 */
+  errorAfter: number;
+  /** Percentage chance (0-100) of throwing error per check after errorAfter threshold. Default: 20 */
+  errorPercent: number;
 }
 
 /**
