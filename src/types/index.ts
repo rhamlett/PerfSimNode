@@ -585,8 +585,10 @@ export interface LoadTestStatsData {
   requestsCompleted: number;
   /** Average response time in ms for this period */
   avgResponseTimeMs: number;
-  /** Maximum response time observed in this period */
+  /** Maximum response time observed in this period (completed requests) */
   maxResponseTimeMs: number;
+  /** Maximum duration of any currently in-flight request */
+  maxInFlightMs: number;
   /** Requests per second throughput */
   requestsPerSecond: number;
   /** Number of exceptions thrown in this period */

@@ -167,6 +167,14 @@ class LoadTestServiceClass {
   private periodPeakConcurrent = 0;
   private periodExceptions = 0;
 
+  // ---- In-flight request tracking ----
+  // Tracks start times of all currently executing requests.
+  // Used to report "max in-flight duration" which shows when requests
+  // have been running for 20+ seconds even before they complete.
+  // This aligns our reported stats with what Azure Load Testing observes.
+  private inFlightRequestIds = new Map<number, number>(); // requestId -> startTime
+  private nextRequestId = 0;
+
   // ---- Latency sampling (1 in 10 requests to avoid flooding monitor) ----
   private requestSampleCounter = 0;
   private readonly LATENCY_SAMPLE_RATE = 10; // 1 in 10 requests sampled
@@ -240,6 +248,8 @@ class LoadTestServiceClass {
     this.updatePeakConcurrent(currentConcurrent);
 
     const startTime = Date.now();
+    const requestId = this.nextRequestId++;
+    this.inFlightRequestIds.set(requestId, startTime);
     let totalCpuWorkDone = 0;
     let workCompleted = false;
     let heapMemory: number[][] | null = null;
@@ -335,6 +345,9 @@ class LoadTestServiceClass {
       // Re-throw to let Express error handler produce 500
       throw error;
     } finally {
+      // Remove from in-flight tracking
+      this.inFlightRequestIds.delete(requestId);
+
       // Memory (buffer) is released here when the reference goes out of scope.
       // Counter updates
       this.concurrentRequests--;
@@ -528,8 +541,8 @@ class LoadTestServiceClass {
   private broadcastStats(): void {
     const requestsCompleted = this.periodRequestsCompleted;
 
-    if (requestsCompleted === 0) {
-      return; // No activity, skip broadcast
+    if (requestsCompleted === 0 && this.inFlightRequestIds.size === 0) {
+      return; // No activity and no in-flight requests, skip broadcast
     }
 
     const responseTimeSum = this.periodResponseTimeSum;
@@ -537,6 +550,17 @@ class LoadTestServiceClass {
     const peakConcurrent = this.periodPeakConcurrent;
     const exceptions = this.periodExceptions;
     const currentConcurrent = this.concurrentRequests;
+
+    // Calculate max in-flight duration (oldest request still running)
+    // This shows the true latency that Azure Load Testing observes
+    const now = Date.now();
+    let maxInFlightMs = 0;
+    for (const startTime of this.inFlightRequestIds.values()) {
+      const duration = now - startTime;
+      if (duration > maxInFlightMs) {
+        maxInFlightMs = duration;
+      }
+    }
 
     // Calculate averages
     const avgResponseTime =
@@ -549,13 +573,17 @@ class LoadTestServiceClass {
       requestsCompleted,
       avgResponseTimeMs: Math.round(avgResponseTime * 100) / 100,
       maxResponseTimeMs: maxResponseTime,
+      maxInFlightMs,
       requestsPerSecond: Math.round(requestsPerSecond * 100) / 100,
       exceptionCount: exceptions,
       timestamp: new Date().toISOString(),
     };
 
+    // Report the higher of completed max or in-flight max
+    const effectiveMax = Math.max(maxResponseTime, maxInFlightMs);
+
     console.log(
-      `[LoadTest] Broadcasting stats: ${requestsCompleted} requests, ${avgResponseTime.toFixed(1)}ms avg, ${maxResponseTime}ms max, ${requestsPerSecond.toFixed(2)} RPS`
+      `[LoadTest] Broadcasting stats: ${requestsCompleted} requests, ${avgResponseTime.toFixed(1)}ms avg, ${maxResponseTime}ms max completed, ${maxInFlightMs}ms max in-flight, ${requestsPerSecond.toFixed(2)} RPS`
     );
 
     // Calculate error percentage for display
@@ -564,15 +592,18 @@ class LoadTestServiceClass {
       : '0.0';
 
     // Write to event log so it appears in the dashboard
-    // Format: "Load test period stats: X requests, Y avg ms, Z max ms, R RPS, E% errors"
+    // Format includes max in-flight to show actual long-running request durations
+    const inFlightInfo = maxInFlightMs > 0 ? `, ${Math.round(maxInFlightMs / 1000)}s in-flight` : '';
     EventLogService.info(
       'LOAD_TEST_STATS',
-      `Load test period stats: ${requestsCompleted} requests, ${statsData.avgResponseTimeMs} avg ms, ${maxResponseTime} max ms, ${statsData.requestsPerSecond} RPS, ${errorPercent}% errors`,
+      `Load test period stats: ${requestsCompleted} requests, ${statsData.avgResponseTimeMs} avg ms, ${effectiveMax} max ms${inFlightInfo}, ${statsData.requestsPerSecond} RPS, ${errorPercent}% errors`,
       {
         details: {
           requestsCompleted,
           avgResponseTimeMs: statsData.avgResponseTimeMs,
           maxResponseTimeMs: maxResponseTime,
+          maxInFlightMs,
+          effectiveMaxMs: effectiveMax,
           currentConcurrent,
           peakConcurrent,
           requestsPerSecond: statsData.requestsPerSecond,
@@ -587,7 +618,7 @@ class LoadTestServiceClass {
       this.statsBroadcaster(statsData);
     }
 
-    // Reset period stats
+    // Reset period stats (but NOT in-flight tracking - those persist until requests complete)
     this.periodRequestsCompleted = 0;
     this.periodResponseTimeSum = 0;
     this.periodMaxResponseTimeMs = 0;
