@@ -246,9 +246,13 @@ async function main(): Promise<void> {
       });
 
       // Relay IPC messages from sidecar to dashboard via main Socket.IO
-      sidecarProcess.on('message', (msg: { type: string; [key: string]: unknown }) => {
+      sidecarProcess.on('message', (msg: { type: string; latencyMs?: number; [key: string]: unknown }) => {
         if (msg.type === 'sidecarProbe') {
           io.emit('sidecarProbe', msg);
+          // Record probe latency for load test stats estimation
+          if (typeof msg.latencyMs === 'number') {
+            LoadTestService.recordProbeLatency(msg.latencyMs);
+          }
         }
       });
 

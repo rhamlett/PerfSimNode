@@ -175,6 +175,12 @@ class LoadTestServiceClass {
   private inFlightRequestIds = new Map<number, number>(); // requestId -> startTime
   private nextRequestId = 0;
 
+  // ---- Sidecar probe latency tracking ----
+  // The sidecar measures actual HTTP round-trip time including queue delay.
+  // We use this to estimate total request latency for load test stats.
+  private recentProbeLatencies: number[] = [];
+  private readonly MAX_PROBE_SAMPLES = 120; // ~60 seconds at 500ms interval
+
   // ---- Latency sampling (1 in 10 requests to avoid flooding monitor) ----
   private requestSampleCounter = 0;
   private readonly LATENCY_SAMPLE_RATE = 10; // 1 in 10 requests sampled
@@ -214,6 +220,36 @@ class LoadTestServiceClass {
   }
 
   /**
+   * Records a sidecar probe latency measurement.
+   * The sidecar measures actual HTTP round-trip time including event loop queue delay.
+   * We use these measurements to estimate total request latency for load test stats,
+   * since we can only measure processing time from within the main event loop.
+   */
+  recordProbeLatency(latencyMs: number): void {
+    this.recentProbeLatencies.push(latencyMs);
+    if (this.recentProbeLatencies.length > this.MAX_PROBE_SAMPLES) {
+      this.recentProbeLatencies.shift();
+    }
+  }
+
+  /**
+   * Gets the average recent probe latency, which approximates HTTP queue delay.
+   */
+  private getAverageProbeLatency(): number {
+    if (this.recentProbeLatencies.length === 0) return 0;
+    const sum = this.recentProbeLatencies.reduce((a, b) => a + b, 0);
+    return sum / this.recentProbeLatencies.length;
+  }
+
+  /**
+   * Gets the maximum recent probe latency.
+   */
+  private getMaxProbeLatency(): number {
+    if (this.recentProbeLatencies.length === 0) return 0;
+    return Math.max(...this.recentProbeLatencies);
+  }
+
+  /**
    * Returns the default request parameters.
    */
   getDefaults(): LoadTestRequest {
@@ -250,12 +286,12 @@ class LoadTestServiceClass {
     this.updatePeakConcurrent(currentConcurrent);
 
     // Track two separate timestamps:
-    // 1. arrivalTime - when Express received the request (includes HTTP queue delay)
-    //    Used for stats to match what Azure Load Testing observes
+    // 1. statsStartTime - for calculating elapsed time in stats
     // 2. workStartTime - when executeWork actually starts running
     //    Used for work loop duration so requests still do their intended work
     const statsStartTime = arrivalTime ?? Date.now();
     const workStartTime = Date.now();
+    
     const requestId = this.nextRequestId++;
     this.inFlightRequestIds.set(requestId, statsStartTime);
     let totalCpuWorkDone = 0;
@@ -557,45 +593,32 @@ class LoadTestServiceClass {
       return; // No activity and no in-flight requests, skip broadcast
     }
 
-    const responseTimeSum = this.periodResponseTimeSum;
-    const maxResponseTime = this.periodMaxResponseTimeMs;
     const peakConcurrent = this.periodPeakConcurrent;
     const exceptions = this.periodExceptions;
     const currentConcurrent = this.concurrentRequests;
-
-    // Calculate max in-flight duration (oldest request still running)
-    // This shows the true latency that Azure Load Testing observes
-    const now = Date.now();
-    let maxInFlightMs = 0;
-    for (const startTime of this.inFlightRequestIds.values()) {
-      const duration = now - startTime;
-      if (duration > maxInFlightMs) {
-        maxInFlightMs = duration;
-      }
-    }
-
-    // Calculate averages
-    const avgResponseTime =
-      requestsCompleted > 0 ? responseTimeSum / requestsCompleted : 0;
     const requestsPerSecond = requestsCompleted / BROADCAST_INTERVAL_SECONDS;
+
+    // Get sidecar probe latency - this is the AUTHORITATIVE measurement
+    // The sidecar runs in a separate process with its own unblocked event loop,
+    // so it can accurately measure HTTP round-trip time including queue delay.
+    // This is the same latency shown in the Request Latency Monitor.
+    const avgServerLatency = this.getAverageProbeLatency();
+    const maxServerLatency = this.getMaxProbeLatency();
 
     const statsData: LoadTestStatsData = {
       currentConcurrent,
       peakConcurrent,
       requestsCompleted,
-      avgResponseTimeMs: Math.round(avgResponseTime * 100) / 100,
-      maxResponseTimeMs: maxResponseTime,
-      maxInFlightMs,
+      avgResponseTimeMs: Math.round(avgServerLatency * 100) / 100,
+      maxResponseTimeMs: Math.round(maxServerLatency),
+      maxInFlightMs: 0, // Not needed when using sidecar measurements
       requestsPerSecond: Math.round(requestsPerSecond * 100) / 100,
       exceptionCount: exceptions,
       timestamp: new Date().toISOString(),
     };
 
-    // Report the higher of completed max or in-flight max
-    const effectiveMax = Math.max(maxResponseTime, maxInFlightMs);
-
     console.log(
-      `[LoadTest] Broadcasting stats: ${requestsCompleted} requests, ${avgResponseTime.toFixed(1)}ms avg, ${maxResponseTime}ms max completed, ${maxInFlightMs}ms max in-flight, ${requestsPerSecond.toFixed(2)} RPS`
+      `[LoadTest] Broadcasting stats: ${requestsCompleted} requests, server latency ${avgServerLatency.toFixed(0)}ms avg / ${maxServerLatency.toFixed(0)}ms max (sidecar-measured), ${requestsPerSecond.toFixed(2)} RPS`
     );
 
     // Calculate error percentage for display
@@ -604,23 +627,21 @@ class LoadTestServiceClass {
       : '0.0';
 
     // Write to event log so it appears in the dashboard
-    // Format includes max in-flight to show actual long-running request durations
-    const inFlightInfo = maxInFlightMs > 0 ? `, ${Math.round(maxInFlightMs / 1000)}s in-flight` : '';
+    // Report sidecar-measured latency as authoritative - this matches Azure Load Testing
     EventLogService.info(
       'LOAD_TEST_STATS',
-      `Load test period stats: ${requestsCompleted} requests, ${statsData.avgResponseTimeMs} avg ms, ${effectiveMax} max ms${inFlightInfo}, ${statsData.requestsPerSecond} RPS, ${errorPercent}% errors`,
+      `Load test period stats: ${requestsCompleted} requests, ${statsData.avgResponseTimeMs} avg ms, ${statsData.maxResponseTimeMs} max ms (sidecar), ${statsData.requestsPerSecond} RPS, ${errorPercent}% errors`,
       {
         details: {
           requestsCompleted,
           avgResponseTimeMs: statsData.avgResponseTimeMs,
-          maxResponseTimeMs: maxResponseTime,
-          maxInFlightMs,
-          effectiveMaxMs: effectiveMax,
+          maxResponseTimeMs: statsData.maxResponseTimeMs,
           currentConcurrent,
           peakConcurrent,
           requestsPerSecond: statsData.requestsPerSecond,
           exceptionCount: exceptions,
           errorPercent: parseFloat(errorPercent),
+          measurementSource: 'sidecar',
         },
       }
     );
@@ -630,12 +651,13 @@ class LoadTestServiceClass {
       this.statsBroadcaster(statsData);
     }
 
-    // Reset period stats (but NOT in-flight tracking - those persist until requests complete)
+    // Reset period stats (but NOT probe latencies - keep accumulating for accuracy)
     this.periodRequestsCompleted = 0;
     this.periodResponseTimeSum = 0;
     this.periodMaxResponseTimeMs = 0;
     this.periodPeakConcurrent = 0;
     this.periodExceptions = 0;
+    this.recentProbeLatencies = [];
   }
 
   /**
