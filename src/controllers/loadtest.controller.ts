@@ -64,6 +64,10 @@ export const loadtestRouter = Router();
  *   50 concurrent requests → 1000 + (50-20)*1000 = 31000ms total
  */
 loadtestRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
+  // Capture arrival time immediately - this is when Express received the request.
+  // Under load, there may be significant queue time before executeWork() runs.
+  const arrivalTime = Date.now();
+
   try {
     // Parse query parameters (all optional, defaults applied by service)
     const request = {
@@ -81,7 +85,7 @@ loadtestRouter.get('/', async (req: Request, res: Response, next: NextFunction) 
       Object.entries(request).filter(([, v]) => v !== undefined)
     );
 
-    const result = await LoadTestService.executeWork(cleanRequest);
+    const result = await LoadTestService.executeWork(cleanRequest, arrivalTime);
     res.json(result);
   } catch (error) {
     next(error);

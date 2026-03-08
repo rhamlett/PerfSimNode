@@ -228,9 +228,11 @@ class LoadTestServiceClass {
    * Executes the load test work with the specified parameters.
    *
    * @param request - Configuration for the load test behavior
+   * @param arrivalTime - Optional timestamp when Express received the request.
+   *                      Used for accurate stats that include HTTP queue time.
    * @returns Result containing timing and diagnostic information
    */
-  async executeWork(request: Partial<LoadTestRequest> = {}): Promise<LoadTestResult> {
+  async executeWork(request: Partial<LoadTestRequest> = {}, arrivalTime?: number): Promise<LoadTestResult> {
     // Merge with defaults
     const params: LoadTestRequest = {
       workIterations: request.workIterations ?? DEFAULT_REQUEST.workIterations,
@@ -247,7 +249,9 @@ class LoadTestServiceClass {
     const currentConcurrent = this.concurrentRequests;
     this.updatePeakConcurrent(currentConcurrent);
 
-    const startTime = Date.now();
+    // Use arrival time if provided, otherwise use now.
+    // Arrival time captures HTTP queue delays under load.
+    const startTime = arrivalTime ?? Date.now();
     const requestId = this.nextRequestId++;
     this.inFlightRequestIds.set(requestId, startTime);
     let totalCpuWorkDone = 0;
