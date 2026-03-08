@@ -5,10 +5,10 @@
  *
  * PURPOSE:
  *   Manages three real-time Chart.js charts on the dashboard:
- *   1. CPU/Memory chart — Combined CPU%, heap MB, RSS MB (60-second window)
- *   2. Event Loop chart — Heartbeat lag in milliseconds (60-second window)
+ *   1. CPU/Memory chart — Combined CPU%, heap MB, RSS MB (60-second window, 250ms updates)
+ *   2. Event Loop chart — Heartbeat lag in milliseconds (60-second window, 250ms updates)
  *   3. Latency chart — HTTP probe latency from sidecar (600 data points,
- *      ~60 seconds at 100ms probe interval)
+ *      60 seconds at 100ms probe interval)
  *
  * DATA FLOW:
  *   socket-client.js receives WebSocket events → calls onMetricsUpdate()
@@ -51,7 +51,7 @@
  *   - Or use any other charting library (D3.js, Recharts, Highcharts)
  *   The key behaviors to preserve:
  *   - Real-time push updates (not polling)
- *   - Rolling window data retention (60s for metrics, 60s for latency)
+ *   - Rolling window data retention (60s for metrics at 250ms, 60s for latency at 100ms)
  *   - Color gradient based on latency thresholds
  *   - Timestamp backfill from sidecar probe data
  */
@@ -73,8 +73,8 @@ let cpuMemoryChart = null;
 let eventloopChart = null;
 let latencyChart = null;
 
-// Data history for CPU/Memory/EventLoop charts (60 data points at ~1s intervals = 60s)
-const maxDataPoints = 60;
+// Data history for CPU/Memory/EventLoop charts (240 data points at 250ms intervals = 60s)
+const maxDataPoints = 240;
 const chartData = {
   labels: [],
   cpu: [],
@@ -351,7 +351,7 @@ function onProbeLatency(data) {
         serverResponsiveness.lastWarningTime = now;
         addEventToLog({
           level: 'warning',
-          message: '⚠️ Server unresponsive - event loop may be blocked'
+          message: 'Server unresponsive - event loop may be blocked'
         });
       }
     }

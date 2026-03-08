@@ -674,6 +674,10 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=500&amp;bufferSiz
 # Thread pool only (no CPU work)
 https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeKb=100</code></pre>
 
+      <div class="info-box">
+        <p><strong>Note:</strong> Actual response times will vary based on your Azure App Service tier, current load, and other factors. Use Azure Load Testing to establish baseline performance for your specific environment. These example scenarios, and the defaults, are for a Premium0V3 worker. Any other SKU or worker size will need individual tuning.</p>
+      </div>
+
       <h3>Query Parameters</h3>
       <table>
         <tr><th>Parameter</th><th>Default</th><th>Description</th></tr>
