@@ -29,6 +29,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import os from 'os';
 import { APP_VERSION } from '../config';
 import { HealthResponse } from '../types';
 
@@ -70,7 +71,9 @@ healthRouter.get('/environment', (_req: Request, res: Response) => {
   const websiteSku = process.env.WEBSITE_SKU;
   const websiteSiteName = process.env.WEBSITE_SITE_NAME;
   const websiteInstanceId = process.env.WEBSITE_INSTANCE_ID;
-  const computerName = process.env.COMPUTERNAME || process.env.HOSTNAME || null;
+  // os.hostname() is the reliable cross-platform way to get the machine name
+  // In Azure App Service, this returns the worker/container hostname
+  const computerName = os.hostname();
   
   const isAzure = !!(websiteSiteName || websiteInstanceId);
   
