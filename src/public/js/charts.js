@@ -324,8 +324,8 @@ function onProbeLatency(data) {
       const unresponsiveDuration = Date.now() - serverResponsiveness.unresponsiveStartTime;
       serverResponsiveness.totalUnresponsiveTime += unresponsiveDuration;
       
-      // Only log recovery messages outside of load tests
-      if (!data.loadTestActive && unresponsiveDuration >= 1000 && typeof addEventToLog === 'function') {
+      // Only log recovery messages for extended outages (10s+) outside of load tests
+      if (!data.loadTestActive && unresponsiveDuration >= 10000 && typeof addEventToLog === 'function') {
         addEventToLog({
           level: 'success',
           message: `Server responsive again after ${(unresponsiveDuration / 1000).toFixed(1)}s unresponsive`
@@ -344,10 +344,13 @@ function onProbeLatency(data) {
     if (serverResponsiveness.consecutiveFailures >= 2 && serverResponsiveness.isResponsive) {
       serverResponsiveness.isResponsive = false;
       serverResponsiveness.unresponsiveStartTime = Date.now();
-      
-      // Only log unresponsive warnings outside of load tests
+    }
+    
+    // Log unresponsive warning after 10s of being unresponsive, outside of load tests
+    if (!serverResponsiveness.isResponsive && serverResponsiveness.unresponsiveStartTime) {
       const now = Date.now();
-      if (!data.loadTestActive && typeof addEventToLog === 'function' && (!serverResponsiveness.lastWarningTime || now - serverResponsiveness.lastWarningTime >= 1000)) {
+      const unresponsiveDuration = now - serverResponsiveness.unresponsiveStartTime;
+      if (!data.loadTestActive && unresponsiveDuration >= 10000 && typeof addEventToLog === 'function' && (!serverResponsiveness.lastWarningTime || now - serverResponsiveness.lastWarningTime >= 10000)) {
         serverResponsiveness.lastWarningTime = now;
         addEventToLog({
           level: 'warning',
