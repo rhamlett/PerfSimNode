@@ -19,6 +19,7 @@
  *   - MAX_SIMULATION_DURATION_SECONDS → Upper limit for timed simulations
  *   - MAX_MEMORY_ALLOCATION_MB      → Upper limit for single memory allocation
  *   - EVENT_LOG_MAX_ENTRIES         → Ring buffer size for event log
+ *   - IDLE_TIMEOUT_MINUTES          → Idle timeout in minutes before suspending health probes (default: 20)
  *
  * PORTING NOTES:
  *   - Java Spring: Use application.properties/yml with @Value or @ConfigurationProperties.

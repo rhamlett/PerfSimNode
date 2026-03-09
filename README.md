@@ -259,6 +259,7 @@ Connect via Socket.IO to receive real-time updates:
 | `METRICS_INTERVAL_MS` | 1000 | Metrics broadcast interval |
 | `MAX_SIMULATION_DURATION_SECONDS` | 300 | Maximum simulation duration |
 | `MAX_MEMORY_ALLOCATION_MB` | 500 | Maximum memory allocation |
+| `IDLE_TIMEOUT_MINUTES` | 20 | Idle timeout in minutes before suspending health probes |
 
 ## Azure Deployment
 

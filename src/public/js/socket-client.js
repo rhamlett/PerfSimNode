@@ -139,6 +139,13 @@ function initSocket() {
       onLoadTestLatency(data);
     }
   });
+
+  // Listen for idle status updates from the server
+  socket.on('idleStatus', (data) => {
+    if (typeof onIdleStatusUpdate === 'function') {
+      onIdleStatusUpdate(data);
+    }
+  });
 }
 
 /**
@@ -157,6 +164,25 @@ function isSocketConnected() {
  */
 function getSocket() {
   return socket;
+}
+
+/**
+ * Sends an activity signal to the server.
+ * Call this when the user interacts with the dashboard to prevent idle timeout.
+ */
+function sendActivity() {
+  if (socket && isConnected) {
+    socket.emit('activity');
+  }
+}
+
+/**
+ * Requests the current idle status from the server.
+ */
+function requestIdleStatus() {
+  if (socket && isConnected) {
+    socket.emit('getIdleStatus');
+  }
 }
 
 // Initialize socket when DOM is ready

@@ -713,6 +713,61 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
       </div>
     </section>
 
+    <section id="environment-variables" class="docs-section">
+      <h2>Environment Variables</h2>
+      <p>The following environment variables can be configured to customize application behavior. These are optional and primarily useful when deploying to Azure App Service.</p>
+
+      <table class="docs-table">
+        <thead>
+          <tr>
+            <th>Variable</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>IDLE_TIMEOUT_MINUTES</code></td>
+            <td>Minutes of inactivity before suspending health probes (default: 20). Reduces network traffic and Application Insights telemetry when idle.</td>
+          </tr>
+          <tr>
+            <td><code>PAGE_FOOTER</code></td>
+            <td>Custom HTML footer text displayed at the bottom of the dashboard. Supports HTML links for attribution.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="idle-timeout">IDLE_TIMEOUT_MINUTES</h3>
+      <p>When the application is idle (no dashboard connections or load test requests), health probes are automatically suspended to reduce unnecessary network traffic to Azure's frontend, AppLens, and Application Insights.</p>
+      <ul>
+        <li><strong>Default:</strong> 20 minutes</li>
+        <li><strong>Wake-up:</strong> Simply reload the dashboard or send any request</li>
+        <li><strong>Activity sources:</strong> Dashboard connections, load test requests</li>
+      </ul>
+
+      <h4>Setting via Azure CLI:</h4>
+      <pre><code>az webapp config appsettings set \
+    --resource-group rg-perfsimnode \
+    --name perfsimnode \
+    --settings IDLE_TIMEOUT_MINUTES=30</code></pre>
+
+      <h3 id="page-footer">PAGE_FOOTER</h3>
+      <p>The <code>PAGE_FOOTER</code> environment variable allows you to customize the footer credits displayed on the dashboard. This is useful for attributing tools, teams, or linking to relevant resources.</p>
+
+      <h4>Example Value:</h4>
+      <pre><code>Created by &lt;a href="https://speckit.org/" target="_blank"&gt;SpecKit&lt;/a&gt; and &lt;a href="https://github.com/copilot" target="_blank"&gt;Github Copilot&lt;/a&gt;</code></pre>
+
+      <h4>Setting via Azure CLI:</h4>
+      <pre><code>az webapp config appsettings set \
+    --resource-group rg-perfsimnode \
+    --name perfsimnode \
+    --settings PAGE_FOOTER='Created by &lt;a href="https://speckit.org/" target="_blank"&gt;SpecKit&lt;/a&gt; and &lt;a href="https://github.com/copilot" target="_blank"&gt;Github Copilot&lt;/a&gt;'</code></pre>
+
+      <h4>Setting Locally:</h4>
+      <pre><code>export PAGE_FOOTER='Created by &lt;a href="https://speckit.org/" target="_blank"&gt;SpecKit&lt;/a&gt; and &lt;a href="https://github.com/copilot" target="_blank"&gt;Github Copilot&lt;/a&gt;'</code></pre>
+
+      <p>The footer is retrieved via the <code>/api/health/footer</code> endpoint and rendered in the dashboard's footer section. If <code>PAGE_FOOTER</code> is not set, the footer credits section is hidden.</p>
+    </section>
+
     </main>
     </div><!-- /.doc-main -->
 
@@ -752,6 +807,9 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
             </li>
             <li class="doc-toc-item">
               <a href="#load-testing"><span class="toc-icon">📈</span>Azure Load Testing</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#environment-variables"><span class="toc-icon">⚙️</span>Environment Variables</a>
             </li>
           </ul>
         </nav>

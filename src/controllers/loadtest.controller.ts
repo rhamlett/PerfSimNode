@@ -33,6 +33,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { LoadTestService } from '../services/load-test.service';
+import { IdleTimeoutService } from '../services/idle-timeout.service';
 
 /**
  * Express router for load test endpoints.
@@ -73,6 +74,9 @@ loadtestRouter.get('/', async (req: Request, res: Response, next: NextFunction) 
   // Capture arrival time immediately - this is when Express received the request.
   // Under load, there may be significant queue time before executeWork() runs.
   const arrivalTime = Date.now();
+
+  // Record activity to prevent app from entering idle state during load tests
+  IdleTimeoutService.recordActivity('load test request');
 
   try {
     // Parse query parameters (all optional, defaults applied by service)

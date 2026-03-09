@@ -68,6 +68,7 @@ import { config } from './config';
 import { MetricsService } from './services/metrics.service';
 import { EventLogService } from './services/event-log.service';
 import { LoadTestService } from './services/load-test.service';
+import { IdleTimeoutService } from './services/idle-timeout.service';
 
 /**
  * Bootstrap and start the application server.
@@ -133,8 +134,21 @@ async function main(): Promise<void> {
     // Log to console only (not to event log - reduces noise for users)
     console.log(`[Socket.IO] Client connected: ${socket.id}`);
 
+    // Record activity when a client connects (dashboard load/reload)
+    IdleTimeoutService.recordActivity('dashboard connection');
+
     socket.on('disconnect', (reason) => {
       console.log(`[Socket.IO] Client disconnected: ${socket.id} (${reason})`);
+    });
+
+    // Handle explicit activity ping from frontend
+    socket.on('activity', () => {
+      IdleTimeoutService.recordActivity('user activity');
+    });
+
+    // Handle idle status request from frontend
+    socket.on('getIdleStatus', () => {
+      socket.emit('idleStatus', IdleTimeoutService.getStatus());
     });
   });
 
@@ -272,6 +286,13 @@ async function main(): Promise<void> {
       });
 
       console.log(`[PerfSimNode] Sidecar probe process started (PID: ${sidecarProcess.pid})`);
+
+      // Wire up idle state changes to sidecar process
+      IdleTimeoutService.onStateChange((isIdle) => {
+        if (sidecarProcess && sidecarProcess.connected) {
+          sidecarProcess.send({ type: 'idleStateChange', isIdle });
+        }
+      });
     };
 
     let isShuttingDown = false;
@@ -288,12 +309,16 @@ async function main(): Promise<void> {
     process.on('exit', shutdownSidecar);
 
     startSidecar();
+
+    // Start idle timeout monitoring
+    IdleTimeoutService.start();
     
     // Log probe stats every 60 seconds
     const websiteHostname = process.env.WEBSITE_HOSTNAME;
     setInterval(() => {
       const probeMode = websiteHostname ? 'external (through frontend)' : 'localhost';
-      console.log(`[PerfSimNode] Sidecar running, probing ${probeMode}`);
+      const idleStatus = IdleTimeoutService.isIdle() ? ' (IDLE - probes suspended)' : '';
+      console.log(`[PerfSimNode] Sidecar running, probing ${probeMode}${idleStatus}`);
     }, 60000);
   });
 }

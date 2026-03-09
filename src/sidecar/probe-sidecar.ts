@@ -87,10 +87,31 @@ const probeProtocol = useExternalProbe ? https : http;
 let loadTestActive = false;
 let loadTestConcurrent = 0;
 
+// Idle state - when true, probes are suspended to reduce unnecessary traffic
+let isIdle = false;
+
 // Probe statistics
 let probeCount = 0;
 let probeErrors = 0;
+let probesSkipped = 0;  // Probes skipped due to idle state
 let lastProbeLatency = 0;
+
+/**
+ * Handle messages from the parent process (main app).
+ * Currently used to receive idle state change notifications.
+ */
+process.on('message', (msg: { type: string; isIdle?: boolean }) => {
+  if (msg.type === 'idleStateChange' && typeof msg.isIdle === 'boolean') {
+    const wasIdle = isIdle;
+    isIdle = msg.isIdle;
+    
+    if (isIdle && !wasIdle) {
+      console.log('[Sidecar] Entering idle mode - probes suspended');
+    } else if (!isIdle && wasIdle) {
+      console.log('[Sidecar] Exiting idle mode - probes resumed');
+    }
+  }
+});
 
 /**
  * Send a structured message to the parent process via Node.js IPC channel.
@@ -141,6 +162,12 @@ function startProbeLoop(): void {
   console.log(`[Sidecar] Probe interval: ${PROBE_INTERVAL_MS}ms, timeout: ${PROBE_TIMEOUT_MS}ms`);
 
   setInterval(() => {
+    // Skip probes when app is idle to reduce network traffic and AppLens/App Insights noise
+    if (isIdle) {
+      probesSkipped++;
+      return;
+    }
+
     const startTime = Date.now();
     const timestamp = Date.now();
 
@@ -214,7 +241,8 @@ function startProbeLoop(): void {
 
   // Log probe stats every 60 seconds
   setInterval(() => {
-    console.log(`[Sidecar] Probes: ${probeCount} ok, ${probeErrors} errors, last: ${lastProbeLatency}ms`);
+    const idleStatus = isIdle ? ' [IDLE - probes suspended]' : '';
+    console.log(`[Sidecar] Probes: ${probeCount} ok, ${probeErrors} errors, ${probesSkipped} skipped (idle), last: ${lastProbeLatency}ms${idleStatus}`);
   }, 60000);
 }
 

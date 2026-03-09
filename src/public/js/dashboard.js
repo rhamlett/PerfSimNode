@@ -161,6 +161,16 @@ function onSimulationUpdate(simulation) {
 }
 
 /**
+ * Called when idle status changes.
+ * This is informational - the connection itself wakes up the app.
+ */
+function onIdleStatusUpdate(status) {
+  console.log('[Dashboard] Idle status:', status);
+  // The server wakes up when the dashboard connects, so we just log it
+  // The "waking up" event log message from the server will appear in the event log
+}
+
+/**
  * Gets the current UTC time as a formatted string (HH:MM:SS)
  * All times use UTC to match Azure diagnostics data.
  */
@@ -212,8 +222,8 @@ function getEventIconAndClass(event) {
     return { icon: '🔄', colorClass: 'restart' };
   }
   
-  // Check for load test stats
-  if (event.eventType === 'LOAD_TEST_STATS') {
+  // Check for load test stats and error injection
+  if (event.eventType === 'LOAD_TEST_STATS' || event.eventType === 'LOAD_TEST_ERROR_INJECTED') {
     return { icon: '📈', colorClass: 'loadtest' };
   }
   
