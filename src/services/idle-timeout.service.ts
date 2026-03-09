@@ -212,7 +212,7 @@ class IdleTimeoutServiceClass {
       const idleMinutes = Math.round(this.idleTimeoutMs / 1000 / 60);
       console.log(`[IdleTimeout] Entering idle state after ${idleMinutes} minutes of inactivity`);
       console.log('[IdleTimeout] Health probes suspended. Load the dashboard to resume.');
-      EventLogService.info('SERVER_STARTED', `App entering idle state - health probes suspended`, {
+      EventLogService.warn('SERVER_STARTED', 'Application going idle, no health probes being sent. There will be gaps in diagnostics and logs.', {
         details: { idleTimeoutMinutes: idleMinutes },
       });
       this.notifyStateChange(true);
