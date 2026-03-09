@@ -653,7 +653,7 @@ class LoadTestServiceClass {
     // Report sidecar-measured latency as authoritative - this matches Azure Load Testing
     EventLogService.info(
       'LOAD_TEST_STATS',
-      `Load test period stats (60s): ${requestsCompleted} requests, ${statsData.avgResponseTimeMs} avg ms, ${statsData.maxResponseTimeMs} max ms (sidecar), ${statsData.requestsPerSecond} RPS, ${errorPercent}% errors`,
+      `Load test period stats (60s): ${requestsCompleted} requests, ${statsData.avgResponseTimeMs} avg ms, ${statsData.maxResponseTimeMs} max ms (sidecar), ${statsData.requestsPerSecond} RPS, peak ${peakConcurrent} concurrent, ${errorPercent}% errors`,
       {
         details: {
           requestsCompleted,
