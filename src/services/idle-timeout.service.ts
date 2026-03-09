@@ -134,7 +134,7 @@ class IdleTimeoutServiceClass {
     if (wasIdle) {
       this._isIdle = false;
       console.log(`[IdleTimeout] Waking up from idle${source ? ` (${source})` : ''}`);
-      EventLogService.info('SERVER_STARTED', `App waking up from idle state (${source || 'activity detected'})`, {
+      EventLogService.info('SERVER_STARTED', 'App waking up from idle state. There may be gaps in diagnostics and logs.', {
         details: { source },
       });
       this.notifyStateChange(false);
