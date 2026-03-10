@@ -726,6 +726,10 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
         </thead>
         <tbody>
           <tr>
+            <td><code>HEALTH_PROBE_RATE</code></td>
+            <td>Health probe interval in milliseconds (default: 200, minimum: 100). Lower values provide more granular latency data but increase overhead during profiling.</td>
+          </tr>
+          <tr>
             <td><code>IDLE_TIMEOUT_MINUTES</code></td>
             <td>Minutes of inactivity before suspending health probes (default: 20). Reduces network traffic and Application Insights telemetry when idle.</td>
           </tr>
@@ -735,6 +739,20 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
           </tr>
         </tbody>
       </table>
+
+      <h3 id="health-probe-rate">HEALTH_PROBE_RATE</h3>
+      <p>Controls how frequently the sidecar process probes the main application for latency measurement. Lower values provide more granular data but can cause probe overlaps during profiling.</p>
+      <ul>
+        <li><strong>Default:</strong> 200ms (5 probes/second)</li>
+        <li><strong>Minimum:</strong> 100ms (values below this are clamped)</li>
+        <li><strong>Chart updates:</strong> The latency chart always updates at 100ms using interpolation</li>
+      </ul>
+
+      <h4>Setting via Azure CLI:</h4>
+      <pre><code>az webapp config appsettings set \
+    --resource-group rg-perfsimnode \
+    --name perfsimnode \
+    --settings HEALTH_PROBE_RATE=400</code></pre>
 
       <h3 id="idle-timeout">IDLE_TIMEOUT_MINUTES</h3>
       <p>When the application is idle (no dashboard connections or load test requests), health probes are automatically suspended to reduce unnecessary network traffic to Azure's frontend, AppLens, and Application Insights.</p>

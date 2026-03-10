@@ -27,14 +27,14 @@
  *                                                   └────────────────┘
  *
  * DATA FLOW:
- *   1. Sidecar probes main app via HTTP every PROBE_INTERVAL_MS (default 100ms)
+ *   1. Sidecar probes main app via HTTP at PROBE_INTERVAL_MS (default 200ms)
  *   2. When WEBSITE_HOSTNAME is set (Azure), probes go through the frontend
  *      load balancer for realistic latency measurement visible in AppLens
  *   3. When running locally, probes go directly to localhost
  *   4. Measures round-trip time for each probe request
  *   5. Sends result to parent process via Node IPC (process.send)
  *   6. Parent process (index.ts) relays result to dashboard via Socket.IO
- *   7. Dashboard renders real-time latency chart (charts.js)
+ *   7. Dashboard renders real-time latency chart (charts.js) with interpolation
  *
  * PROBE BEHAVIOR DURING EVENT LOOP BLOCKING:
  *   When the main app's event loop is blocked, incoming HTTP requests queue up.
@@ -71,7 +71,7 @@ import https from 'https';
 
 // Configuration from environment (set by parent process)
 const MAIN_APP_PORT = parseInt(process.env.MAIN_APP_PORT || '3000', 10);
-const PROBE_INTERVAL_MS = parseInt(process.env.PROBE_INTERVAL_MS || '100', 10);
+const PROBE_INTERVAL_MS = parseInt(process.env.PROBE_INTERVAL_MS || '200', 10);
 const PROBE_TIMEOUT_MS = parseInt(process.env.PROBE_TIMEOUT_MS || '10000', 10);
 
 // WEBSITE_HOSTNAME is automatically set by Azure App Service

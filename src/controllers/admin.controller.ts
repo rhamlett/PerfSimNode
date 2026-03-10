@@ -112,6 +112,22 @@ adminRouter.get('/admin/status', (_req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/admin/config
+ *
+ * Returns frontend-relevant configuration values.
+ * The frontend fetches this on startup to configure probe intervals.
+ *
+ * @route GET /api/admin/config
+ * @returns {Object} Frontend configuration
+ */
+adminRouter.get('/admin/config', (_req: Request, res: Response) => {
+  res.json({
+    latencyProbeIntervalMs: config.healthProbeRateMs,
+    metricsIntervalMs: config.metricsIntervalMs,
+  });
+});
+
+/**
  * GET /api/admin/events
  *
  * Returns recent event log entries.

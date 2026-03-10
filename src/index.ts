@@ -243,7 +243,7 @@ async function main(): Promise<void> {
         env: {
           ...process.env,
           MAIN_APP_PORT: String(port),
-          PROBE_INTERVAL_MS: '100',
+          PROBE_INTERVAL_MS: String(config.healthProbeRateMs),
           PROBE_TIMEOUT_MS: '10000',
           WEBSITE_HOSTNAME: process.env.WEBSITE_HOSTNAME || '',
         },

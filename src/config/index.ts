@@ -20,6 +20,7 @@
  *   - MAX_MEMORY_ALLOCATION_MB      → Upper limit for single memory allocation
  *   - EVENT_LOG_MAX_ENTRIES         → Ring buffer size for event log
  *   - IDLE_TIMEOUT_MINUTES          → Idle timeout in minutes before suspending health probes (default: 20)
+ *   - HEALTH_PROBE_RATE             → Health probe interval in ms (default: 200, min: 100)
  *
  * PORTING NOTES:
  *   - Java Spring: Use application.properties/yml with @Value or @ConfigurationProperties.
@@ -70,6 +71,9 @@ export const config: AppConfig = {
 
   /** Maximum number of event log entries to retain (ring buffer) */
   eventLogMaxEntries: parseIntEnv('EVENT_LOG_MAX_ENTRIES', 100),
+
+  /** Health probe interval in milliseconds (default: 200ms, minimum: 100ms) */
+  healthProbeRateMs: Math.max(100, parseIntEnv('HEALTH_PROBE_RATE', 200)),
 };
 
 /**

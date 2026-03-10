@@ -102,6 +102,25 @@ Or via Portal:
    - `WEBSITE_NODE_DEFAULT_VERSION` = `~24`
    - `SCM_DO_BUILD_DURING_DEPLOYMENT` = `false` (we pre-build in GitHub Actions)
 
+### Optional Settings
+
+Configure optional application settings for customization:
+
+```bash
+# Adjust health probe rate (default: 200ms, min: 100ms)
+# Lower values = more granular latency data but increased overhead during profiling
+az webapp config appsettings set \
+  --name $APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --settings HEALTH_PROBE_RATE=400
+
+# Adjust idle timeout before suspending probes (default: 20 minutes)
+az webapp config appsettings set \
+  --name $APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --settings IDLE_TIMEOUT_MINUTES=30
+```
+
 ### Enable WebSockets
 
 1. Go to your App Service → **Configuration** → **General settings**

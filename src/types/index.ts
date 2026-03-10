@@ -449,6 +449,8 @@ export interface AppConfig {
   maxMemoryAllocationMb: number;
   /** Maximum event log entries to retain */
   eventLogMaxEntries: number;
+  /** Health probe interval in ms (default: 200, min: 100) */
+  healthProbeRateMs: number;
 }
 
 // =============================================================================

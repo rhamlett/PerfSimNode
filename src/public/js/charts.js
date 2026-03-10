@@ -84,7 +84,7 @@ const chartData = {
 };
 
 // Separate data store for latency chart (60 seconds at 100ms intervals)
-// We throttle probe updates to 10 per second to match this
+// Chart updates at 100ms regardless of probe rate via interpolation
 const maxLatencyDataPoints = 600;
 const latencyChartData = {
   labels: [],
@@ -92,6 +92,22 @@ const latencyChartData = {
 };
 let lastLatencyChartUpdate = 0;
 const LATENCY_CHART_UPDATE_INTERVAL_MS = 100; // Update chart 10x per second
+
+// Server config (fetched on startup)
+let serverConfig = {
+  latencyProbeIntervalMs: 200, // Default, will be overwritten by server config
+  metricsIntervalMs: 250,
+};
+
+// Interpolation state for latency chart
+// When probes come in slower than chart updates, we interpolate between values
+const latencyInterpolation = {
+  lastProbeValue: null,         // Last received probe latency
+  lastProbeTimestamp: null,     // When we received the last probe
+  previousProbeValue: null,     // The probe before the last one (for interpolation)
+  interpolationTimer: null,     // Timer for chart updates at 100ms
+  chartsInitialized: false,     // Wait for charts before starting interpolation
+};
 
 // Latency tracking - uses time-based retention (last 60 seconds)
 // Each entry is { time: timestamp, value: latencyMs }
@@ -294,8 +310,8 @@ function timestampToUtcTimeString(ts) {
 
 /**
  * Handles incoming probe latency data from the sidecar process.
- * The sidecar runs on its own event loop and probes the main app every 100ms,
- * providing accurate latency measurement even under heavy load.
+ * The sidecar probes at a configurable rate (default 200ms).
+ * The chart updates at 100ms using interpolation between probe values.
  * @param {Object} data - Probe data { latencyMs, timestamp, success, loadTestActive, loadTestConcurrent }
  */
 function onProbeLatency(data) {
@@ -312,7 +328,12 @@ function onProbeLatency(data) {
       latencyStats.critical++;
     }
     
-    // Add to chart using the sidecar's original timestamp.
+    // Update interpolation state with the new probe value
+    latencyInterpolation.previousProbeValue = latencyInterpolation.lastProbeValue;
+    latencyInterpolation.lastProbeValue = latency;
+    latencyInterpolation.lastProbeTimestamp = data.timestamp || Date.now();
+    
+    // Add real probe data to chart using the sidecar's original timestamp.
     // During event loop blocking, IPC messages queue up and arrive
     // as a burst — using the original timestamp backfills the chart
     // at the correct time positions instead of creating gaps.
@@ -958,8 +979,94 @@ function clearCharts() {
   if (latencyChart) latencyChart.update();
 }
 
+/**
+ * Fetches server configuration on startup.
+ * This includes the latency probe interval so we know how to interpolate.
+ * @returns {Promise<void>}
+ */
+async function fetchServerConfig() {
+  try {
+    const response = await fetch('/api/admin/config');
+    if (response.ok) {
+      const config = await response.json();
+      serverConfig.latencyProbeIntervalMs = config.latencyProbeIntervalMs || 200;
+      serverConfig.metricsIntervalMs = config.metricsIntervalMs || 250;
+      console.log(`[Charts] Server config: probe interval ${serverConfig.latencyProbeIntervalMs}ms`);
+    }
+  } catch (err) {
+    console.warn('[Charts] Failed to fetch server config, using defaults:', err);
+  }
+}
+
+/**
+ * Starts the latency chart interpolation timer.
+ * This ensures the chart updates at 100ms regardless of probe rate.
+ * When probes come in at 200ms (5/sec), we interpolate between values
+ * to maintain smooth 100ms (10/sec) chart progression.
+ */
+function startLatencyInterpolation() {
+  if (latencyInterpolation.interpolationTimer) {
+    clearInterval(latencyInterpolation.interpolationTimer);
+  }
+  
+  latencyInterpolation.interpolationTimer = setInterval(() => {
+    // Don't interpolate until we have received at least one probe
+    if (latencyInterpolation.lastProbeValue === null) {
+      return;
+    }
+    
+    // Don't interpolate if charts aren't ready
+    if (!latencyChart) {
+      return;
+    }
+    
+    const now = Date.now();
+    const timeSinceLastProbe = now - (latencyInterpolation.lastProbeTimestamp || now);
+    const probeInterval = serverConfig.latencyProbeIntervalMs;
+    
+    // If we're within the expected probe window (probe just arrived recently),
+    // don't add interpolated values - the real probe handler already added it
+    if (timeSinceLastProbe < LATENCY_CHART_UPDATE_INTERVAL_MS) {
+      return;
+    }
+    
+    // If probe interval equals chart interval (100ms), no interpolation needed
+    if (probeInterval <= LATENCY_CHART_UPDATE_INTERVAL_MS) {
+      return;
+    }
+    
+    // Calculate interpolated value between previous and current probe
+    // Using linear interpolation based on time position between probes
+    let interpolatedValue;
+    if (latencyInterpolation.previousProbeValue !== null && 
+        latencyInterpolation.previousProbeValue !== latencyInterpolation.lastProbeValue) {
+      // Interpolate between previous and current probe values
+      const t = Math.min(1, timeSinceLastProbe / probeInterval);
+      interpolatedValue = latencyInterpolation.lastProbeValue + 
+        (latencyInterpolation.lastProbeValue - latencyInterpolation.previousProbeValue) * t * 0.1;
+      // Clamp to reasonable bounds (don't extrapolate wildly)
+      interpolatedValue = Math.max(0, Math.min(interpolatedValue, latencyInterpolation.lastProbeValue * 1.5));
+    } else {
+      // No previous probe or same value - just hold the last value
+      interpolatedValue = latencyInterpolation.lastProbeValue;
+    }
+    
+    // Add interpolated point to chart
+    addLatencyToChart(interpolatedValue);
+    
+  }, LATENCY_CHART_UPDATE_INTERVAL_MS);
+}
+
 // Initialize charts when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Fetch server config first to get probe interval
+  await fetchServerConfig();
+  
   initCharts();
+  latencyInterpolation.chartsInitialized = true;
+  
   startHeartbeatProbe();
+  
+  // Start interpolation timer for smooth latency chart updates
+  startLatencyInterpolation();
 });
