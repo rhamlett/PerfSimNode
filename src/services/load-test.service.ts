@@ -169,6 +169,7 @@ class LoadTestServiceClass {
   private periodMaxResponseTimeMs = 0;
   private periodPeakConcurrent = 0;
   private periodExceptions = 0;
+  private periodSuppressedRequests = 0; // Requests with suppressLogs=true (internal callers)
 
   // ---- In-flight request tracking ----
   // Tracks start times of all currently executing requests.
@@ -425,6 +426,9 @@ class LoadTestServiceClass {
       this.periodRequestsCompleted++;
       this.periodResponseTimeSum += elapsedMs;
       this.updateMaxResponseTime(elapsedMs);
+      if (params.suppressLogs) {
+        this.periodSuppressedRequests++;
+      }
 
       // Latency sampling (1 in 10 requests) for dashboard latency monitor
       // This prevents flooding the monitor while still showing load test latencies
@@ -660,24 +664,27 @@ class LoadTestServiceClass {
       : '0.0';
 
     // Write to event log so it appears in the dashboard
+    // Skip if all requests were from internal callers (suppressLogs=true)
     // Report sidecar-measured latency as authoritative - this matches Azure Load Testing
-    EventLogService.info(
-      'LOAD_TEST_STATS',
-      `Load test period stats (60s): ${requestsCompleted} requests, ${statsData.avgResponseTimeMs} avg ms, ${statsData.maxResponseTimeMs} max ms (sidecar), ${statsData.requestsPerSecond} RPS, peak ${peakConcurrent} concurrent, ${errorPercent}% errors`,
-      {
-        details: {
-          requestsCompleted,
-          avgResponseTimeMs: statsData.avgResponseTimeMs,
-          maxResponseTimeMs: statsData.maxResponseTimeMs,
-          currentConcurrent,
-          peakConcurrent,
-          requestsPerSecond: statsData.requestsPerSecond,
-          exceptionCount: exceptions,
-          errorPercent: parseFloat(errorPercent),
-          measurementSource: 'sidecar',
-        },
-      }
-    );
+    if (this.periodSuppressedRequests < requestsCompleted) {
+      EventLogService.info(
+        'LOAD_TEST_STATS',
+        `Load test period stats (60s): ${requestsCompleted} requests, ${statsData.avgResponseTimeMs} avg ms, ${statsData.maxResponseTimeMs} max ms (sidecar), ${statsData.requestsPerSecond} RPS, peak ${peakConcurrent} concurrent, ${errorPercent}% errors`,
+        {
+          details: {
+            requestsCompleted,
+            avgResponseTimeMs: statsData.avgResponseTimeMs,
+            maxResponseTimeMs: statsData.maxResponseTimeMs,
+            currentConcurrent,
+            peakConcurrent,
+            requestsPerSecond: statsData.requestsPerSecond,
+            exceptionCount: exceptions,
+            errorPercent: parseFloat(errorPercent),
+            measurementSource: 'sidecar',
+          },
+        }
+      );
+    }
 
     // Emit via broadcaster
     if (this.statsBroadcaster) {
@@ -690,6 +697,7 @@ class LoadTestServiceClass {
     this.periodMaxResponseTimeMs = 0;
     this.periodPeakConcurrent = 0;
     this.periodExceptions = 0;
+    this.periodSuppressedRequests = 0;
     this.recentProbeLatencies = [];
   }
 
