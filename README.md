@@ -12,6 +12,7 @@ An educational tool designed to help Azure support engineers practice diagnosing
 - **Memory Pressure** - Allocate and retain memory to simulate leaks with stacking behavior
 - **Event Loop Blocking** - Block the Node.js event loop with synchronous operations
 - **Slow Requests** - Multiple blocking patterns: setTimeout, libuv thread pool saturation, worker threads
+- **Failed Requests** - Generate HTTP 5xx errors for testing error monitoring (AppLens/App Insights)
 - **Crash Simulation** - Trigger FailFast, stack overflow, unhandled exceptions, or OOM
 - **Real-time Dashboard** - Monitor metrics with live charts via WebSocket (Socket.IO)
 
@@ -195,6 +196,29 @@ curl "http://localhost:3000/api/simulations/slow?delaySeconds=10&blockingPattern
 curl "http://localhost:3000/api/simulations/slow?delaySeconds=10&blockingPattern=worker"
 ```
 
+### Failed Requests
+
+**Implementation:** Generates HTTP 5xx server errors by making internal requests to the load test endpoint with 100% error injection. Each request does real work (CPU, memory, 500ms delay) before failing, making errors visible in Azure AppLens and Application Insights.
+
+**Key characteristic:** Produces diverse error signatures (17 different exception types including TimeoutError, InvalidOperationError, OutOfMemoryError, etc.) for training error monitoring skills.
+
+```bash
+# Generate 5 failed requests (default)
+curl -X POST http://localhost:3000/api/simulations/failed \
+  -H "Content-Type: application/json" \
+  -d '{"requestCount": 5}'
+```
+
+| Parameter | Range | Description |
+|-----------|-------|--------------|
+| requestCount | 1-50 | Number of HTTP 5xx errors to generate |
+
+**Symptoms to Observe:**
+- HTTP 500 responses logged with different error types
+- Errors visible in Azure AppLens → HTTP Server Errors
+- Application Insights → Failures blade
+- Each error appears in the Event Log with ❌ icon and error type
+
 ### Crash Simulation
 
 Intentionally crashes the Node.js process for testing crash recovery.
@@ -230,6 +254,7 @@ curl -X POST http://localhost:3000/api/simulations/crash/memory
 | `/api/simulations/memory/:id` | DELETE | Release memory |
 | `/api/simulations/eventloop` | POST | Block event loop |
 | `/api/simulations/slow` | GET | Slow request |
+| `/api/simulations/failed` | POST | Generate HTTP 5xx errors |
 | `/api/simulations/crash/failfast` | POST | FailFast (SIGABRT) |
 | `/api/simulations/crash/stackoverflow` | POST | Stack overflow |
 | `/api/simulations/crash/exception` | POST | Unhandled exception |

@@ -227,6 +227,11 @@ function getEventIconAndClass(event) {
     return { icon: '📈', colorClass: 'loadtest' };
   }
   
+  // Check for failed request errors
+  if (event.eventType === 'FAILED_REQUEST_ERROR') {
+    return { icon: '❌', colorClass: 'failed' };
+  }
+  
   // Map simulation types to icons and color classes
   const simType = event.simulationType;
   if (simType) {
@@ -241,6 +246,9 @@ function getEventIconAndClass(event) {
     }
     if (simType === 'SLOW_REQUEST') {
       return { icon: '🐌', colorClass: 'slow' };
+    }
+    if (simType === 'FAILED_REQUEST') {
+      return { icon: '❌', colorClass: 'failed' };
     }
     if (simType.startsWith('CRASH_')) {
       return { icon: '💥', colorClass: 'crash' };
@@ -867,6 +875,53 @@ function stopSlowRequests() {
 }
 
 /**
+ * Triggers failed requests simulation.
+ * @param {number} requestCount - Number of failed requests to generate
+ */
+async function triggerFailedRequests(requestCount) {
+  try {
+    // Add optimistic event log entry
+    addEventToLog({
+      timestamp: new Date().toISOString(),
+      level: 'info',
+      simulationType: 'FAILED_REQUEST',
+      event: 'SIMULATION_STARTED',
+      message: `Starting failed request simulation: generating ${requestCount} HTTP 5xx errors...`
+    });
+
+    const response = await fetch('/api/simulations/failed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestCount }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      addEventToLog({
+        timestamp: new Date().toISOString(),
+        level: 'error',
+        simulationType: 'FAILED_REQUEST',
+        event: 'SIMULATION_FAILED',
+        message: `Failed request simulation error: ${data.message || 'Unknown error'}`
+      });
+      return;
+    }
+
+    // Success - the server will broadcast individual error events via WebSocket
+  } catch (error) {
+    console.error('[Dashboard] Failed to trigger failed requests:', error);
+    addEventToLog({
+      timestamp: new Date().toISOString(),
+      level: 'error',
+      simulationType: 'FAILED_REQUEST',
+      event: 'SIMULATION_FAILED',
+      message: `Failed request simulation error: ${error.message}`
+    });
+  }
+}
+
+/**
  * Triggers a crash with the specified type.
  * @param {string} crashType - The type of crash (failfast, stackoverflow, exception, oom)
  */
@@ -1024,6 +1079,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const stopSlowBtn = document.getElementById('stop-slow-requests');
   if (stopSlowBtn) {
     stopSlowBtn.addEventListener('click', stopSlowRequests);
+  }
+
+  // Failed Request Form
+  const failedForm = document.getElementById('failed-form');
+  if (failedForm) {
+    failedForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const formData = new FormData(failedForm);
+      triggerFailedRequests(parseInt(formData.get('requestCount')));
+    });
   }
 
   // Crash Form

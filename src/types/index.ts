@@ -48,6 +48,7 @@ export type SimulationType =
   | 'MEMORY_PRESSURE'
   | 'EVENT_LOOP_BLOCKING'
   | 'SLOW_REQUEST'
+  | 'FAILED_REQUEST'
   | 'CRASH_EXCEPTION'
   | 'CRASH_MEMORY'
   | 'CRASH_FAILFAST'
@@ -91,7 +92,8 @@ export type EventType =
   | 'CLIENT_CONNECTED'
   | 'CLIENT_DISCONNECTED'
   | 'LOAD_TEST_STATS'
-  | 'LOAD_TEST_ERROR_INJECTED';
+  | 'LOAD_TEST_ERROR_INJECTED'
+  | 'FAILED_REQUEST_ERROR';
 
 // =============================================================================
 // SIMULATION PARAMETER TYPES
@@ -201,6 +203,29 @@ export interface SlowRequestParams {
 }
 
 /**
+ * Parameters for failed request simulation.
+ *
+ * BEHAVIOR:
+ *   Generates HTTP 5xx errors by making internal requests to the load test
+ *   endpoint with 100% error probability. Each request does real work (CPU,
+ *   memory, delay) before failing, ensuring the errors appear in monitoring
+ *   tools like Azure AppLens as genuine server failures.
+ *
+ * ERROR TYPES:
+ *   The load test service randomly selects from 17 different exception types
+ *   including TimeoutError, InvalidOperationError, OutOfMemoryError, etc.
+ *   This produces diverse error signatures in Application Insights.
+ *
+ * PORTING NOTES:
+ *   - This simulation reuses the load test infrastructure
+ *   - The key is setting errorAboveConcurrent=0 and errorPercent=100
+ */
+export interface FailedRequestParams {
+  /** Number of failed requests to generate. Each request produces an HTTP 5xx error. */
+  requestCount: number;
+}
+
+/**
  * Discriminated union type for all simulation parameters.
  *
  * The `type` field acts as a discriminator/tag, enabling type-safe handling
@@ -217,6 +242,7 @@ export type SimulationParameters =
   | ({ type: 'MEMORY_PRESSURE' } & MemoryPressureParams)
   | ({ type: 'EVENT_LOOP_BLOCKING' } & EventLoopBlockingParams)
   | ({ type: 'SLOW_REQUEST' } & SlowRequestParams)
+  | ({ type: 'FAILED_REQUEST' } & FailedRequestParams)
   | { type: 'CRASH_EXCEPTION' }
   | { type: 'CRASH_MEMORY' };
 
@@ -539,6 +565,8 @@ export interface LoadTestRequest {
   errorAboveConcurrent: number;
   /** Percentage chance (0-100) of throwing error when above errorAboveConcurrent threshold. Default: 20 */
   errorPercent: number;
+  /** When true, suppresses event log messages. Used by internal callers like failed-request service. Default: false */
+  suppressLogs?: boolean;
 }
 
 /**

@@ -300,6 +300,22 @@
           </form>
         </div>
 
+        <!-- Failed Requests -->
+        <div class="control-section failed-section">
+          <h3>❌ Failed Requests <span class="info-icon" title="Generates HTTP 5xx errors for testing error monitoring in Azure AppLens">ℹ️</span></h3>
+          <p class="control-description">Generates HTTP 500 errors by injecting failures into server requests. Errors appear in Azure AppLens and Application Insights.</p>
+          <div class="failed-note">
+            ⚠️ Each request does real work before failing, making errors visible in latency monitoring
+          </div>
+          <form id="failed-form">
+            <label>
+              Number of Errors:
+              <input type="number" name="requestCount" value="5" min="1" max="50">
+            </label>
+            <button type="submit" class="btn-trigger btn-failed">❌ Generate Failed Requests</button>
+          </form>
+        </div>
+
         <!-- Crash Simulation -->
         <div class="control-section crash-section">
           <h3>💥 Application Crash <span class="info-icon" title="Process terminates immediately. Azure App Service auto-restarts. Watch for Process ID change in Event Log.">⚠️</span></h3>

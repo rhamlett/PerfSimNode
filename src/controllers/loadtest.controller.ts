@@ -88,6 +88,7 @@ loadtestRouter.get('/', async (req: Request, res: Response, next: NextFunction) 
       degradationFactor: parseOptionalInt(req.query.degradationFactor as string | undefined),
       errorAboveConcurrent: parseOptionalInt(req.query.errorAboveConcurrent as string | undefined),
       errorPercent: parseOptionalInt(req.query.errorPercent as string | undefined),
+      suppressLogs: parseOptionalBool(req.query.suppressLogs as string | undefined),
     };
 
     // Remove undefined values so service defaults apply
@@ -123,4 +124,15 @@ function parseOptionalInt(value: string | undefined): number | undefined {
   }
   const parsed = parseInt(value, 10);
   return isNaN(parsed) ? undefined : parsed;
+}
+
+/**
+ * Parses an optional boolean from a query parameter value.
+ * Returns undefined if the value is not present, true for 'true'/'1', false otherwise.
+ */
+function parseOptionalBool(value: string | undefined): boolean | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  return value === 'true' || value === '1';
 }

@@ -125,6 +125,14 @@ export function errorHandler(
       error: 'Bad Request',
       message: 'Invalid JSON in request body',
     };
+  } else {
+    // For other errors (including load test injected errors),
+    // include the actual error message for diagnostics visibility.
+    // This is appropriate for a dev/test tool.
+    errorResponse = {
+      error: err.message || 'Internal Server Error',
+      message: err.message || 'An unexpected error occurred',
+    };
   }
 
   res.status(statusCode).json(errorResponse);

@@ -22,6 +22,7 @@
   --color-memory: #1d6f1d;
   --color-eventloop: #8764b8;
   --color-latency: #ffb900;
+  --color-failed: #8B4513;
   
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
   --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
@@ -1136,6 +1137,15 @@ section h2, section h3 {
   background: rgba(255, 140, 0, 0.05);
 }
 
+.failed-section {
+  border: 2px solid #a0522d;
+  background: rgba(139, 69, 19, 0.05);
+}
+
+.failed-section:hover {
+  border-color: #cd853f;
+}
+
 .crash-section {
   border: 2px solid var(--color-danger);
   background: rgba(209, 52, 56, 0.05);
@@ -1146,6 +1156,16 @@ section h2, section h3 {
   color: #b8860b;
   background: rgba(255, 193, 7, 0.15);
   border-left: 3px solid #ffc107;
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.75rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.failed-note {
+  font-size: 0.75rem;
+  color: #6b3410;
+  background: rgba(139, 69, 19, 0.1);
+  border-left: 3px solid #8B4513;
   padding: 0.4rem 0.6rem;
   margin-bottom: 0.75rem;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
@@ -1331,6 +1351,22 @@ button:disabled {
   50% { box-shadow: 0 0 12px rgba(255, 140, 0, 0.5); }
 }
 
+.btn-failed {
+  background: linear-gradient(135deg, #8B4513 0%, #6b3410 100%);
+  border: 2px solid #a0522d;
+  animation: pulse-failed 3s infinite;
+}
+
+.btn-failed:hover:not(:disabled) {
+  background: linear-gradient(135deg, #a0522d 0%, #8B4513 100%);
+  border-color: #cd853f;
+}
+
+@keyframes pulse-failed {
+  0%, 100% { box-shadow: 0 0 5px rgba(139, 69, 19, 0.3); }
+  50% { box-shadow: 0 0 12px rgba(139, 69, 19, 0.5); }
+}
+
 .btn-stop {
   background: var(--color-secondary);
   color: white;
@@ -1480,6 +1516,7 @@ button:disabled {
 .log-entry.memory { color: var(--color-memory); }
 .log-entry.eventloop { color: var(--color-eventloop); }
 .log-entry.slow { color: #ff8c00; }
+.log-entry.failed { color: var(--color-failed); }
 .log-entry.crash { color: var(--color-danger); }
 .log-entry.loadtest { color: var(--color-primary); }
 .log-entry.restart { color: var(--color-danger); }

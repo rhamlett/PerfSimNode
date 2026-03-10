@@ -129,6 +129,7 @@ const DEFAULT_REQUEST: LoadTestRequest = {
   degradationFactor: 1000,
   errorAboveConcurrent: 0,  // Disabled by default
   errorPercent: 20,
+  suppressLogs: false,
 };
 
 // =============================================================================
@@ -280,6 +281,7 @@ class LoadTestServiceClass {
       degradationFactor: request.degradationFactor ?? DEFAULT_REQUEST.degradationFactor,
       errorAboveConcurrent: request.errorAboveConcurrent ?? DEFAULT_REQUEST.errorAboveConcurrent,
       errorPercent: request.errorPercent ?? DEFAULT_REQUEST.errorPercent,
+      suppressLogs: request.suppressLogs ?? DEFAULT_REQUEST.suppressLogs,
     };
 
     // Increment concurrent counter
@@ -373,7 +375,7 @@ class LoadTestServiceClass {
 
       // Check for concurrency-based error injection after work completes
       // This simulates system instability under high load
-      this.checkAndThrowConcurrencyException(currentConcurrent, params.errorAboveConcurrent, params.errorPercent);
+      this.checkAndThrowConcurrencyException(currentConcurrent, params.errorAboveConcurrent, params.errorPercent, params.suppressLogs);
 
       // Final memory touch before returning
       this.touchHeapMemory(heapMemory);
@@ -527,30 +529,38 @@ class LoadTestServiceClass {
    * the system becomes, the more likely errors occur.
    * 
    * @param currentConcurrent - Current number of concurrent requests
-   * @param errorAboveConcurrent - Threshold above which errors may be thrown (0 = disabled)
+   * @param errorAboveConcurrent - Threshold above which errors may be thrown
+   *                               (0 = disabled, -1 = always inject errors)
    * @param errorPercent - Percentage chance (0-100) of throwing exception when above threshold
+   * @param suppressLogs - When true, suppress event log messages (for internal callers)
    */
   private checkAndThrowConcurrencyException(
     currentConcurrent: number,
     errorAboveConcurrent: number,
-    errorPercent: number
+    errorPercent: number,
+    suppressLogs?: boolean
   ): void {
     // Skip if error injection is disabled (threshold is 0 or percent is 0)
-    if (errorAboveConcurrent <= 0 || errorPercent <= 0) {
+    if (errorAboveConcurrent === 0 || errorPercent <= 0) {
       return;
     }
 
-    // Only throw errors when concurrency exceeds threshold
-    if (currentConcurrent > errorAboveConcurrent) {
+    // Special case: errorAboveConcurrent < 0 means "always inject errors"
+    // This is used by the failed request simulation to guarantee HTTP 5xx
+    const shouldInject = errorAboveConcurrent < 0 || currentConcurrent > errorAboveConcurrent;
+
+    if (shouldInject) {
       const probability = errorPercent / 100;
       if (Math.random() < probability) {
         const idx = Math.floor(Math.random() * EXCEPTION_FACTORIES.length);
         const exception = EXCEPTION_FACTORIES[idx]();
-        // Log to event log so it appears in dashboard
-        EventLogService.warn(
-          'LOAD_TEST_ERROR_INJECTED',
-          `Injecting error (concurrent=${currentConcurrent} > threshold=${errorAboveConcurrent}): ${exception.message}`
-        );
+        // Log to event log so it appears in dashboard (unless suppressed)
+        if (!suppressLogs) {
+          EventLogService.warn(
+            'LOAD_TEST_ERROR_INJECTED',
+            `Injecting error (concurrent=${currentConcurrent} > threshold=${errorAboveConcurrent}): ${exception.message}`
+          );
+        }
         throw exception;
       }
     }

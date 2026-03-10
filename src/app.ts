@@ -54,6 +54,7 @@ import { adminRouter } from './controllers/admin.controller';
 import { memoryRouter } from './controllers/memory.controller';
 import { eventloopRouter } from './controllers/eventloop.controller';
 import { slowRouter } from './controllers/slow.controller';
+import { failedRouter } from './controllers/failed-request.controller';
 import { crashRouter } from './controllers/crash.controller';
 import { loadtestRouter } from './controllers/loadtest.controller';
 
@@ -85,6 +86,7 @@ export function createApp(): Application {
   app.use('/api/simulations/memory', memoryRouter);
   app.use('/api/simulations/eventloop', eventloopRouter);
   app.use('/api/simulations/slow', slowRouter);
+  app.use('/api/simulations/failed', failedRouter);
   app.use('/api/simulations/crash', crashRouter);
   app.use('/api/loadtest', loadtestRouter);
   app.use('/api', adminRouter); // Handles /api/simulations, /api/admin/status, /api/admin/events

@@ -314,6 +314,7 @@
         <li><strong>Memory Pressure</strong> - Allocate and retain memory to simulate leaks</li>
         <li><strong>Event Loop Blocking</strong> - Block the Node.js event loop with synchronous operations</li>
         <li><strong>Slow Requests</strong> - Simulate slow HTTP responses</li>
+        <li><strong>Failed Requests</strong> - Generate HTTP 5xx errors for testing error monitoring</li>
         <li><strong>Crash Simulation</strong> - Trigger unhandled exceptions or OOM conditions</li>
       </ul>
 
@@ -545,6 +546,56 @@ GET /api/simulations/slow?delaySeconds=10&blockingPattern=worker</code></pre>
       </ul>
     </section>
 
+    <section id="failed-requests" class="docs-section">
+      <h2>Failed Requests</h2>
+      <p>Generate HTTP 5xx server errors for testing error monitoring, alerting, and Azure AppLens diagnostics.</p>
+
+      <h3>How It Works</h3>
+      <p>The Failed Requests simulation makes internal HTTP requests that are guaranteed to fail with 500 status codes. Each request performs real work (CPU stress, memory allocation, delay) before throwing a randomly selected exception from a pool of 17 error types.</p>
+
+      <h3>Error Types</h3>
+      <table>
+        <tr><th>Error Type</th><th>Description</th></tr>
+        <tr><td>InvalidOperationError</td><td>Invalid operation attempted</td></tr>
+        <tr><td>TypeError</td><td>Type mismatch or null reference</td></tr>
+        <tr><td>TimeoutError</td><td>Operation exceeded time limit</td></tr>
+        <tr><td>OutOfMemoryError</td><td>Memory allocation failure</td></tr>
+        <tr><td>DatabaseConnectionError</td><td>Unable to connect to database</td></tr>
+        <tr><td>AuthenticationError</td><td>Authentication failure</td></tr>
+        <tr><td>NetworkError</td><td>Network communication failure</td></tr>
+        <tr><td>ServiceUnavailableError</td><td>Backend service unavailable</td></tr>
+      </table>
+      <p><em>Plus 9 additional error types for diverse error signatures.</em></p>
+
+      <h3>Dashboard Controls</h3>
+      <ul>
+        <li><strong>Request Count:</strong> Number of failed requests to generate (1-50)</li>
+      </ul>
+
+      <h3>Observing in Azure</h3>
+      <h4>AppLens</h4>
+      <ul>
+        <li>Navigate to <strong>Diagnose and solve problems</strong> → <strong>HTTP Server Errors</strong></li>
+        <li>View 5xx error rate spike during simulation</li>
+        <li>Examine error distribution by exception type</li>
+      </ul>
+
+      <h4>Application Insights</h4>
+      <ul>
+        <li><strong>Failures</strong> blade → Operations tab</li>
+        <li>View exception types and stack traces</li>
+        <li>Analyze error grouping patterns</li>
+      </ul>
+
+      <h3>Use Cases</h3>
+      <ul>
+        <li>Training Azure AppLens error diagnostics</li>
+        <li>Testing Application Insights failure tracking</li>
+        <li>Verifying error alerting and notifications</li>
+        <li>Practice interpreting diverse error types</li>
+      </ul>
+    </section>
+
     <section id="crash-simulation" class="docs-section">
       <h2>Crash Simulation</h2>
       <p>Intentionally crashes the Node.js process for testing crash recovery and observing restart behavior.</p>
@@ -620,6 +671,7 @@ GET /api/simulations/slow?delaySeconds=10&blockingPattern=worker</code></pre>
         <tr><td><code>/api/simulations/memory/:id</code></td><td>DELETE</td><td>Release memory</td></tr>
         <tr><td><code>/api/simulations/eventloop</code></td><td>POST</td><td>Block event loop</td></tr>
         <tr><td><code>/api/simulations/slow</code></td><td>GET</td><td>Slow request with delay</td></tr>
+        <tr><td><code>/api/simulations/failed</code></td><td>POST</td><td>Generate HTTP 5xx errors</td></tr>
       </table>
       
       <h3>Crash Endpoints</h3>
@@ -811,6 +863,9 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
             </li>
             <li class="doc-toc-item">
               <a href="#slow-requests"><span class="toc-icon">🐢</span>Slow Requests</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#failed-requests"><span class="toc-icon">❌</span>Failed Requests</a>
             </li>
             <li class="doc-toc-item">
               <a href="#crash-simulation"><span class="toc-icon">💥</span>Crash Simulation</a>
