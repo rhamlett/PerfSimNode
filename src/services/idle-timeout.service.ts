@@ -11,9 +11,11 @@
  *
  * ACTIVITY SOURCES:
  *   The following events count as "activity" and reset the idle timer:
- *   - Dashboard WebSocket connections (page load/reload)
+ *   - Explicit user activity events from the dashboard (clicks, interactions)
  *   - Load test requests
  *   - Any API request (optional, configurable)
+ *   NOTE: Dashboard WebSocket connections do NOT reset the timer to avoid
+ *   automatic reconnections preventing idle timeout.
  *
  * IDLE BEHAVIOR:
  *   When idle timeout is reached:
