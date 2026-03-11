@@ -292,7 +292,7 @@
       </a>
     </nav>
     <div class="sidebar-footer">
-      PerfSimNode v1.0 • Node.js 24 LTS
+      <div id="sidebar-build-info">Build: Loading...</div>
     </div>
   </aside>
 
@@ -948,6 +948,14 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeSidebar();
     });
+
+    // Sync build info to sidebar when it updates
+    const buildInfoEl = document.getElementById('build-info');
+    const sidebarBuildInfo = document.getElementById('sidebar-build-info');
+    const observer = new MutationObserver(() => {
+      sidebarBuildInfo.textContent = buildInfoEl.textContent;
+    });
+    observer.observe(buildInfoEl, { childList: true, characterData: true, subtree: true });
 
     // Scroll-spy: highlight active section in right sidebar
     (function() {
