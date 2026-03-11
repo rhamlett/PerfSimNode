@@ -38,6 +38,11 @@ let isConnected = false;
 let reconnectAttempts = 0;
 const maxReconnectAttempts = 10;
 
+// Track whether this is the initial page load connection
+// Used to distinguish between fresh page loads (which should wake from idle)
+// and automatic reconnections (which should not reset idle timer)
+let isInitialConnection = true;
+
 /**
  * Initializes the Socket.IO connection.
  */
@@ -62,6 +67,14 @@ function initSocket() {
     statusEl.textContent = 'Connected';
     statusEl.className = 'status-connected';
     console.log('[Socket] Connected to server');
+
+    // On initial page load, signal activity to wake from idle state.
+    // Automatic reconnections (after brief disconnects) should NOT reset idle timer.
+    if (isInitialConnection) {
+      isInitialConnection = false;
+      socket.emit('activity');
+      console.log('[Socket] Sent activity signal (initial page load)');
+    }
 
     // Notify dashboard of connection
     if (typeof onSocketConnected === 'function') {

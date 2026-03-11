@@ -134,9 +134,10 @@ async function main(): Promise<void> {
     // Log to console only (not to event log - reduces noise for users)
     console.log(`[Socket.IO] Client connected: ${socket.id}`);
 
-    // NOTE: Dashboard connections do NOT reset the idle timer.
-    // Only explicit user activity (clicks, interactions) should prevent idle.
-    // This avoids automatic reconnections resetting the timer unexpectedly.
+    // NOTE: Dashboard connections do NOT reset the idle timer directly.
+    // The frontend emits an 'activity' event only on initial page load,
+    // not on automatic reconnections. This ensures page loads wake from idle,
+    // but reconnections don't continuously reset the timer.
 
     socket.on('disconnect', (reason) => {
       console.log(`[Socket.IO] Client disconnected: ${socket.id} (${reason})`);
