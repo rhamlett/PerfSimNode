@@ -165,14 +165,19 @@ function onSimulationUpdate(simulation) {
  * Updates the connection indicator to show idle state.
  */
 function onIdleStatusUpdate(status) {
-  console.log('[Dashboard] Idle status:', status);
+  console.log('[Dashboard] Idle status received:', JSON.stringify(status));
   const statusEl = document.getElementById('connection-status');
-  if (!statusEl) return;
+  if (!statusEl) {
+    console.error('[Dashboard] connection-status element not found!');
+    return;
+  }
 
   if (status.isIdle) {
+    console.log('[Dashboard] Setting status to Idle');
     statusEl.textContent = 'Idle';
     statusEl.className = 'status-idle';
   } else {
+    console.log('[Dashboard] Setting status to Connected');
     // Restore to connected state when no longer idle
     statusEl.textContent = 'Connected';
     statusEl.className = 'status-connected';

@@ -157,8 +157,11 @@ function initSocket() {
 
   // Listen for idle status updates from the server
   socket.on('idleStatus', (data) => {
+    console.log('[Socket] Received idleStatus:', data);
     if (typeof onIdleStatusUpdate === 'function') {
       onIdleStatusUpdate(data);
+    } else {
+      console.warn('[Socket] onIdleStatusUpdate is not defined!');
     }
   });
 }

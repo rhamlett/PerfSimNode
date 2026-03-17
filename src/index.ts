@@ -134,6 +134,13 @@ async function main(): Promise<void> {
     // Log to console only (not to event log - reduces noise for users)
     console.log(`[Socket.IO] Client connected: ${socket.id}`);
 
+    // Send current idle status to newly connected clients immediately.
+    // This ensures clients know the current state even if they missed
+    // a prior state change broadcast (e.g., reconnecting to an idle server).
+    const currentStatus = IdleTimeoutService.getStatus();
+    socket.emit('idleStatus', currentStatus);
+    console.log(`[Socket.IO] Sent initial idleStatus to ${socket.id}: isIdle=${currentStatus.isIdle}`);
+
     // NOTE: Dashboard connections do NOT reset the idle timer directly.
     // The frontend emits an 'activity' event only on initial page load,
     // not on automatic reconnections. This ensures page loads wake from idle,
@@ -160,8 +167,10 @@ async function main(): Promise<void> {
   // clients. This allows the dashboard to update the connection indicator
   // to show "Idle" when probes are suspended.
   // --------------------------------------------------------------------------
-  IdleTimeoutService.onStateChange((isIdle) => {
-    io.emit('idleStatus', IdleTimeoutService.getStatus());
+  IdleTimeoutService.onStateChange((_isIdle) => {
+    const status = IdleTimeoutService.getStatus();
+    console.log(`[Socket.IO] Broadcasting idleStatus: isIdle=${status.isIdle}`);
+    io.emit('idleStatus', status);
   });
 
   // --------------------------------------------------------------------------
