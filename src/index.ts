@@ -155,6 +155,16 @@ async function main(): Promise<void> {
   });
 
   // --------------------------------------------------------------------------
+  // IDLE STATUS BROADCASTING SETUP
+  // Wire IdleTimeoutService to broadcast idle state changes to all connected
+  // clients. This allows the dashboard to update the connection indicator
+  // to show "Idle" when probes are suspended.
+  // --------------------------------------------------------------------------
+  IdleTimeoutService.onStateChange((isIdle) => {
+    io.emit('idleStatus', IdleTimeoutService.getStatus());
+  });
+
+  // --------------------------------------------------------------------------
   // PERIODIC METRICS BROADCAST
   // Collects system metrics (CPU, memory, event loop, process info) at the
   // configured interval (default 250ms) and pushes to all WebSocket clients.
