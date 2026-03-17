@@ -18,7 +18,7 @@
  *
  * IDLE BEHAVIOR:
  *   When idle timeout is reached:
- *   - Health probes are suspended (both localhost and frontend probes)
+ *   - Health probes are suspended
  *   - Metrics broadcasting continues (minimal cost, useful for debugging)
  *   - The app remains responsive to incoming requests
  *

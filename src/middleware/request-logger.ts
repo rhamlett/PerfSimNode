@@ -8,13 +8,9 @@
  *   Provides visibility into API traffic for debugging and monitoring.
  *
  * FILTERING:
- *   Internal probe requests (from the sidecar process and dashboard heartbeat)
- *   are filtered out to reduce log noise. These are identified by:
- *   - X-Internal-Probe header (set by internal monitoring)
- *   - Localhost requests to /api/metrics/probe (sidecar probes)
- *
- *   External probe requests (via Azure's public URL) are NOT filtered —
- *   they should appear in Azure AppLens diagnostics.
+ *   During local development, sidecar probes to localhost are filtered out
+ *   to reduce log noise. In Azure, all probes go through the public frontend
+ *   and are logged normally (visible in AppLens diagnostics).
  *
  * PORTING NOTES:
  *   - Java Spring: Use a HandlerInterceptor or Filter
@@ -33,10 +29,8 @@ import { Request, Response, NextFunction } from 'express';
  * Request logging middleware.
  *
  * Logs method, URL, and response time for each request.
- * Skips logging internal probe requests to reduce log noise:
- * - Native HTTP probes (marked with X-Internal-Probe header)
- * - Any localhost requests to /api/metrics/probe
- * Curl probes (which go through external HTTPS) appear in AppLens.
+ * Skips logging localhost probe requests to reduce local development noise.
+ * In Azure, probes go through the public frontend and are logged normally.
  *
  * @param req - Express request
  * @param res - Express response
@@ -45,12 +39,11 @@ import { Request, Response, NextFunction } from 'express';
 export function requestLogger(req: Request, res: Response, next: NextFunction): void {
   const startTime = Date.now();
   
-  // Skip logging for internal probe requests (native HTTP probes for dashboard)
-  // Check both the header AND the path+source to catch all internal probes
-  const isInternalProbe = req.headers['x-internal-probe'] === 'true';
+  // Skip logging for localhost probe requests (local development only)
+  // In Azure, all probes go through the public frontend and will be logged
   const isProbeEndpoint = req.originalUrl === '/api/metrics/probe';
   const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
-  const isInternalProbeRequest = isInternalProbe || (isProbeEndpoint && isLocalhost);
+  const isInternalProbeRequest = isProbeEndpoint && isLocalhost;
 
   // Log when response finishes
   res.on('finish', () => {

@@ -94,20 +94,22 @@ function initSocket() {
     }
   });
 
-  socket.on('reconnect_attempt', (attempt) => {
+  // Reconnection events are emitted by the Manager (socket.io), not the Socket instance
+  socket.io.on('reconnect_attempt', (attempt) => {
     reconnectAttempts = attempt;
     statusEl.textContent = `Reconnecting (${attempt}/${maxReconnectAttempts})...`;
     statusEl.className = 'status-reconnecting';
   });
 
-  socket.on('reconnect', () => {
+  socket.io.on('reconnect', () => {
+    console.log('[Socket] Reconnected to server');
     // Log reconnection to event log
     if (typeof addEventToLog === 'function') {
       addEventToLog({ level: 'success', message: 'Reconnected to server' });
     }
   });
 
-  socket.on('reconnect_failed', () => {
+  socket.io.on('reconnect_failed', () => {
     statusEl.textContent = 'Connection Failed';
     statusEl.className = 'status-disconnected';
     console.error('[Socket] Failed to reconnect after', maxReconnectAttempts, 'attempts');

@@ -17,8 +17,8 @@
  * ARCHITECTURE:
  *   ┌──────────────┐  HTTP GET /api/metrics/probe  ┌────────────────┐
  *   │   Sidecar    │ ─────────────────────────────> │   Main App     │
- *   │  (this file) │ <───────────────────────────── │  (via frontend │
- *   │              │       JSON response            │   or localhost)│
+ *   │  (this file) │ <───────────────────────────── │                │
+ *   │              │       JSON response            │                │
  *   │              │                                │                │
  *   │              │  IPC process.send()            │                │
  *   │              │ ─────────────────────────────> │  Parent handler │
@@ -26,15 +26,18 @@
  *   └──────────────┘                                │  → Dashboard   │
  *                                                   └────────────────┘
  *
+ * PROBE TARGET:
+ *   - LOCAL DEV (no WEBSITE_HOSTNAME): Probes go directly to localhost
+ *   - AZURE (WEBSITE_HOSTNAME set): Probes go through the public frontend
+ *     for realistic latency measurement visible in AppLens diagnostics
+ *
  * DATA FLOW:
  *   1. Sidecar probes main app via HTTP at PROBE_INTERVAL_MS (default 200ms)
- *   2. When WEBSITE_HOSTNAME is set (Azure), probes go through the frontend
- *      load balancer for realistic latency measurement visible in AppLens
- *   3. When running locally, probes go directly to localhost
- *   4. Measures round-trip time for each probe request
- *   5. Sends result to parent process via Node IPC (process.send)
- *   6. Parent process (index.ts) relays result to dashboard via Socket.IO
- *   7. Dashboard renders real-time latency chart (charts.js) with interpolation
+ *   2. Probe target is determined by environment (see PROBE TARGET above)
+ *   3. Measures round-trip time for each probe request
+ *   4. Sends result to parent process via Node IPC (process.send)
+ *   5. Parent process (index.ts) relays result to dashboard via Socket.IO
+ *   6. Dashboard renders real-time latency chart (charts.js) with interpolation
  *
  * PROBE BEHAVIOR DURING EVENT LOOP BLOCKING:
  *   When the main app's event loop is blocked, incoming HTTP requests queue up.
@@ -42,11 +45,6 @@
  *   The probes queue on the main app's side. When the block ends, all queued
  *   probes complete rapidly, each reporting their full wait time. This creates
  *   a characteristic "ramp-down" pattern in the latency chart.
- *
- * AZURE INTEGRATION:
- *   WEBSITE_HOSTNAME is automatically set by Azure App Service to the app's
- *   public hostname (e.g., myapp.azurewebsites.net). When set, probes go
- *   through Azure's frontend, making traffic visible in AppLens diagnostics.
  *
  * PORTING NOTES:
  *   - Java: Use a ScheduledExecutorService with a Runnable that makes
