@@ -1500,7 +1500,8 @@ button:disabled {
   background-color: var(--color-card);
   border-radius: var(--radius-md);
   padding: 1rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  border: 1px solid #d0d0d0;
 }
 
 .event-log-card h3 {
