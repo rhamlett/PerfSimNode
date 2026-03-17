@@ -124,6 +124,7 @@ adminRouter.get('/admin/config', (_req: Request, res: Response) => {
   res.json({
     latencyProbeIntervalMs: config.healthProbeRateMs,
     metricsIntervalMs: config.metricsIntervalMs,
+    idleTimeoutMinutes: config.idleTimeoutMinutes,
   });
 });
 

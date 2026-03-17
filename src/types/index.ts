@@ -477,6 +477,8 @@ export interface AppConfig {
   eventLogMaxEntries: number;
   /** Health probe interval in ms (default: 200, min: 100) */
   healthProbeRateMs: number;
+  /** Idle timeout in minutes (default: 20) */
+  idleTimeoutMinutes: number;
 }
 
 // =============================================================================

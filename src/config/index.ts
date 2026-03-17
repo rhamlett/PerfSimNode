@@ -74,6 +74,9 @@ export const config: AppConfig = {
 
   /** Health probe interval in milliseconds (default: 200ms, minimum: 100ms) */
   healthProbeRateMs: Math.max(100, parseIntEnv('HEALTH_PROBE_RATE', 200)),
+
+  /** Idle timeout in minutes (default: 20, min: 1, max: 1440) */
+  idleTimeoutMinutes: Math.min(1440, Math.max(1, parseIntEnv('IDLE_TIMEOUT_MINUTES', 20))),
 };
 
 /**

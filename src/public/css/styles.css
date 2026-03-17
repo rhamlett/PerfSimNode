@@ -47,11 +47,25 @@
 
 body {
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--color-bg);
+  background: #f2f5f2;
   color: var(--color-text);
   line-height: 1.5;
   min-height: 100vh;
   padding-top: 56px; /* offset for fixed header */
+}
+
+/* Dashboard page - 135deg diagonal gradient */
+body.page-dashboard {
+  background: linear-gradient(135deg, #e5f0e5 5%, #f2f5f2 50%, #cfe3cf 100%);
+  background-attachment: fixed;
+}
+
+/* Documentation/Diagnostics/Deployment pages - horizontal gradient */
+body.page-docs,
+body.page-diagnostics,
+body.page-deployment {
+  background: linear-gradient(90deg, #e5f0e5 10%, #f2f5f2 30%, #cfe3cf 50%);
+  background-attachment: fixed;
 }
 
 /* Anchor scroll offset – clears fixed header when navigating via sidebar links */
@@ -189,6 +203,14 @@ header nav {
 
 .hamburger-btn.active span:nth-child(3) {
   transform: rotate(-45deg) translate(4px, -4px);
+}
+
+/* Header Node.js logo */
+.header-logo {
+  width: 28px;
+  height: 28px;
+  color: white;
+  flex-shrink: 0;
 }
 
 /* Hamburger button attention indicator - subtle highlight on page load */

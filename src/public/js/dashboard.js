@@ -321,7 +321,19 @@ async function loadEventLog() {
   
   // Add startup messages
   addEventToLog({ level: 'success', message: 'Connected to metrics hub' }, true);
-  addEventToLog({ level: 'info', message: 'Dashboard initialized' }, true);
+  
+  // Fetch config for probe rate and idle timeout
+  let probeRate = 200;
+  let idleTimeout = 20;
+  try {
+    const configResponse = await fetch('/api/admin/config');
+    const configData = await configResponse.json();
+    probeRate = configData.latencyProbeIntervalMs || 200;
+    idleTimeout = configData.idleTimeoutMinutes || 20;
+  } catch (error) {
+    console.log('[Dashboard] Could not load config values for event log');
+  }
+  addEventToLog({ level: 'info', message: `Dashboard initialized (probe rate: ${probeRate}ms, idle timeout: ${idleTimeout}m)` }, true);
   
   // Add environment info message
   try {
