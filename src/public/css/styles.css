@@ -430,6 +430,20 @@ header nav {
   display: inline-block;
 }
 
+.status-idle {
+  background: transparent;
+  color: white;
+}
+
+.status-idle::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9e9e9e;
+  display: inline-block;
+}
+
 .status-reconnecting {
   background: transparent;
   color: white;
@@ -1505,8 +1519,47 @@ button:disabled {
 }
 
 .event-log-card h3 {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
   font-size: 1rem;
+}
+
+.event-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.copy-btn:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+.copy-btn:active {
+  transform: translateY(0);
+}
+
+.copy-btn.copied {
+  background: var(--color-success);
+}
+
+.copy-btn .copy-icon {
+  font-size: 0.875rem;
 }
 
 .event-log {

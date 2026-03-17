@@ -162,12 +162,21 @@ function onSimulationUpdate(simulation) {
 
 /**
  * Called when idle status changes.
- * This is informational - the connection itself wakes up the app.
+ * Updates the connection indicator to show idle state.
  */
 function onIdleStatusUpdate(status) {
   console.log('[Dashboard] Idle status:', status);
-  // The server wakes up when the dashboard connects, so we just log it
-  // The "waking up" event log message from the server will appear in the event log
+  const statusEl = document.getElementById('connection-status');
+  if (!statusEl) return;
+
+  if (status.isIdle) {
+    statusEl.textContent = 'Idle';
+    statusEl.className = 'status-idle';
+  } else {
+    // Restore to connected state when no longer idle
+    statusEl.textContent = 'Connected';
+    statusEl.className = 'status-connected';
+  }
 }
 
 /**
@@ -281,6 +290,39 @@ function renderEventLog() {
       </div>`;
     })
     .join('');
+}
+
+/**
+ * Copies the event log content to clipboard.
+ */
+function copyEventLog() {
+  const btn = document.getElementById('copy-event-log-btn');
+  if (!btn) return;
+
+  // Build text content from eventLog array
+  const textContent = eventLog
+    .map((event) => {
+      const time = formatUtcTime(new Date(event.timestamp));
+      const { icon } = getEventIconAndClass(event);
+      const iconPart = icon ? `${icon} ` : '';
+      return `${time} UTC  ${iconPart}${event.message}`;
+    })
+    .join('\n');
+
+  navigator.clipboard.writeText(textContent).then(() => {
+    // Show success feedback
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<span class="copy-icon">✓</span> Copied!';
+    btn.classList.add('copied');
+
+    // Reset after 2 seconds
+    setTimeout(() => {
+      btn.innerHTML = originalContent;
+      btn.classList.remove('copied');
+    }, 2000);
+  }).catch((err) => {
+    console.error('[Dashboard] Failed to copy event log:', err);
+  });
 }
 
 /**
@@ -1023,6 +1065,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+
+  // Copy Event Log Button
+  const copyEventLogBtn = document.getElementById('copy-event-log-btn');
+  if (copyEventLogBtn) {
+    copyEventLogBtn.addEventListener('click', copyEventLog);
+  }
 
   // CPU Form
   const cpuForm = document.getElementById('cpu-form');
