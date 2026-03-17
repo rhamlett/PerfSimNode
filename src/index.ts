@@ -308,15 +308,26 @@ async function main(): Promise<void> {
 
       console.log(`[PerfSimNode] Sidecar probe process started (PID: ${sidecarProcess.pid})`);
 
-      // Wire up idle state changes to sidecar process
-      IdleTimeoutService.onStateChange((isIdle) => {
-        if (sidecarProcess && sidecarProcess.connected) {
-          sidecarProcess.send({ type: 'idleStateChange', isIdle });
-        }
-      });
+      // Send current idle state to newly started sidecar immediately.
+      // This is critical: without this, a sidecar that restarts while the app
+      // is idle will start with isIdle=false and begin probing, falsely waking
+      // the app from the user's perspective.
+      const currentIsIdle = IdleTimeoutService.isIdle();
+      if (currentIsIdle) {
+        sidecarProcess.send({ type: 'idleStateChange', isIdle: true });
+        console.log('[PerfSimNode] Sent current idle state to new sidecar: idle=true');
+      }
     };
 
     let isShuttingDown = false;
+
+    // Wire up idle state changes to sidecar process.
+    // Registered ONCE outside of startSidecar to avoid callback accumulation on restarts.
+    IdleTimeoutService.onStateChange((isIdle) => {
+      if (sidecarProcess && sidecarProcess.connected) {
+        sidecarProcess.send({ type: 'idleStateChange', isIdle });
+      }
+    });
 
     // Graceful shutdown - kill sidecar when main process exits
     const shutdownSidecar = () => {
