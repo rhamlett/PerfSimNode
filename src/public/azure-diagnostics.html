@@ -420,7 +420,7 @@
       </a>
       <div class="sidebar-divider"></div>
       <div class="sidebar-section-label">External</div>
-      <a href="https://github.com/rhamlett/PerfSimNode" target="_blank" rel="noopener" class="sidebar-nav-item">
+      <a id="github-nav-item" href="#" target="_blank" rel="noopener" class="sidebar-nav-item hidden">
         <span class="nav-icon">🐙</span>
         <span class="nav-label">GitHub Repository<span class="nav-desc">Source code & issues</span></span>
       </a>
@@ -1196,6 +1196,18 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeSidebar();
     });
+
+    // Load GitHub link configuration
+    fetch('/api/health/github')
+      .then(r => r.json())
+      .then(data => {
+        const githubLink = document.getElementById('github-nav-item');
+        if (githubLink && data.url) {
+          githubLink.href = data.url;
+          githubLink.classList.remove('hidden');
+        }
+      })
+      .catch(() => {});
 
     // Sync build info to sidebar when it updates
     const buildInfoEl = document.getElementById('build-info');

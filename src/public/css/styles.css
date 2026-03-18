@@ -362,6 +362,10 @@ header nav {
   margin-top: 0.125rem;
 }
 
+.sidebar-nav-item.hidden {
+  display: none;
+}
+
 .sidebar-divider {
   height: 1px;
   background: rgba(255,255,255,0.1);

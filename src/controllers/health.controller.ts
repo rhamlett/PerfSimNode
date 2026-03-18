@@ -134,3 +134,29 @@ healthRouter.get('/footer', (_req: Request, res: Response) => {
 healthRouter.get('/probe', (_req: Request, res: Response) => {
   res.json({ ts: Date.now() });
 });
+
+/**
+ * GET /api/health/github
+ *
+ * Returns GitHub repository configuration from environment variables.
+ * If GITHUB_USER_NAME and GITHUB_REPO_NAME are both set, returns the URL.
+ * Otherwise returns null values so the client can hide the link.
+ *
+ * @route GET /api/health/github
+ * @returns {Object} GitHub repo URL or null
+ */
+healthRouter.get('/github', (_req: Request, res: Response) => {
+  const userName = process.env.GITHUB_USER_NAME || null;
+  const repoName = process.env.GITHUB_REPO_NAME || null;
+  
+  let url: string | null = null;
+  if (userName && repoName) {
+    url = `https://github.com/${userName}/${repoName}`;
+  }
+  
+  res.json({
+    url,
+    userName,
+    repoName,
+  });
+});

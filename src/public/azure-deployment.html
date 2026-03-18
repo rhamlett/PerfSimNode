@@ -315,7 +315,7 @@
       </a>
       <div class="sidebar-divider"></div>
       <div class="sidebar-section-label">External</div>
-      <a href="https://github.com/rhamlett/PerfSimNode" target="_blank" class="sidebar-nav-item">
+      <a id="github-nav-item" href="#" target="_blank" rel="noopener" class="sidebar-nav-item hidden">
         <span class="nav-icon">🐙</span>
         <span class="nav-label">GitHub Repository<span class="nav-desc">Source code & issues</span></span>
       </a>
@@ -664,6 +664,26 @@ az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GRO
   --settings 'PAGE_FOOTER=Created by &lt;a href="https://speckit.org/" target="_blank"&gt;SpecKit&lt;/a&gt; and &lt;a href="https://github.com/copilot" target="_blank"&gt;Github Copilot&lt;/a&gt; in collaboration with &lt;a href="mailto:rhamlett@microsoft.com"&gt;Richard Hamlett&lt;/a&gt;'</code></pre>
 
       <p><strong>Note:</strong> If <code>PAGE_FOOTER</code> is not set, the footer will display only the app description and build timestamp.</p>
+
+      <h3>GitHub Repository Link (GITHUB_USER_NAME, GITHUB_REPO_NAME)</h3>
+      <p>You can display a GitHub repository link in the navigation menu by setting two environment variables. If both are provided, the link will appear in the sidebar; otherwise it remains hidden.</p>
+      
+      <h4>Setting via Azure Portal</h4>
+      <ol>
+        <li>Navigate to your App Service in the Azure Portal</li>
+        <li>Go to <strong>Settings → Environment variables</strong></li>
+        <li>Click <strong>+ Add</strong> and create two variables:</li>
+        <li>Set Name: <code>GITHUB_USER_NAME</code> and Value: your GitHub username or organization (e.g., <code>rhamlett</code>)</li>
+        <li>Set Name: <code>GITHUB_REPO_NAME</code> and Value: your repository name (e.g., <code>PerfSimNode</code>)</li>
+        <li>Click <strong>Apply</strong> and then <strong>Confirm</strong> to restart the app</li>
+      </ol>
+
+      <h4>Setting via Azure CLI</h4>
+      <pre><code># Set the GitHub repository link configuration
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings GITHUB_USER_NAME=rhamlett GITHUB_REPO_NAME=PerfSimNode</code></pre>
+
+      <p><strong>Note:</strong> Both <code>GITHUB_USER_NAME</code> and <code>GITHUB_REPO_NAME</code> must be set for the GitHub link to appear. The link will point to <code>https://github.com/{GITHUB_USER_NAME}/{GITHUB_REPO_NAME}</code>.</p>
     </section>
 
     <section id="quick-reference" class="card">
@@ -813,6 +833,18 @@ echo "AZURE_SUBSCRIPTION_ID=$SUB_ID"</code></pre>
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeSidebar();
     });
+
+    // Load GitHub link configuration
+    fetch('/api/health/github')
+      .then(r => r.json())
+      .then(data => {
+        const githubLink = document.getElementById('github-nav-item');
+        if (githubLink && data.url) {
+          githubLink.href = data.url;
+          githubLink.classList.remove('hidden');
+        }
+      })
+      .catch(() => {});
 
     // Sync build info to sidebar when it updates
     const buildInfoEl = document.getElementById('build-info');
