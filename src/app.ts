@@ -45,6 +45,8 @@
 
 import express, { Application, Request, Response } from 'express';
 import path from 'path';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { healthRouter } from './controllers/health.controller';
@@ -90,6 +92,10 @@ export function createApp(): Application {
   app.use('/api/simulations/crash', crashRouter);
   app.use('/api/loadtest', loadtestRouter);
   app.use('/api', adminRouter); // Handles /api/simulations, /api/admin/status, /api/admin/events
+
+  // Swagger UI - API documentation
+  const swaggerDocument = YAML.load(path.join(__dirname, 'public', 'openapi.yaml'));
+  app.use('/swagger', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
   // 404 handler for unmatched routes
   app.use((_req: Request, res: Response) => {

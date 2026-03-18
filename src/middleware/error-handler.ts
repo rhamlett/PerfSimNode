@@ -100,9 +100,7 @@ export function errorHandler(
 ): void {
   // Log error for debugging
   console.error(`[ERROR] ${err.name}: ${err.message}`);
-  if (process.env.NODE_ENV !== 'production') {
-    console.error(err.stack);
-  }
+  console.error(err.stack);
 
   // Determine status code and build response
   let statusCode = 500;
