@@ -292,6 +292,14 @@ header nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sidebar-logo {
+  width: 28px;
+  height: 28px;
+  color: white;
+  flex-shrink: 0;
 }
 
 .sidebar-header h2 {
@@ -299,6 +307,7 @@ header nav {
   font-size: 1rem;
   font-weight: 600;
   margin: 0;
+  flex: 1;
 }
 
 .sidebar-close {
@@ -1039,9 +1048,9 @@ section h2, section h3 {
   box-shadow: var(--shadow-sm);
 }
 
-.simulation-badge.cpu { border: 2px solid #d83b01; }
-.simulation-badge.memory { border: 2px solid #0078d4; }
-.simulation-badge.eventloop { border: 2px solid #5c2d91; }
+.simulation-badge.cpu { border: 2px solid var(--color-cpu); }
+.simulation-badge.memory { border: 2px solid var(--color-memory); }
+.simulation-badge.eventloop { border: 2px solid var(--color-eventloop); }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.9); }
@@ -1056,9 +1065,9 @@ section h2, section h3 {
   animation: spin 1s linear infinite;
 }
 
-.simulation-badge.cpu .spinner { border-top-color: #d83b01; }
-.simulation-badge.memory .spinner { border-top-color: #0078d4; }
-.simulation-badge.eventloop .spinner { border-top-color: #5c2d91; }
+.simulation-badge.cpu .spinner { border-top-color: var(--color-cpu); }
+.simulation-badge.memory .spinner { border-top-color: var(--color-memory); }
+.simulation-badge.eventloop .spinner { border-top-color: var(--color-eventloop); }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
