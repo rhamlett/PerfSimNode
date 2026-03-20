@@ -127,7 +127,7 @@ const DEFAULT_REQUEST: LoadTestRequest = {
   baselineDelayMs: 1000,
   softLimit: 20,
   degradationFactor: 1000,
-  errorAboveConcurrent: 0,  // Disabled by default
+  errorAboveConcurrent: 20,  // Same as softLimit: errors start when system is degraded
   errorPercent: 20,
   suppressLogs: false,
 };

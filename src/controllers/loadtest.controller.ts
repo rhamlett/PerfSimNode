@@ -25,7 +25,7 @@
  *   - baselineDelayMs  (default: 1000)   → Minimum request duration
  *   - softLimit        (default: 20)     → Max concurrent before degradation
  *   - degradationFactor (default: 1000)  → Delay per request over limit
- *   - errorAboveConcurrent (default: 0)  → Concurrent threshold for random errors (0 = disabled)
+ *   - errorAboveConcurrent (default: 20) → Concurrent threshold for random errors (same as softLimit)
  *   - errorPercent     (default: 20)     → Percentage chance of error when above threshold
  *
  * @module controllers/loadtest
@@ -52,14 +52,14 @@ export const loadtestRouter = Router();
  * - baselineDelayMs (default: 1000)   Minimum request duration in ms
  * - softLimit     (default: 20)       Concurrent requests before degradation begins
  * - degradationFactor (default: 1000) Additional delay (ms) per request over soft limit
- * - errorAboveConcurrent (default: 0) Concurrent request threshold for error injection (0 = disabled)
+ * - errorAboveConcurrent (default: 20) Concurrent request threshold for error injection (same as softLimit)
  * - errorPercent  (default: 20)       Percentage chance (0-100) of error when above threshold
  *
  * CONCURRENCY-BASED ERROR INJECTION:
  * When concurrent requests exceed errorAboveConcurrent, each request has an errorPercent
  * chance of throwing a random exception. This simulates system instability under high load.
- * Set errorAboveConcurrent to 0 (default) to disable, or to a value like softLimit+5
- * to start injecting errors when the system is stressed.
+ * Default is 20 (same as softLimit), so errors begin when the system starts degrading.
+ * Set errorAboveConcurrent to 0 to disable error injection entirely.
  *
  * Total delay formula:
  *   totalDelay = baselineDelayMs + max(0, currentConcurrent - softLimit) * degradationFactor

@@ -555,14 +555,13 @@ export interface LoadTestRequest {
   /** Additional delay (ms) per request over soft limit. Default: 1000 */
   degradationFactor: number;
   /** 
-   * Concurrent request threshold above which random errors may be thrown. Default: 0 (disabled)
+   * Concurrent request threshold above which random errors may be thrown. Default: 20 (same as softLimit)
    * 
    * When the current concurrent request count exceeds this value, each request
    * has an errorPercent chance of throwing a random exception. This simulates
    * system instability under high load.
    * 
-   * Set to 0 to disable error injection. Set to a value like softLimit+5 to
-   * start injecting errors when the system is under stress.
+   * Set to 0 to disable error injection entirely.
    */
   errorAboveConcurrent: number;
   /** Percentage chance (0-100) of throwing error when above errorAboveConcurrent threshold. Default: 20 */

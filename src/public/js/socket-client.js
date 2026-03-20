@@ -164,6 +164,15 @@ function initSocket() {
       console.warn('[Socket] onIdleStatusUpdate is not defined!');
     }
   });
+
+  // Listen for slow request state updates from the server
+  // This syncs the overlay state across all connected dashboards
+  socket.on('slowRequestState', (data) => {
+    console.log('[Socket] Received slowRequestState:', data);
+    if (typeof onSlowRequestStateUpdate === 'function') {
+      onSlowRequestStateUpdate(data);
+    }
+  });
 }
 
 /**
@@ -200,6 +209,20 @@ function sendActivity() {
 function requestIdleStatus() {
   if (socket && isConnected) {
     socket.emit('getIdleStatus');
+  }
+}
+
+/**
+ * Sends slow request state to the server.
+ * This notifies the sidecar to reduce probe frequency during profiling.
+ * @param {boolean} active - Whether slow request simulation is active
+ * @param {number} completed - Number of completed requests
+ * @param {number} total - Total number of requests
+ * @param {number} activeCount - Number of currently active requests
+ */
+function sendSlowRequestState(active, completed = 0, total = 0, activeCount = 0) {
+  if (socket && isConnected) {
+    socket.emit('slowRequestState', { active, completed, total, activeCount });
   }
 }
 

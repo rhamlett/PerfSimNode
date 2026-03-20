@@ -10,23 +10,24 @@
  *
  * DATA FLOW:
  *   Service/Controller calls EventLogService.info/warn/error()
- *     → Entry added to ring buffer (oldest evicted if at capacity)
+ *     → Entry added to in-memory array
  *     → Entry printed to console (stdout/stderr based on level)
  *     → Entry broadcast to all WebSocket clients via broadcaster callback
  *
  * SINGLETON PATTERN:
  *   Single instance created at module load. All services share it.
  *
- * RING BUFFER:
- *   Fixed-size array (default 100 entries). When full, oldest entry is removed
- *   (FIFO). This prevents unbounded memory growth during long-running sessions.
+ * MEMORY:
+ *   Event log grows unbounded during runtime but clears when the process
+ *   restarts. This is acceptable since the dashboard clears on page refresh
+ *   and long-running sessions are not expected in this educational tool.
  *
  * PORTING NOTES:
- *   - Java: Use a ConcurrentLinkedDeque or ArrayDeque with size cap.
- *     Thread-safe wrapper needed if accessed from multiple threads.
- *   - Python: collections.deque(maxlen=100) — automatic oldest eviction.
- *   - C#: Channel<T> or ConcurrentQueue<T> with manual size management.
- *   - PHP: Simple array with array_shift() when over capacity.
+ *   - Java: Use ArrayList or ConcurrentLinkedDeque. Thread-safe wrapper
+ *     needed if accessed from multiple threads.
+ *   - Python: Simple list — no maxlen needed.
+ *   - C#: List<T> or ConcurrentQueue<T>.
+ *   - PHP: Simple array.
  *
  *   The broadcaster callback pattern decouples this service from Socket.IO.
  *   The main server wires it up at startup: EventLogService.setBroadcaster(fn).
@@ -37,20 +38,18 @@
 
 import { EventLogEntry, EventType, LogLevel, SimulationType } from '../types';
 import { generateId } from '../utils';
-import { config } from '../config';
 
 /**
  * Service for logging simulation and system events.
  *
- * Maintains a ring buffer with configurable maximum entries.
+ * Maintains an in-memory array of events that clears on process restart.
  */
 class EventLogServiceClass {
   private entries: EventLogEntry[] = [];
-  private maxEntries: number;
   private broadcaster: ((event: EventLogEntry) => void) | null = null;
 
   constructor() {
-    this.maxEntries = config.eventLogMaxEntries;
+    // No configuration needed - unlimited entries
   }
 
   /**
@@ -90,11 +89,6 @@ class EventLogServiceClass {
     };
 
     this.entries.push(entry);
-
-    // Trim to max entries (ring buffer behavior)
-    if (this.entries.length > this.maxEntries) {
-      this.entries.shift();
-    }
 
     // Also log to console for visibility
     const consoleMessage = `[${entry.timestamp.toISOString()}] [${entry.level.toUpperCase()}] ${event}: ${message}`;

@@ -288,6 +288,10 @@
         <span class="nav-icon">☁️</span>
         <span class="nav-label">Azure Diagnostics<span class="nav-desc">Diagnose issues in App Service</span></span>
       </a>
+      <a href="/azure-load-testing.html" class="sidebar-nav-item">
+        <span class="nav-icon">📈</span>
+        <span class="nav-label">Azure Load Testing<span class="nav-desc">Load test endpoint & parameters</span></span>
+      </a>
       <a href="/azure-deployment.html" class="sidebar-nav-item">
         <span class="nav-icon">🚀</span>
         <span class="nav-label">Deploy to Azure<span class="nav-desc">GitHub Actions + OIDC setup</span></span>
@@ -317,54 +321,117 @@
     </div>
 
     <section id="overview" class="docs-section">
-      <h2>Overview</h2>
-      <p>PerfSimNode is an educational tool designed to help Azure support engineers practice diagnosing common Node.js performance problems. It intentionally generates controllable performance issues that mimic real-world scenarios.</p>
+      <h2>🎯 Performance Problem Simulator</h2>
+      <p>An educational Azure App Service application that intentionally creates performance problems for learning and demonstration purposes.</p>
       
-      <h3>Features</h3>
+      <h3>Purpose</h3>
+      <p>This application is designed to help Azure App Service Support engineers and Technical Advisors:</p>
+      
+      <div class="purpose-grid">
+        <div class="purpose-card">
+          <div class="purpose-icon">📖</div>
+          <div class="purpose-title">Learn</div>
+          <p class="purpose-desc">How to diagnose common performance issues in Azure App Service</p>
+        </div>
+        <div class="purpose-card">
+          <div class="purpose-icon">🔧</div>
+          <div class="purpose-title">Practice</div>
+          <p class="purpose-desc">Using Azure diagnostics and monitoring tools</p>
+        </div>
+        <div class="purpose-card">
+          <div class="purpose-icon">🎭</div>
+          <div class="purpose-title">Demonstrate</div>
+          <p class="purpose-desc">Performance anti-patterns in a controlled environment</p>
+        </div>
+        <div class="purpose-card">
+          <div class="purpose-icon">👥</div>
+          <div class="purpose-title">Train</div>
+          <p class="purpose-desc">Support teams on identifying and resolving performance problems</p>
+        </div>
+      </div>
+
+      <div class="danger-box">
+        <p><strong>⚠️ Warning - This application intentionally creates performance problems!</strong></p>
+        <ul>
+          <li><strong>🔥 CPU stress</strong> - Spawns child processes running crypto operations to consume CPU cores</li>
+          <li><strong>📊 Memory pressure</strong> - Allocates and retains large buffers to increase memory usage</li>
+          <li><strong>🟣 Event loop blocking</strong> - Executes synchronous operations that block the main thread</li>
+          <li><strong>🐢 Slow requests</strong> - Generates long-running requests for profiler analysis</li>
+          <li><strong>💥 Application crashes</strong> - Triggers fatal errors for testing Azure Crash Monitoring</li>
+          <li><strong>❌ Failed requests</strong> - Generates HTTP 5xx errors for testing AppLens and Application Insights</li>
+        </ul>
+        <p style="margin-top: 1rem;"><strong>Only deploy this application in isolated, non-production environments.</strong></p>
+      </div>
+    </section>
+
+    <section id="architecture" class="docs-section">
+      <h2>Architecture</h2>
+      <p>The application runs as a Node.js process with Express.js, Socket.IO for real-time metrics, and in-memory state. A sidecar process handles latency probing to avoid measuring overhead on the main event loop.</p>
+      
+      <h3>Key Components</h3>
       <ul>
-        <li><strong>CPU Stress</strong> - Generate high CPU usage at configurable percentages</li>
-        <li><strong>Memory Pressure</strong> - Allocate and retain memory to simulate leaks</li>
-        <li><strong>Event Loop Blocking</strong> - Block the Node.js event loop with synchronous operations</li>
-        <li><strong>Slow Requests</strong> - Simulate slow HTTP responses</li>
-        <li><strong>Failed Requests</strong> - Generate HTTP 5xx errors for testing error monitoring</li>
-        <li><strong>Crash Simulation</strong> - Trigger unhandled exceptions or OOM conditions</li>
+        <li><strong>Main Process</strong> - Express.js server with Socket.IO for real-time dashboard updates</li>
+        <li><strong>Sidecar Process</strong> - Separate process that measures request latency by probing the app through Azure's frontend</li>
+        <li><strong>Worker Processes</strong> - CPU stress and slow request simulations use child processes to avoid blocking the main event loop</li>
       </ul>
 
-      <h3>Architecture</h3>
-      <p>The application runs as a single Node.js process with Express.js, Socket.IO for real-time metrics, and in-memory state.</p>
+      <h3>Source Structure</h3>
       <pre><code>src/
+├── app.ts                      # Express app configuration
+├── index.ts                    # Entry point, starts server & sidecar
+├── instrumentation.ts          # OpenTelemetry / App Insights setup
+│
 ├── controllers/                # API endpoints
 │   ├── admin.controller.ts
 │   ├── cpu.controller.ts
 │   ├── crash.controller.ts
 │   ├── eventloop.controller.ts
+│   ├── failed-request.controller.ts
 │   ├── health.controller.ts
+│   ├── loadtest.controller.ts
 │   ├── memory.controller.ts
 │   ├── metrics.controller.ts
 │   └── slow.controller.ts
 │
 ├── services/                   # Business logic
-│   ├── cpu-stress.service.ts
+│   ├── cpu-stress.service.ts   # Spawns cpu-worker.ts processes
+│   ├── cpu-worker.ts           # Child process for CPU burning
 │   ├── crash.service.ts
 │   ├── event-log.service.ts
 │   ├── eventloop-block.service.ts
+│   ├── failed-request.service.ts
+│   ├── idle-timeout.service.ts # Suspends probes when idle
+│   ├── load-test.service.ts
 │   ├── memory-pressure.service.ts
 │   ├── metrics.service.ts
 │   ├── simulation-tracker.service.ts
+│   ├── slow-request-worker.ts  # Worker thread for slow requests
 │   └── slow-request.service.ts
 │
+├── sidecar/                    # Latency measurement
+│   └── probe-sidecar.ts        # Probes app via Azure frontend
+│
 ├── middleware/                 # Express middleware
-├── types/                      # TypeScript interfaces
+│   ├── error-handler.ts
+│   ├── request-logger.ts
+│   └── validation.ts
+│
 ├── config/                     # Configuration
+├── types/                      # TypeScript interfaces
+├── utils/                      # Utility functions
 │
 └── public/                     # Static dashboard
     ├── index.html              # Main dashboard
     ├── docs.html               # Documentation
-    ├── azure-diagnostics.html  # Diagnostics guide
+    ├── azure-diagnostics.html  # Azure diagnostics guide
+    ├── azure-deployment.html   # Deployment guide
+    ├── azure-load-testing.html # Load testing guide
+    ├── openapi.yaml            # OpenAPI specification
+    ├── css/styles.css          # Stylesheet
     └── js/
-        ├── charts.js           # Real-time charts
-        ├── dashboard.js        # UI interactions
-        └── socket-client.js    # WebSocket client</code></pre>
+        ├── charts.js           # Real-time Chart.js charts
+        ├── dashboard.js        # UI interactions & controls
+        └── socket-client.js    # Socket.IO client</code></pre>
     </section>
 
     <section id="cpu-stress" class="docs-section">
@@ -643,213 +710,6 @@ GET /api/simulations/slow?delaySeconds=10&blockingPattern=worker</code></pre>
       </ul>
     </section>
 
-    <section id="diagnostics" class="docs-section">
-      <h2>Diagnostics</h2>
-      <p>For comprehensive guidance on diagnosing Node.js performance issues, see the dedicated <a href="/azure-diagnostics.html"><strong>Azure Diagnostics Guide</strong></a>.</p>
-      
-      <h3>What's Covered</h3>
-      <ul>
-        <li><strong>Understanding Metrics</strong> - What CPU, memory, event loop lag, and latency metrics mean</li>
-        <li><strong>Node.js vs .NET</strong> - Key differences in concurrency models and diagnostic approaches</li>
-        <li><strong>Diagnostic Scenarios</strong> - Step-by-step walkthroughs for each simulation type</li>
-        <li><strong>Azure Tools</strong> - App Service Diagnostics, Application Insights, Kudu console</li>
-        <li><strong>Linux Tools</strong> - Process monitoring, Node.js debugging, network analysis</li>
-        <li><strong>AppLens Queries</strong> - Ready-to-use KQL queries for Azure diagnostics</li>
-      </ul>
-      
-      <div class="info-box">
-        <strong>💡 Tip:</strong> Open the <a href="/azure-diagnostics.html">Azure Diagnostics Guide</a> in a separate tab while running simulations to follow along with the diagnostic workflows.
-      </div>
-    </section>
-
-    <section id="api-reference" class="docs-section">
-      <h2>API Reference</h2>
-      
-      <h3>Health & Metrics</h3>
-      <table>
-        <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
-        <tr><td><code>/api/health</code></td><td>GET</td><td>Health check with uptime</td></tr>
-        <tr><td><code>/api/metrics/probe</code></td><td>GET</td><td>Lightweight probe for latency monitoring</td></tr>
-        <tr><td><code>/api/metrics</code></td><td>GET</td><td>Current system metrics (CPU, memory, event loop)</td></tr>
-      </table>
-      
-      <h3>Simulations</h3>
-      <table>
-        <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
-        <tr><td><code>/api/simulations</code></td><td>GET</td><td>List all active simulations</td></tr>
-        <tr><td><code>/api/simulations/cpu</code></td><td>POST</td><td>Start CPU stress (child processes)</td></tr>
-        <tr><td><code>/api/simulations/cpu/:id</code></td><td>DELETE</td><td>Stop CPU stress</td></tr>
-        <tr><td><code>/api/simulations/memory</code></td><td>POST</td><td>Allocate memory</td></tr>
-        <tr><td><code>/api/simulations/memory/:id</code></td><td>DELETE</td><td>Release memory</td></tr>
-        <tr><td><code>/api/simulations/eventloop</code></td><td>POST</td><td>Block event loop</td></tr>
-        <tr><td><code>/api/simulations/slow</code></td><td>GET</td><td>Slow request with delay</td></tr>
-        <tr><td><code>/api/simulations/failed</code></td><td>POST</td><td>Generate HTTP 5xx errors</td></tr>
-      </table>
-      
-      <h3>Crash Endpoints</h3>
-      <table>
-        <tr><th>Endpoint</th><th>Method</th><th>Crash Type</th></tr>
-        <tr><td><code>/api/simulations/crash/failfast</code></td><td>POST</td><td>FailFast (SIGABRT)</td></tr>
-        <tr><td><code>/api/simulations/crash/stackoverflow</code></td><td>POST</td><td>Stack overflow</td></tr>
-        <tr><td><code>/api/simulations/crash/exception</code></td><td>POST</td><td>Unhandled exception</td></tr>
-        <tr><td><code>/api/simulations/crash/memory</code></td><td>POST</td><td>Memory exhaustion</td></tr>
-      </table>
-      
-      <h3>Admin</h3>
-      <table>
-        <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
-        <tr><td><code>/api/admin/status</code></td><td>GET</td><td>Admin status with configuration</td></tr>
-        <tr><td><code>/api/admin/events</code></td><td>GET</td><td>Event log (limit via ?limit=N)</td></tr>
-        <tr><td><code>/api/admin/system-info</code></td><td>GET</td><td>System info (CPUs, memory, SKU)</td></tr>
-      </table>
-
-      <h3>WebSocket Events (Socket.IO)</h3>
-      <p>Connect via Socket.IO to receive real-time updates:</p>
-      <table>
-        <tr><th>Event</th><th>Frequency</th><th>Description</th></tr>
-        <tr><td><code>metrics</code></td><td>1000ms</td><td>System metrics (CPU, memory, event loop)</td></tr>
-        <tr><td><code>probeLatency</code></td><td>250ms / 2500ms</td><td>Request latency measurements</td></tr>
-        <tr><td><code>event</code></td><td>On occurrence</td><td>Simulation and system events</td></tr>
-        <tr><td><code>simulation</code></td><td>On status change</td><td>Simulation state updates</td></tr>
-      </table>
-      <p><em>Probe frequency automatically increases to 2500ms during slow request testing for cleaner diagnostics.</em></p>
-    </section>
-
-    <section id="load-testing" class="docs-section">
-      <h2>Azure Load Testing</h2>
-      <p>The Performance Problem Simulator includes a dedicated load testing endpoint designed for use with Azure Load Testing. This endpoint simulates realistic application behavior that degrades gracefully under load.</p>
-
-      <h3>Load Test Endpoint</h3>
-      <p>Unlike other simulation endpoints, this one does NOT appear in the dashboard UI and is meant for automated load testing scenarios only.</p>
-      <table>
-        <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
-        <tr><td><code>/api/loadtest</code></td><td>GET</td><td>Execute load test with query parameters</td></tr>
-        <tr><td><code>/api/loadtest/stats</code></td><td>GET</td><td>Get current concurrent request statistics</td></tr>
-      </table>
-
-      <h3>Usage</h3>
-      <p>Use the <code>GET /api/loadtest</code> endpoint directly in Azure Load Testing &mdash; no JMeter script required:</p>
-      <pre><code># With defaults
-https://your-app.azurewebsites.net/api/loadtest
-
-# Custom parameters
-https://your-app.azurewebsites.net/api/loadtest?workIterations=500&amp;bufferSizeKb=10000
-
-# Thread pool only (no CPU work)
-https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeKb=100</code></pre>
-
-      <div class="info-box">
-        <p><strong>Note:</strong> Actual response times will vary based on your Azure App Service tier, current load, and other factors. Use Azure Load Testing to establish baseline performance for your specific environment. These example scenarios, and the defaults, are for a Premium0V3 worker. Any other SKU or worker size will need individual tuning.</p>
-      </div>
-
-      <h3>Query Parameters</h3>
-      <table>
-        <tr><th>Parameter</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>workIterations</code></td><td>700</td><td>CPU spin iterations per work cycle (ms per cycle = workIterations/10)</td></tr>
-        <tr><td><code>bufferSizeKb</code></td><td>10000</td><td>Memory buffer held for entire request duration (KB)</td></tr>
-        <tr><td><code>baselineDelayMs</code></td><td>1000</td><td>Minimum request duration (ms)</td></tr>
-        <tr><td><code>softLimit</code></td><td>20</td><td>Concurrent requests before degradation begins</td></tr>
-        <tr><td><code>degradationFactor</code></td><td>1000</td><td>Delay ms added per request over soft limit</td></tr>
-        <tr><td><code>errorAboveConcurrent</code></td><td>0</td><td>Concurrent request threshold for error injection (0 = disabled)</td></tr>
-        <tr><td><code>errorPercent</code></td><td>20</td><td>Percentage chance (0-100) of error when above threshold</td></tr>
-      </table>
-      <p><small><strong>Concurrency-based errors:</strong> When concurrent requests exceed <code>errorAboveConcurrent</code>, each request has an <code>errorPercent</code>% chance of throwing a random exception. Set <code>errorAboveConcurrent=0</code> (default) to disable.</small></p>
-
-      <h3>Behavior (Sustained Resource Consumption)</h3>
-      <ul>
-        <li><strong>Memory:</strong> Allocated up front and held for entire request duration (visible in Azure Memory metrics)</li>
-        <li><strong>CPU:</strong> Interleaved work cycles (spin loop + sleep) creating sustained CPU usage per active request</li>
-        <li><strong>Degradation:</strong> Blocking delay = baselineDelayMs + max(0, concurrent - softLimit) &times; degradationFactor</li>
-        <li><strong>Random Errors:</strong> When concurrent requests exceed <code>errorAboveConcurrent</code>, each request has an <code>errorPercent</code>% chance (default 20%) of throwing a random exception. Set <code>errorAboveConcurrent</code> to your <code>softLimit</code> value to trigger errors when the system is under load.</li>
-        <li><strong>Extreme load:</strong> Can reach Azure's 230-second timeout threshold</li>
-      </ul>
-
-      <h3>What It Tests</h3>
-      <ul>
-        <li><strong>CPU</strong> &mdash; Sustained spin loop cycles per active thread</li>
-        <li><strong>Memory</strong> &mdash; Buffers held for entire request duration</li>
-        <li><strong>Event Loop</strong> &mdash; Graceful degradation under concurrent load</li>
-        <li><strong>Error Injection</strong> &mdash; Random exceptions when concurrent requests exceed threshold (<code>errorPercent</code>% probability)</li>
-      </ul>
-
-      <div class="info-box">
-        <strong>&#x1f4d8; Full Documentation:</strong> See the <a href="/azure-diagnostics.html#load-testing">Azure Diagnostics Guide</a> for detailed setup instructions, tuning scenarios, and diagnostic techniques.
-      </div>
-    </section>
-
-    <section id="environment-variables" class="docs-section">
-      <h2>Environment Variables</h2>
-      <p>The following environment variables can be configured to customize application behavior. These are optional and primarily useful when deploying to Azure App Service.</p>
-
-      <table class="docs-table">
-        <thead>
-          <tr>
-            <th>Variable</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>HEALTH_PROBE_RATE</code></td>
-            <td>Health probe interval in milliseconds (default: 200, minimum: 100). Lower values provide more granular latency data but increase overhead during profiling.</td>
-          </tr>
-          <tr>
-            <td><code>IDLE_TIMEOUT_MINUTES</code></td>
-            <td>Minutes of inactivity before suspending health probes (default: 20). Reduces network traffic and Application Insights telemetry when idle.</td>
-          </tr>
-          <tr>
-            <td><code>PAGE_FOOTER</code></td>
-            <td>Custom HTML footer text displayed at the bottom of the dashboard. Supports HTML links for attribution.</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3 id="health-probe-rate">HEALTH_PROBE_RATE</h3>
-      <p>Controls how frequently the sidecar process probes the main application for latency measurement. Lower values provide more granular data but can cause probe overlaps during profiling.</p>
-      <ul>
-        <li><strong>Default:</strong> 200ms (5 probes/second)</li>
-        <li><strong>Minimum:</strong> 100ms (values below this are clamped)</li>
-        <li><strong>Chart updates:</strong> The latency chart always updates at 100ms using interpolation</li>
-      </ul>
-
-      <h4>Setting via Azure CLI:</h4>
-      <pre><code>az webapp config appsettings set \
-    --resource-group rg-perfsimnode \
-    --name perfsimnode \
-    --settings HEALTH_PROBE_RATE=400</code></pre>
-
-      <h3 id="idle-timeout">IDLE_TIMEOUT_MINUTES</h3>
-      <p>When the application is idle (no dashboard connections or load test requests), health probes are automatically suspended to reduce unnecessary network traffic to Azure's frontend, AppLens, and Application Insights.</p>
-      <ul>
-        <li><strong>Default:</strong> 20 minutes</li>
-        <li><strong>Wake-up:</strong> Simply reload the dashboard or send any request</li>
-        <li><strong>Activity sources:</strong> Dashboard connections, load test requests</li>
-      </ul>
-
-      <h4>Setting via Azure CLI:</h4>
-      <pre><code>az webapp config appsettings set \
-    --resource-group rg-perfsimnode \
-    --name perfsimnode \
-    --settings IDLE_TIMEOUT_MINUTES=30</code></pre>
-
-      <h3 id="page-footer">PAGE_FOOTER</h3>
-      <p>The <code>PAGE_FOOTER</code> environment variable allows you to customize the footer credits displayed on the dashboard. This is useful for attributing tools, teams, or linking to relevant resources.</p>
-
-      <h4>Example Value:</h4>
-      <pre><code>Created by &lt;a href="https://speckit.org/" target="_blank"&gt;SpecKit&lt;/a&gt; and &lt;a href="https://github.com/copilot" target="_blank"&gt;Github Copilot&lt;/a&gt;</code></pre>
-
-      <h4>Setting via Azure CLI:</h4>
-      <pre><code>az webapp config appsettings set \
-    --resource-group rg-perfsimnode \
-    --name perfsimnode \
-    --settings PAGE_FOOTER='Created by &lt;a href="https://speckit.org/" target="_blank"&gt;SpecKit&lt;/a&gt; and &lt;a href="https://github.com/copilot" target="_blank"&gt;Github Copilot&lt;/a&gt;'</code></pre>
-
-      <h4>Setting Locally:</h4>
-      <pre><code>export PAGE_FOOTER='Created by &lt;a href="https://speckit.org/" target="_blank"&gt;SpecKit&lt;/a&gt; and &lt;a href="https://github.com/copilot" target="_blank"&gt;Github Copilot&lt;/a&gt;'</code></pre>
-
-      <p>The footer is retrieved via the <code>/api/health/footer</code> endpoint and rendered in the dashboard's footer section. If <code>PAGE_FOOTER</code> is not set, the footer credits section is hidden.</p>
-    </section>
-
     </main>
     </div><!-- /.doc-main -->
 
@@ -861,6 +721,9 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
           <ul>
             <li class="doc-toc-item">
               <a href="#overview"><span class="toc-icon">📋</span>Overview</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#architecture"><span class="toc-icon">🏗️</span>Architecture</a>
             </li>
             <li class="doc-toc-divider" aria-hidden="true"></li>
             <li class="doc-toc-section-label">Simulations</li>
@@ -881,20 +744,6 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&amp;bufferSizeK
             </li>
             <li class="doc-toc-item">
               <a href="#crash-simulation"><span class="toc-icon">💥</span>Crash Simulation</a>
-            </li>
-            <li class="doc-toc-divider" aria-hidden="true"></li>
-            <li class="doc-toc-section-label">Reference</li>
-            <li class="doc-toc-item">
-              <a href="#diagnostics"><span class="toc-icon">🔬</span>Diagnostics</a>
-            </li>
-            <li class="doc-toc-item">
-              <a href="#api-reference"><span class="toc-icon">📋</span>API Reference</a>
-            </li>
-            <li class="doc-toc-item">
-              <a href="#load-testing"><span class="toc-icon">📈</span>Azure Load Testing</a>
-            </li>
-            <li class="doc-toc-item">
-              <a href="#environment-variables"><span class="toc-icon">⚙️</span>Environment Variables</a>
             </li>
           </ul>
         </nav>

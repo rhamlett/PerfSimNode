@@ -29,7 +29,7 @@
  * STATE MANAGEMENT:
  *   - activeSimulations.cpu: Map<id, SimulationInfo> for CPU simulations
  *   - activeSimulations.memory: Map<id, SimulationInfo> for memory allocations
- *   - eventLog: Array of log entries (ring buffer, max 100)
+ *   - eventLog: Array of log entries (clears on page refresh)
  *   - lastProcessId: For crash/restart detection
  *
  * PORTING NOTES:
@@ -47,9 +47,8 @@ const activeSimulations = {
   memory: new Map(),
 };
 
-// Event log entries
+// Event log entries (unlimited, clears on page refresh)
 const eventLog = [];
-const maxEventLogEntries = 100;
 
 // Track if initial load has happened
 let initialLoadComplete = false;
@@ -185,6 +184,29 @@ function onIdleStatusUpdate(status) {
 }
 
 /**
+ * Called when slow request state changes (synced from server).
+ * Updates the overlay to reflect the current slow request testing state.
+ * This ensures all connected dashboards show the same overlay.
+ */
+function onSlowRequestStateUpdate(data) {
+  console.log('[Dashboard] Slow request state received:', JSON.stringify(data));
+  const statusEl = document.getElementById('slow-status');
+  if (!statusEl) return;
+
+  if (data.active) {
+    statusEl.innerHTML = `
+      <div class="slow-status-message">Latency probes reduced during Slow Request testing to ensure clean Node.js Profiler diagnostics.</div>
+      <div class="slow-status-progress">Running: ${data.completed || 0}/${data.total || 0} completed, ${data.activeCount || 0} active</div>
+    `;
+    statusEl.className = 'slow-status active';
+  } else if (!slowRequestRunning) {
+    // Only clear if we're not running locally (avoid race conditions)
+    statusEl.innerHTML = '';
+    statusEl.className = 'slow-status';
+  }
+}
+
+/**
  * Gets the current UTC time as a formatted string (HH:MM:SS)
  * All times use UTC to match Azure diagnostics data.
  */
@@ -215,9 +237,6 @@ function addEventToLog(event, skipRender = false) {
   };
   
   eventLog.unshift(logEntry);
-  if (eventLog.length > maxEventLogEntries) {
-    eventLog.pop();
-  }
   if (!skipRender) {
     renderEventLog();
   }
@@ -769,6 +788,11 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
   
   const patternDesc = getPatternDescription(blockingPattern);
   
+  // Notify server to reduce probe frequency during profiling
+  if (typeof sendSlowRequestState === 'function') {
+    sendSlowRequestState(true, 0, maxRequests, 0);
+  }
+  
   // Log simulation start
   addEventToLog({
     timestamp: new Date().toISOString(),
@@ -783,11 +807,18 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
   let totalLatency = 0;
   const pendingRequests = [];
   
-  // Update status display
+  // Update status display with overlay message
   const updateStatus = () => {
     if (statusEl) {
-      statusEl.textContent = `Running: ${completedRequests}/${maxRequests} completed, ${activeRequests} active`;
+      statusEl.innerHTML = `
+        <div class="slow-status-message">Latency probes reduced during Slow Request testing to ensure clean Node.js Profiler diagnostics.</div>
+        <div class="slow-status-progress">Running: ${completedRequests}/${maxRequests} completed, ${activeRequests} active</div>
+      `;
       statusEl.className = 'slow-status active';
+    }
+    // Notify server of updated progress
+    if (typeof sendSlowRequestState === 'function') {
+      sendSlowRequestState(true, completedRequests, maxRequests, activeRequests);
     }
   };
   
@@ -883,9 +914,14 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
   slowRequestRunning = false;
   slowRequestAbortController = null;
   
-  if (statusEl && !statusEl.textContent.includes('Stopped')) {
+  // Notify server to restore normal probe frequency
+  if (typeof sendSlowRequestState === 'function') {
+    sendSlowRequestState(false, completedRequests, maxRequests, 0);
+  }
+  
+  if (statusEl && !statusEl.innerHTML.includes('Stopped')) {
     const avgLatency = completedRequests > 0 ? (totalLatency / completedRequests / 1000).toFixed(1) : 0;
-    statusEl.textContent = '';
+    statusEl.innerHTML = '';
     statusEl.className = 'slow-status';
     
     // Log completion summary
@@ -916,6 +952,11 @@ function stopSlowRequests() {
     
     slowRequestRunning = false;
     
+    // Notify server to restore normal probe frequency
+    if (typeof sendSlowRequestState === 'function') {
+      sendSlowRequestState(false, 0, 0, 0);
+    }
+    
     // Log the stop
     addEventToLog({
       timestamp: new Date().toISOString(),
@@ -927,7 +968,7 @@ function stopSlowRequests() {
     // Update status
     const statusEl = document.getElementById('slow-status');
     if (statusEl) {
-      statusEl.textContent = 'Stopped by user';
+      statusEl.innerHTML = 'Stopped by user';
       statusEl.className = 'slow-status';
     }
   }

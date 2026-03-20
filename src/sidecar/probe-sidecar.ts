@@ -88,6 +88,12 @@ let loadTestConcurrent = 0;
 // Idle state - when true, probes are suspended to reduce unnecessary traffic
 let isIdle = false;
 
+// Slow request testing state - when true, probe interval increases to reduce noise during profiling
+let slowRequestActive = false;
+const SLOW_REQUEST_PROBE_INTERVAL_MS = 5000; // 5 second interval during slow request testing
+let currentProbeInterval = PROBE_INTERVAL_MS;
+let probeIntervalTimer: ReturnType<typeof setInterval> | null = null;
+
 // Probe statistics
 let probeCount = 0;
 let probeErrors = 0;
@@ -98,7 +104,7 @@ let lastProbeLatency = 0;
  * Handle messages from the parent process (main app).
  * Currently used to receive idle state change notifications.
  */
-process.on('message', (msg: { type: string; isIdle?: boolean }) => {
+process.on('message', (msg: { type: string; isIdle?: boolean; slowRequestActive?: boolean }) => {
   if (msg.type === 'idleStateChange' && typeof msg.isIdle === 'boolean') {
     const wasIdle = isIdle;
     isIdle = msg.isIdle;
@@ -107,6 +113,19 @@ process.on('message', (msg: { type: string; isIdle?: boolean }) => {
       console.log('[Sidecar] Entering idle mode - probes suspended');
     } else if (!isIdle && wasIdle) {
       console.log('[Sidecar] Exiting idle mode - probes resumed');
+    }
+  }
+  
+  if (msg.type === 'slowRequestStateChange' && typeof msg.slowRequestActive === 'boolean') {
+    const wasActive = slowRequestActive;
+    slowRequestActive = msg.slowRequestActive;
+    
+    if (slowRequestActive && !wasActive) {
+      console.log('[Sidecar] Slow request testing active - reducing probe frequency to 5000ms');
+      restartProbeLoop(SLOW_REQUEST_PROBE_INTERVAL_MS);
+    } else if (!slowRequestActive && wasActive) {
+      console.log('[Sidecar] Slow request testing ended - restoring normal probe frequency');
+      restartProbeLoop(PROBE_INTERVAL_MS);
     }
   }
 });
@@ -152,14 +171,15 @@ function sendToParent(type: string, data: Record<string, unknown>): void {
  *   - Python: asyncio loop or threading.Timer in a loop
  *   - C#: System.Threading.Timer or PeriodicTimer (.NET 6+)
  */
-function startProbeLoop(): void {
+function startProbeLoop(intervalMs: number = PROBE_INTERVAL_MS): void {
+  currentProbeInterval = intervalMs;
   const probeTarget = useExternalProbe 
     ? `https://${probeHostname}/api/metrics/probe (through Azure frontend)`
     : `http://localhost:${MAIN_APP_PORT}/api/metrics/probe`;
   console.log(`[Sidecar] Monitoring main app at ${probeTarget}`);
-  console.log(`[Sidecar] Probe interval: ${PROBE_INTERVAL_MS}ms, timeout: ${PROBE_TIMEOUT_MS}ms`);
+  console.log(`[Sidecar] Probe interval: ${intervalMs}ms, timeout: ${PROBE_TIMEOUT_MS}ms`);
 
-  setInterval(() => {
+  probeIntervalTimer = setInterval(() => {
     // Skip probes when app is idle to reduce network traffic and AppLens/App Insights noise
     if (isIdle) {
       probesSkipped++;
@@ -235,13 +255,29 @@ function startProbeLoop(): void {
         loadTestConcurrent,
       });
     });
-  }, PROBE_INTERVAL_MS);
+  }, intervalMs);
 
   // Log probe stats every 60 seconds
   setInterval(() => {
     const idleStatus = isIdle ? ' [IDLE - probes suspended]' : '';
-    console.log(`[Sidecar] Probes: ${probeCount} ok, ${probeErrors} errors, ${probesSkipped} skipped (idle), last: ${lastProbeLatency}ms${idleStatus}`);
+    const slowRequestStatus = slowRequestActive ? ' [SLOW REQUEST - reduced frequency]' : '';
+    console.log(`[Sidecar] Probes: ${probeCount} ok, ${probeErrors} errors, ${probesSkipped} skipped (idle), last: ${lastProbeLatency}ms, interval: ${currentProbeInterval}ms${idleStatus}${slowRequestStatus}`);
   }, 60000);
+}
+
+/**
+ * Restarts the probe loop with a new interval.
+ * Used to change probe frequency during slow request testing.
+ *
+ * @param newIntervalMs - New probe interval in milliseconds
+ */
+function restartProbeLoop(newIntervalMs: number): void {
+  if (probeIntervalTimer) {
+    clearInterval(probeIntervalTimer);
+    probeIntervalTimer = null;
+  }
+  console.log(`[Sidecar] Restarting probe loop with ${newIntervalMs}ms interval`);
+  startProbeLoop(newIntervalMs);
 }
 
 // Start the probe loop

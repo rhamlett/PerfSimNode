@@ -159,6 +159,17 @@ async function main(): Promise<void> {
     socket.on('getIdleStatus', () => {
       socket.emit('idleStatus', IdleTimeoutService.getStatus());
     });
+
+    // Handle slow request state changes from frontend
+    // Relays to sidecar to reduce probe frequency during profiling
+    socket.on('slowRequestState', (data: { active: boolean; completed?: number; total?: number; activeCount?: number }) => {
+      console.log(`[Socket.IO] Slow request state change: active=${data.active}`);
+      io.emit('slowRequestState', data);  // Broadcast to all clients for overlay sync
+      // Note: sidecar message is sent from a closure that captures sidecarProcess
+      if (typeof (global as Record<string, unknown>).__notifySidecarSlowRequestState === 'function') {
+        ((global as Record<string, unknown>).__notifySidecarSlowRequestState as (active: boolean) => void)(data.active);
+      }
+    });
   });
 
   // --------------------------------------------------------------------------
@@ -341,6 +352,14 @@ async function main(): Promise<void> {
     process.on('exit', shutdownSidecar);
 
     startSidecar();
+
+    // Set up global function for socket handler to relay slow request state to sidecar
+    (global as Record<string, unknown>).__notifySidecarSlowRequestState = (active: boolean) => {
+      if (sidecarProcess && sidecarProcess.connected) {
+        sidecarProcess.send({ type: 'slowRequestStateChange', slowRequestActive: active });
+        console.log(`[PerfSimNode] Sent slow request state to sidecar: active=${active}`);
+      }
+    };
 
     // Start idle timeout monitoring
     IdleTimeoutService.start();

@@ -3,270 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Performance Problem Simulator - Node 24</title>
+  <title>Azure Deployment Guide - Performance Problem Simulator</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/css/styles.css">
-  <style>
-    /* Doc Layout - Main + TOC Sidebar */
-    .doc-layout {
-      display: flex;
-      gap: 2rem;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-    .doc-main {
-      flex: 1;
-      min-width: 0;
-    }
-    .deploy-container {
-      max-width: 900px;
-      display: block;
-      margin: 0;
-      padding: 0;
-    }
-    .doc-toc {
-      width: 280px;
-      flex-shrink: 0;
-    }
-    .doc-toc-sticky {
-      position: sticky;
-      top: 80px;
-      max-height: calc(100vh - 100px);
-      overflow-y: auto;
-    }
-    .doc-toc-card {
-      background: var(--color-card);
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-sm);
-      padding: 1.25rem;
-    }
-    .doc-toc-title {
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--color-text-muted);
-      margin-bottom: 1rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid var(--color-bg);
-    }
-    .doc-toc ul {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-    .doc-toc-item {
-      margin-bottom: 0.25rem;
-    }
-    .doc-toc-item a {
-      display: flex;
-      align-items: center;
-      gap: 0.625rem;
-      padding: 0.5rem 0.75rem;
-      border-radius: var(--radius-sm);
-      text-decoration: none;
-      color: var(--color-text-muted);
-      font-size: 0.875rem;
-      transition: all var(--transition-fast);
-      border-left: 2px solid transparent;
-    }
-    .doc-toc-item a:hover {
-      background: rgba(57, 95, 57, 0.08);
-      color: var(--color-primary);
-      border-left-color: var(--color-primary);
-    }
-    .doc-toc-item a.active {
-      background: rgba(57, 95, 57, 0.12);
-      color: var(--color-primary);
-      font-weight: 500;
-      border-left-color: var(--color-primary);
-    }
-    .toc-icon {
-      font-size: 1rem;
-      width: 1.25rem;
-      text-align: center;
-      flex-shrink: 0;
-    }
-    .doc-toc-divider {
-      height: 1px;
-      background: var(--color-bg);
-      margin: 0.75rem 0;
-    }
-    .doc-toc-section-label {
-      font-size: 0.65rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--color-text-muted);
-      padding: 0.5rem 0.75rem 0.25rem;
-      opacity: 0.7;
-    }
-
-    /* Page Content Styles */
-    .deploy-header {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    .deploy-header h1 {
-      color: var(--color-primary);
-      margin-bottom: 0.5rem;
-      font-size: 2rem;
-    }
-    .deploy-header p {
-      color: var(--color-text-muted);
-      font-size: 1.1rem;
-    }
-    .card {
-      background: var(--color-card);
-      border-radius: var(--radius-md);
-      padding: 1.5rem 2rem;
-      margin-bottom: 1.5rem;
-      box-shadow: var(--shadow-sm);
-      scroll-margin-top: 80px;
-    }
-    .card h2 {
-      color: var(--color-primary);
-      border-bottom: 2px solid var(--color-bg);
-      padding-bottom: 0.5rem;
-      margin-bottom: 1rem;
-    }
-    .card h3 {
-      color: var(--color-text);
-      margin-top: 1.5rem;
-      margin-bottom: 0.75rem;
-    }
-    .card h4 {
-      color: var(--color-text-muted);
-      margin-top: 1rem;
-      margin-bottom: 0.5rem;
-    }
-    .card p, .card li {
-      line-height: 1.6;
-      color: var(--color-text-muted);
-    }
-    .card ul, .card ol {
-      margin: 0.5rem 0 1rem 1.5rem;
-    }
-    .card li {
-      margin-bottom: 0.25rem;
-    }
-    pre {
-      background: #1e1e1e;
-      color: #d4d4d4;
-      border-radius: var(--radius-md);
-      padding: 1rem;
-      overflow-x: auto;
-      font-size: 0.85rem;
-      margin: 1rem 0;
-      font-family: 'Cascadia Code', 'Consolas', monospace;
-    }
-    code {
-      background: rgba(0,0,0,0.05);
-      padding: 0.2rem 0.4rem;
-      border-radius: var(--radius-sm);
-      font-size: 0.9em;
-      font-family: 'Cascadia Code', 'Consolas', monospace;
-      color: var(--color-danger);
-    }
-    pre code {
-      background: none;
-      padding: 0;
-      color: inherit;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 1rem 0;
-      font-size: 0.9rem;
-    }
-    th, td {
-      border: 1px solid var(--color-bg);
-      padding: 0.75rem;
-      text-align: left;
-    }
-    th {
-      background: var(--color-bg);
-      font-weight: 600;
-      color: var(--color-text);
-    }
-    .info-box {
-      background: rgba(0, 120, 212, 0.1);
-      border-left: 4px solid var(--color-cpu);
-      padding: 1rem;
-      margin: 1rem 0;
-      border-radius: 0 var(--radius-md) var(--radius-md) 0;
-    }
-    .info-box p { margin: 0; color: var(--color-text); }
-    .warning-box {
-      background: rgba(255, 185, 0, 0.15);
-      border-left: 4px solid var(--color-warning);
-      padding: 1rem;
-      margin: 1rem 0;
-      border-radius: 0 var(--radius-md) var(--radius-md) 0;
-    }
-    .warning-box p { margin: 0; color: var(--color-text); }
-    .step-number {
-      display: inline-block;
-      width: 28px;
-      height: 28px;
-      background: var(--color-primary);
-      color: white;
-      border-radius: 50%;
-      text-align: center;
-      line-height: 28px;
-      font-weight: bold;
-      margin-right: 0.5rem;
-    }
-    .secrets-table td:first-child {
-      font-family: 'Cascadia Code', 'Consolas', monospace;
-      font-weight: 600;
-    }
-
-    @media (max-width: 1024px) {
-      .doc-layout {
-        flex-direction: column;
-      }
-      .doc-toc {
-        width: 100%;
-        order: -1;
-      }
-      .doc-toc-sticky {
-        position: relative;
-        top: 0;
-        max-height: none;
-      }
-      .doc-toc ul {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-      }
-      .doc-toc-item {
-        margin-bottom: 0;
-      }
-      .doc-toc-item a {
-        padding: 0.375rem 0.625rem;
-        border-left: none;
-        border-radius: var(--radius-md);
-        background: var(--color-bg);
-      }
-      .doc-toc-divider,
-      .doc-toc-section-label {
-        display: none;
-      }
-    }
-    @media (max-width: 768px) {
-      .doc-layout {
-        padding: 1rem;
-      }
-      table {
-        font-size: 0.8rem;
-      }
-      th, td {
-        padding: 0.5rem;
-      }
-    }
-  </style>
 </head>
 <body class="page-deployment">
   <header>
@@ -313,6 +52,10 @@
         <span class="nav-icon">☁️</span>
         <span class="nav-label">Azure Diagnostics<span class="nav-desc">Diagnose issues in App Service</span></span>
       </a>
+      <a href="/azure-load-testing.html" class="sidebar-nav-item">
+        <span class="nav-icon">📈</span>
+        <span class="nav-label">Azure Load Testing<span class="nav-desc">Load test endpoint & parameters</span></span>
+      </a>
       <a href="/azure-deployment.html" class="sidebar-nav-item active">
         <span class="nav-icon">🚀</span>
         <span class="nav-label">Deploy to Azure<span class="nav-desc">GitHub Actions + OIDC setup</span></span>
@@ -335,79 +78,80 @@
 
   <div class="doc-layout">
     <div class="doc-main">
-    <main class="deploy-container">
-    <div class="deploy-header">
-      <h1>🚀 Azure Deployment Guide</h1>
-      <p>Deploy PerfSimNode to Azure App Service using GitHub Actions with OIDC authentication</p>
-    </div>
+      <main class="deploy-container">
+        <div class="deploy-header">
+          <h1>🚀 Azure Deployment Guide</h1>
+          <p>Deploy Performance Problem Simulator to Azure App Service using GitHub Actions with OIDC authentication</p>
+        </div>
 
-    <section id="overview" class="card">
-      <h2>Overview</h2>
-      <p>This guide walks you through deploying PerfSimNode to Azure App Service using GitHub Actions with OpenID Connect (OIDC) authentication. OIDC eliminates the need to store credentials as secrets.</p>
-      
-      <h3>Prerequisites</h3>
-      <ul>
-        <li>Azure subscription with permissions to create resources</li>
-        <li>Azure AD/Entra ID permissions to create App Registrations</li>
-        <li>GitHub account</li>
-        <li>Azure CLI installed (optional, for CLI method)</li>
-      </ul>
+        <section id="overview" class="card">
+          <h2>Overview</h2>
+          <p>This guide walks you through deploying the Performance Problem Simulator to Azure App Service using GitHub Actions with OpenID Connect (OIDC) authentication. OIDC eliminates the need to store credentials as secrets.</p>
 
-      <h3>What You'll Create</h3>
-      <table>
-        <tr><th>Resource</th><th>Purpose</th></tr>
-        <tr><td>Azure App Service</td><td>Hosts the PerfSimNode application</td></tr>
-        <tr><td>Azure AD App Registration</td><td>Identity for GitHub Actions OIDC</td></tr>
-        <tr><td>Federated Credential</td><td>Links GitHub repo to Azure AD</td></tr>
-        <tr><td>Role Assignment</td><td>Grants deployment permissions</td></tr>
-      </table>
-    </section>
-
-    <section id="app-service" class="card">
-      <h2><span class="step-number">1</span> Create Azure App Service</h2>
-      
-      <h3>Option A: Azure Portal</h3>
-      <ol>
-        <li><strong>Navigate to App Services</strong>
+          <h3>Prerequisites</h3>
           <ul>
-            <li>Go to <a href="https://portal.azure.com" target="_blank">Azure Portal</a></li>
-            <li>Search for "App Services" and select it</li>
-            <li>Click <strong>+ Create</strong></li>
+            <li>Azure subscription with permissions to create resources</li>
+            <li>Azure AD/Entra ID permissions to create App Registrations</li>
+            <li>GitHub account</li>
+            <li>Azure CLI installed (optional, for CLI method)</li>
           </ul>
-        </li>
-        <li><strong>Configure Basics</strong>
-          <table>
-            <tr><th>Setting</th><th>Value</th></tr>
-            <tr><td>Subscription</td><td>Your subscription</td></tr>
-            <tr><td>Resource Group</td><td>Create new or use existing</td></tr>
-            <tr><td>Name</td><td><code>perfsimnode</code> (or your preferred name)</td></tr>
-            <tr><td>Publish</td><td>Code</td></tr>
-            <tr><td>Runtime stack</td><td><strong>Node 24 LTS</strong></td></tr>
-            <tr><td>Operating System</td><td><strong>Linux</strong></td></tr>
-            <tr><td>Region</td><td>Your preferred region</td></tr>
-          </table>
-        </li>
-        <li><strong>Configure App Service Plan</strong>
-          <table>
-            <tr><th>Setting</th><th>Recommendation</th></tr>
-            <tr><td>SKU</td><td><strong>Basic B1</strong> or higher</td></tr>
-          </table>
-          <div class="warning-box">
-            <strong>⚠️ Important:</strong> The Free (F1) tier does not support WebSockets which are required for real-time dashboard updates.
-          </div>
-        </li>
-        <li><strong>Review and Create</strong> - Click through to create the resource</li>
-      </ol>
 
-      <h3>Option B: Azure CLI</h3>
-      <pre><code># Login to Azure
+          <h3>What You'll Create</h3>
+          <table>
+            <tr><th>Resource</th><th>Purpose</th></tr>
+            <tr><td>Azure App Service</td><td>Hosts the Performance Problem Simulator application</td></tr>
+            <tr><td>Azure AD App Registration</td><td>Identity for GitHub Actions OIDC</td></tr>
+            <tr><td>Federated Credential</td><td>Links GitHub repo to Azure AD</td></tr>
+            <tr><td>Role Assignment</td><td>Grants deployment permissions</td></tr>
+          </table>
+        </section>
+
+        <section id="app-service" class="card">
+          <h2><span class="step-number">1</span> Create Azure App Service</h2>
+
+          <h3>Option A: Azure Portal</h3>
+          <ol>
+            <li><strong>Navigate to App Services</strong>
+              <ul>
+                <li>Go to <a href="https://portal.azure.com" target="_blank" rel="noopener">Azure Portal</a></li>
+                <li>Search for "App Services" and select it</li>
+                <li>Click <strong>+ Create</strong></li>
+              </ul>
+            </li>
+            <li><strong>Configure Basics</strong>
+              <table>
+                <tr><th>Setting</th><th>Value</th></tr>
+                <tr><td>Subscription</td><td>Your subscription</td></tr>
+                <tr><td>Resource Group</td><td>Create new or use existing</td></tr>
+                <tr><td>Name</td><td><code>your-app-name</code> (must be globally unique)</td></tr>
+                <tr><td>Publish</td><td>Code</td></tr>
+                <tr><td>Runtime stack</td><td>Select your application's runtime</td></tr>
+                <tr><td>Operating System</td><td>Windows or Linux (as appropriate for your runtime)</td></tr>
+                <tr><td>Region</td><td>Your preferred region</td></tr>
+              </table>
+            </li>
+            <li><strong>Configure App Service Plan</strong>
+              <table>
+                <tr><th>Setting</th><th>Recommendation</th></tr>
+                <tr><td>SKU</td><td><strong>Basic B1</strong> or higher</td></tr>
+              </table>
+              <div class="warning-box">
+                <p><strong>⚠️ Important:</strong> The Free (F1) tier does not support WebSockets which are required for real-time SignalR dashboard updates.</p>
+              </div>
+            </li>
+            <li><strong>Review and Create</strong> - Click through to create the resource</li>
+          </ol>
+
+          <h3>Option B: Azure CLI</h3>
+          <pre><code># Login to Azure
 az login
 
 # Set variables
-RESOURCE_GROUP="perfsimnode-rg"
-APP_NAME="perfsimnode"
+RESOURCE_GROUP="your-resource-group"
+APP_NAME="your-app-name"
 LOCATION="eastus"
-APP_SERVICE_PLAN="perfsimnode-plan"
+APP_SERVICE_PLAN="your-app-plan"
+RUNTIME="your-runtime"  # e.g., "dotnet:8", "node:20-lts", "python:3.11"
 
 # Create resource group
 az group create --name $RESOURCE_GROUP --location $LOCATION
@@ -417,292 +161,378 @@ az appservice plan create \
   --name $APP_SERVICE_PLAN \
   --resource-group $RESOURCE_GROUP \
   --location $LOCATION \
-  --sku B1 \
-  --is-linux
+  --sku B1
 
-# Create Web App with Node.js 24
+# Create Web App with your runtime
 az webapp create \
   --name $APP_NAME \
   --resource-group $RESOURCE_GROUP \
   --plan $APP_SERVICE_PLAN \
-  --runtime "NODE:24-lts"</code></pre>
+  --runtime $RUNTIME</code></pre>
 
-      <h3>Enable WebSockets</h3>
-      <p>After creation, enable WebSockets:</p>
-      <ol>
-        <li>Go to your App Service → <strong>Configuration</strong> → <strong>General settings</strong></li>
-        <li>Set <strong>Web sockets</strong> to <strong>On</strong></li>
-        <li>Click <strong>Save</strong></li>
-      </ol>
-      <p>Or via CLI:</p>
-      <pre><code>az webapp config set \
+          <h3>Enable WebSockets</h3>
+          <p>After creation, enable WebSockets for SignalR real-time communication:</p>
+          <ol>
+            <li>Go to your App Service → <strong>Configuration</strong> → <strong>General settings</strong></li>
+            <li>Set <strong>Web sockets</strong> to <strong>On</strong></li>
+            <li>Click <strong>Save</strong></li>
+          </ol>
+          <p>Or via CLI:</p>
+          <pre><code>az webapp config set \
   --name $APP_NAME \
   --resource-group $RESOURCE_GROUP \
   --web-sockets-enabled true</code></pre>
-    </section>
+        </section>
 
-    <section id="app-registration" class="card">
-      <h2><span class="step-number">2</span> Create Azure AD App Registration</h2>
-      <p>GitHub Actions uses OpenID Connect (OIDC) to authenticate with Azure without storing credentials.</p>
+        <section id="app-registration" class="card">
+          <h2><span class="step-number">2</span> Create Azure AD App Registration</h2>
+          <p>GitHub Actions uses OpenID Connect (OIDC) to authenticate with Azure without storing credentials.</p>
 
-      <h3>Create the App Registration</h3>
-      <ol>
-        <li><strong>Navigate to App Registrations</strong>
-          <ul>
-            <li>Go to <a href="https://portal.azure.com" target="_blank">Azure Portal</a></li>
-            <li>Search for "App registrations" and select it</li>
-            <li>Click <strong>+ New registration</strong></li>
-          </ul>
-        </li>
-        <li><strong>Configure Registration</strong>
-          <table>
-            <tr><th>Setting</th><th>Value</th></tr>
-            <tr><td>Name</td><td><code>github-perfsimnode-deploy</code></td></tr>
-            <tr><td>Supported account types</td><td>Accounts in this organizational directory only</td></tr>
-            <tr><td>Redirect URI</td><td>Leave empty</td></tr>
-          </table>
-        </li>
-        <li><strong>Click Register</strong></li>
-      </ol>
+          <h3>Create the App Registration</h3>
+          <ol>
+            <li><strong>Navigate to App Registrations</strong>
+              <ul>
+                <li>Go to <a href="https://portal.azure.com" target="_blank" rel="noopener">Azure Portal</a></li>
+                <li>Search for "App registrations" and select it</li>
+                <li>Click <strong>+ New registration</strong></li>
+              </ul>
+            </li>
+            <li><strong>Configure Registration</strong>
+              <table>
+                <tr><th>Setting</th><th>Value</th></tr>
+                <tr><td>Name</td><td><code>github-your-app-deploy</code> (descriptive name for your deployment identity)</td></tr>
+                <tr><td>Supported account types</td><td>Accounts in this organizational directory only</td></tr>
+                <tr><td>Redirect URI</td><td>Leave empty</td></tr>
+              </table>
+            </li>
+            <li><strong>Click Register</strong></li>
+          </ol>
 
-      <h3>Record the IDs</h3>
-      <p>From the <strong>Overview</strong> page, copy these values (you'll need them for GitHub secrets):</p>
-      <table class="secrets-table">
-        <tr><th>Value</th><th>GitHub Secret Name</th></tr>
-        <tr><td>Application (client) ID</td><td><code>AZURE_CLIENT_ID</code></td></tr>
-        <tr><td>Directory (tenant) ID</td><td><code>AZURE_TENANT_ID</code></td></tr>
-      </table>
-
-      <h3>Get Subscription ID</h3>
-      <ol>
-        <li>Go to <strong>Subscriptions</strong> in the Azure Portal</li>
-        <li>Select your subscription</li>
-        <li>Copy the <strong>Subscription ID</strong> → This is <code>AZURE_SUBSCRIPTION_ID</code></li>
-      </ol>
-    </section>
-
-    <section id="federated-credentials" class="card">
-      <h2><span class="step-number">3</span> Configure Federated Credentials</h2>
-      <p>Federated credentials allow GitHub Actions to authenticate without storing secrets.</p>
-
-      <ol>
-        <li><strong>Navigate to your App Registration</strong>
-          <ul>
-            <li>Go to <strong>Certificates &amp; secrets</strong></li>
-            <li>Select <strong>Federated credentials</strong> tab</li>
-            <li>Click <strong>+ Add credential</strong></li>
-          </ul>
-        </li>
-        <li><strong>Configure the Credential</strong>
-          <table>
-            <tr><th>Setting</th><th>Value</th></tr>
-            <tr><td>Federated credential scenario</td><td><strong>GitHub Actions deploying Azure resources</strong></td></tr>
-            <tr><td>Organization</td><td>Your GitHub username or organization</td></tr>
-            <tr><td>Repository</td><td><code>PerfSimNode</code> (your repo name)</td></tr>
-            <tr><td>Entity type</td><td><strong>Branch</strong></td></tr>
-            <tr><td>GitHub branch name</td><td><code>main</code></td></tr>
-            <tr><td>Name</td><td><code>github-main-branch</code></td></tr>
-          </table>
-        </li>
-        <li><strong>Click Add</strong></li>
-      </ol>
-
-      <div class="info-box">
-        <strong>💡 Note:</strong> If you also want to deploy from pull requests or other branches, add additional federated credentials with the appropriate entity type.
-      </div>
-    </section>
-
-    <section id="permissions" class="card">
-      <h2><span class="step-number">4</span> Grant Azure Permissions</h2>
-      <p>The App Registration needs permission to deploy to your App Service.</p>
-
-      <h3>Assign Contributor Role</h3>
-      <ol>
-        <li><strong>Navigate to your App Service</strong>
-          <ul>
-            <li>Go to <strong>Access control (IAM)</strong></li>
-            <li>Click <strong>+ Add</strong> → <strong>Add role assignment</strong></li>
-          </ul>
-        </li>
-        <li><strong>Configure Role Assignment</strong>
-          <table>
-            <tr><th>Setting</th><th>Value</th></tr>
-            <tr><td>Role</td><td><strong>Contributor</strong></td></tr>
-            <tr><td>Assign access to</td><td>User, group, or service principal</td></tr>
-            <tr><td>Members</td><td>Search for <code>github-perfsimnode-deploy</code></td></tr>
-          </table>
-        </li>
-        <li><strong>Click Review + assign</strong></li>
-      </ol>
-    </section>
-
-    <section id="github-secrets" class="card">
-      <h2><span class="step-number">5</span> Configure GitHub Secrets</h2>
-
-      <h3>Fork or Clone the Repository</h3>
-      <ol>
-        <li><strong>Fork the Repository</strong>
-          <ul>
-            <li>Go to the <a href="https://github.com/rhamlett/PerfSimNode" target="_blank">PerfSimNode repository</a></li>
-            <li>Click <strong>Fork</strong> to create your own copy</li>
-          </ul>
-        </li>
-      </ol>
-
-      <h3>Add GitHub Secrets</h3>
-      <ol>
-        <li><strong>Navigate to Repository Settings</strong>
-          <ul>
-            <li>Go to your repository on GitHub</li>
-            <li>Click <strong>Settings</strong> → <strong>Secrets and variables</strong> → <strong>Actions</strong></li>
-            <li>Click <strong>New repository secret</strong></li>
-          </ul>
-        </li>
-        <li><strong>Add the Following Secrets</strong>
+          <h3>Record the IDs</h3>
+          <p>From the <strong>Overview</strong> page, copy these values (you'll need them for GitHub secrets):</p>
           <table class="secrets-table">
-            <tr><th>Secret Name</th><th>Value</th><th>Description</th></tr>
-            <tr><td>AZURE_CLIENT_ID</td><td><code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></td><td>App Registration Client ID</td></tr>
-            <tr><td>AZURE_TENANT_ID</td><td><code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></td><td>Azure AD Directory/Tenant ID</td></tr>
-            <tr><td>AZURE_SUBSCRIPTION_ID</td><td><code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></td><td>Azure Subscription ID</td></tr>
+            <tr><th>Value</th><th>GitHub Secret Name</th></tr>
+            <tr><td>Application (client) ID</td><td><code>AZURE_CLIENT_ID</code></td></tr>
+            <tr><td>Directory (tenant) ID</td><td><code>AZURE_TENANT_ID</code></td></tr>
           </table>
-        </li>
-      </ol>
 
-      <div class="info-box">
-        <strong>💡 No Client Secret Needed:</strong> OIDC federated credentials eliminate the need to store a client secret. The three IDs above are sufficient.
-      </div>
+          <h3>Get Subscription ID</h3>
+          <ol>
+            <li>Go to <strong>Subscriptions</strong> in the Azure Portal</li>
+            <li>Select your subscription</li>
+            <li>Copy the <strong>Subscription ID</strong> → This is <code>AZURE_SUBSCRIPTION_ID</code></li>
+          </ol>
+        </section>
 
-      <h3>Update Workflow (if needed)</h3>
-      <p>If your App Service name is different from <code>perfsimnode</code>, edit <code>.github/workflows/deploy.yml</code>:</p>
-      <pre><code>env:
-  AZURE_WEBAPP_NAME: your-app-service-name  # Change this
-  NODE_VERSION: '24'</code></pre>
-    </section>
+        <section id="federated-credentials" class="card">
+          <h2><span class="step-number">3</span> Configure Federated Credentials</h2>
+          <p>Federated credentials allow GitHub Actions to authenticate without storing secrets.</p>
 
-    <section id="deploy" class="card">
-      <h2><span class="step-number">6</span> Deploy</h2>
+          <ol>
+            <li><strong>Navigate to your App Registration</strong>
+              <ul>
+                <li>Go to <strong>Certificates &amp; secrets</strong></li>
+                <li>Select <strong>Federated credentials</strong> tab</li>
+                <li>Click <strong>+ Add credential</strong></li>
+              </ul>
+            </li>
+            <li><strong>Configure the Credential</strong>
+              <table>
+                <tr><th>Setting</th><th>Value</th></tr>
+                <tr><td>Federated credential scenario</td><td><strong>GitHub Actions deploying Azure resources</strong></td></tr>
+                <tr><td>Organization</td><td>Your GitHub username or organization</td></tr>
+                <tr><td>Repository</td><td>Your repository name</td></tr>
+                <tr><td>Entity type</td><td><strong>Branch</strong></td></tr>
+                <tr><td>GitHub branch name</td><td><code>main</code></td></tr>
+                <tr><td>Name</td><td><code>github-main-branch</code></td></tr>
+              </table>
+            </li>
+            <li><strong>Click Add</strong></li>
+          </ol>
 
-      <h3>Automatic Deployment</h3>
-      <p>Deployment triggers automatically when you push to the <code>main</code> branch:</p>
-      <pre><code>git add .
+          <div class="info-box">
+            <p><strong>💡 Note:</strong> If you also want to deploy from pull requests or other branches, add additional federated credentials with the appropriate entity type.</p>
+          </div>
+        </section>
+
+        <section id="permissions" class="card">
+          <h2><span class="step-number">4</span> Grant Azure Permissions</h2>
+          <p>The App Registration needs permission to deploy to your App Service.</p>
+
+          <h3>Assign Contributor Role</h3>
+          <ol>
+            <li><strong>Navigate to your App Service</strong>
+              <ul>
+                <li>Go to <strong>Access control (IAM)</strong></li>
+                <li>Click <strong>+ Add</strong> → <strong>Add role assignment</strong></li>
+              </ul>
+            </li>
+            <li><strong>Configure Role Assignment</strong>
+              <table>
+                <tr><th>Setting</th><th>Value</th></tr>
+                <tr><td>Role</td><td><strong>Contributor</strong></td></tr>
+                <tr><td>Assign access to</td><td>User, group, or service principal</td></tr>
+                <tr><td>Members</td><td>Search for your App Registration name</td></tr>
+              </table>
+            </li>
+            <li><strong>Click Review + assign</strong></li>
+          </ol>
+        </section>
+
+        <section id="github-secrets" class="card">
+          <h2><span class="step-number">5</span> Configure GitHub Secrets</h2>
+
+          <h3>Fork or Clone the Repository</h3>
+          <ol>
+            <li><strong>Fork the Repository</strong>
+              <ul>
+                <li>Go to the Performance Problem Simulator repository for your stack</li>
+                <li>Click <strong>Fork</strong> to create your own copy</li>
+              </ul>
+            </li>
+          </ol>
+
+          <h3>Add GitHub Secrets</h3>
+          <ol>
+            <li><strong>Navigate to Repository Settings</strong>
+              <ul>
+                <li>Go to your repository on GitHub</li>
+                <li>Click <strong>Settings</strong> → <strong>Secrets and variables</strong> → <strong>Actions</strong></li>
+                <li>Click <strong>New repository secret</strong></li>
+              </ul>
+            </li>
+            <li><strong>Add the Following Secrets</strong>
+              <table class="secrets-table">
+                <tr><th>Secret Name</th><th>Value</th><th>Description</th></tr>
+                <tr><td>AZURE_CLIENT_ID</td><td><code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></td><td>App Registration Client ID</td></tr>
+                <tr><td>AZURE_TENANT_ID</td><td><code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></td><td>Azure AD Directory/Tenant ID</td></tr>
+                <tr><td>AZURE_SUBSCRIPTION_ID</td><td><code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></td><td>Azure Subscription ID</td></tr>
+              </table>
+            </li>
+          </ol>
+
+          <div class="info-box">
+            <p><strong>💡 No Client Secret Needed:</strong> OIDC federated credentials eliminate the need to store a client secret. The three IDs above are sufficient.</p>
+          </div>
+
+          <h3>Update Workflow (if needed)</h3>
+          <p>Update <code>.github/workflows/deploy.yml</code> with your App Service name and runtime version:</p>
+          <pre><code>env:
+  AZURE_WEBAPP_NAME: your-app-service-name  # Your App Service name
+  # Add any runtime-specific version variables as needed</code></pre>
+        </section>
+
+        <section id="deploy" class="card">
+          <h2><span class="step-number">6</span> Deploy</h2>
+
+          <h3>Automatic Deployment</h3>
+          <p>Deployment triggers automatically when you push to the <code>main</code> branch:</p>
+          <pre><code>git add .
 git commit -m "Your changes"
 git push origin main</code></pre>
 
-      <h3>Manual Deployment</h3>
-      <ol>
-        <li>Go to your repository on GitHub</li>
-        <li>Click <strong>Actions</strong> tab</li>
-        <li>Select <strong>Deploy to Azure App Service</strong></li>
-        <li>Click <strong>Run workflow</strong> → <strong>Run workflow</strong></li>
-      </ol>
+          <h3>Manual Deployment</h3>
+          <ol>
+            <li>Go to your repository on GitHub</li>
+            <li>Click <strong>Actions</strong> tab</li>
+            <li>Select <strong>Deploy to Azure App Service</strong></li>
+            <li>Click <strong>Run workflow</strong> → <strong>Run workflow</strong></li>
+          </ol>
 
-      <h3>Verify Deployment</h3>
-      <ol>
-        <li><strong>Open the App URL</strong>: <code>https://&lt;your-app-name&gt;.azurewebsites.net</code></li>
-        <li><strong>Verify Dashboard</strong>: Real-time metrics should update, WebSocket should show "Connected"</li>
-        <li><strong>Test Health Endpoint</strong>:
-          <pre><code>curl https://&lt;your-app-name&gt;.azurewebsites.net/api/health</code></pre>
-        </li>
-      </ol>
-    </section>
+          <h3>Verify Deployment</h3>
+          <ol>
+            <li><strong>Open the App URL</strong>: <code>https://&lt;your-app-name&gt;.azurewebsites.net</code></li>
+            <li><strong>Verify Dashboard</strong>: Real-time metrics should update via SignalR, status should show "Connected"</li>
+            <li><strong>Test Health Endpoint</strong>:
+              <pre><code>curl https://&lt;your-app-name&gt;.azurewebsites.net/api/health</code></pre>
+            </li>
+          </ol>
+        </section>
 
-    <section id="troubleshooting" class="card">
-      <h2>Troubleshooting</h2>
+        <section id="optional-config" class="card">
+          <h2>Optional Configuration</h2>
+          <p>You can customize the application behavior using Azure App Service environment variables.</p>
 
-      <h3>WebSocket Connection Fails</h3>
-      <p><strong>Symptoms:</strong> Dashboard shows "Disconnected", charts don't update</p>
-      <p><strong>Solutions:</strong></p>
-      <ul>
-        <li>Ensure WebSockets are enabled in App Service Configuration</li>
-        <li>Upgrade from Free tier to Basic or higher</li>
-        <li>Check if ARR Affinity is enabled (Settings → Configuration → General settings)</li>
-      </ul>
+          <h3>Health Probe Rate</h3>
+          <p>Control how often the server sends health probes to measure request latency. All probes are routed through the Azure frontend to capture realistic end-to-end latency.</p>
 
-      <h3>OIDC Authentication Fails</h3>
-      <p><strong>Symptoms:</strong> GitHub Actions fails at "Login to Azure" step</p>
-      <p><strong>Check:</strong></p>
-      <ul>
-        <li>Verify all three secrets are set correctly</li>
-        <li>Confirm federated credential subject matches your repo/branch: <code>repo:USERNAME/REPO:ref:refs/heads/main</code></li>
-        <li>Ensure App Registration has Contributor role on the App Service</li>
-      </ul>
+          <h4>Environment Variable</h4>
+          <table class="env-table">
+            <thead>
+              <tr>
+                <th>Variable Name</th>
+                <th>Description</th>
+                <th>Default</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>HEALTH_PROBE_RATE</code></td>
+                <td>Probe interval in milliseconds. Minimum 100ms.</td>
+                <td><code>200</code></td>
+              </tr>
+            </tbody>
+          </table>
 
-      <h3>Application Crashes on Startup</h3>
-      <p><strong>Symptoms:</strong> App shows "Application Error" or doesn't respond</p>
-      <p><strong>Check:</strong></p>
-      <ul>
-        <li>View Log stream in Azure Portal (App Service → Log stream)</li>
-        <li>Ensure startup command is correct (should auto-detect from package.json)</li>
-        <li>Verify Node.js version matches (24 LTS)</li>
-      </ul>
+          <h4>Setting via Azure CLI</h4>
+          <pre><code># Slow down probes if CLR profiler shows overlapping requests
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings HEALTH_PROBE_RATE=400</code></pre>
 
-      <h3>View Logs</h3>
-      <pre><code># Stream live logs
+          <h3>Idle Timeout</h3>
+          <p>When the application is idle (no dashboard connections or load test requests), health probes are automatically suspended to reduce unnecessary network traffic to Azure's frontend and Application Insights telemetry.</p>
+
+          <h4>Environment Variable</h4>
+          <table class="env-table">
+            <thead>
+              <tr>
+                <th>Variable Name</th>
+                <th>Description</th>
+                <th>Default</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>IDLE_TIMEOUT_MINUTES</code></td>
+                <td>Minutes of inactivity before suspending health probes. Activity resumes automatically when the dashboard is opened or any request is received.</td>
+                <td><code>20</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>Setting via Azure CLI</h4>
+          <pre><code># Extend idle timeout to 30 minutes
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings IDLE_TIMEOUT_MINUTES=30</code></pre>
+
+          <h3>Custom Page Footer</h3>
+          <p>Set a custom footer message that appears on all pages. The footer supports HTML, allowing you to include links.</p>
+
+          <h4>Environment Variable</h4>
+          <table class="env-table">
+            <thead>
+              <tr>
+                <th>Variable Name</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>PAGE_FOOTER</code></td>
+                <td>HTML content for the footer's second line. If not set, only the app description and build info are shown.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>Example Value</h4>
+          <pre><code>Created by &lt;a href="https://yoursite.com"&gt;Your Team&lt;/a&gt; for training purposes</code></pre>
+
+          <h4>Setting via Azure CLI</h4>
+          <pre><code># Set the footer via Azure CLI
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings 'PAGE_FOOTER=Created by &lt;a href="https://yoursite.com"&gt;Your Team&lt;/a&gt; for training purposes'</code></pre>
+
+          <h4>Setting via Azure Portal</h4>
+          <ol>
+            <li>Navigate to your App Service in the Azure Portal</li>
+            <li>Go to <strong>Settings</strong> → <strong>Environment variables</strong></li>
+            <li>Click <strong>+ Add</strong></li>
+            <li>Set Name: <code>PAGE_FOOTER</code></li>
+            <li>Set Value: Your HTML footer content</li>
+            <li>Click <strong>Apply</strong>, then <strong>Confirm</strong></li>
+          </ol>
+
+          <h3>GitHub Repository Link</h3>
+          <p>Optionally display a GitHub Repository link in the sidebar navigation menu. The link is hidden by default. When both environment variables are provided, the link will appear in the menu and point to <code>https://github.com/{GITHUB_USER_NAME}/{GITHUB_REPO_NAME}</code>.</p>
+
+          <h4>Environment Variables</h4>
+          <table class="env-table">
+            <thead>
+              <tr>
+                <th>Variable Name</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>GITHUB_USER_NAME</code></td>
+                <td>GitHub username or organization name. Required to show the link.</td>
+              </tr>
+              <tr>
+                <td><code>GITHUB_REPO_NAME</code></td>
+                <td>GitHub repository name. Required to show the link.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>Setting via Azure CLI</h4>
+          <pre><code># Set the GitHub link via Azure CLI
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings GITHUB_USER_NAME=your-username GITHUB_REPO_NAME=your-repo-name</code></pre>
+
+          <h4>Setting via Azure Portal</h4>
+          <ol>
+            <li>Navigate to your App Service in the Azure Portal</li>
+            <li>Go to <strong>Settings</strong> → <strong>Environment variables</strong></li>
+            <li>Click <strong>+ Add</strong> and set Name: <code>GITHUB_USER_NAME</code>, Value: your GitHub username or organization</li>
+            <li>Click <strong>+ Add</strong> and set Name: <code>GITHUB_REPO_NAME</code>, Value: your repository name</li>
+            <li>Click <strong>Apply</strong>, then <strong>Confirm</strong></li>
+          </ol>
+        </section>
+
+        <section id="troubleshooting" class="card">
+          <h2>Troubleshooting</h2>
+
+          <h3>SignalR Connection Fails</h3>
+          <p><strong>Symptoms:</strong> Dashboard shows "Disconnected", charts don't update in real-time</p>
+          <p><strong>Solutions:</strong></p>
+          <ul>
+            <li>Ensure WebSockets are enabled in App Service Configuration</li>
+            <li>Upgrade from Free tier to Basic or higher</li>
+            <li>Check if ARR Affinity is enabled (Settings → Configuration → General settings)</li>
+          </ul>
+
+          <h3>OIDC Authentication Fails</h3>
+          <p><strong>Symptoms:</strong> GitHub Actions fails at "Login to Azure" step</p>
+          <p><strong>Check:</strong></p>
+          <ul>
+            <li>Verify all three secrets are set correctly</li>
+            <li>Confirm federated credential subject matches your repo/branch: <code>repo:USERNAME/REPO:ref:refs/heads/main</code></li>
+            <li>Ensure App Registration has Contributor role on the App Service</li>
+          </ul>
+
+          <h3>Application Crashes on Startup</h3>
+          <p><strong>Symptoms:</strong> App shows "Application Error" or doesn't respond</p>
+          <p><strong>Check:</strong></p>
+          <ul>
+            <li>View Log stream in Azure Portal (App Service → Log stream)</li>
+            <li>Enable Application Logging under App Service → App Service Logs</li>
+            <li>Verify runtime version matches your application's requirements</li>
+            <li>Check for missing configuration or environment variables</li>
+          </ul>
+
+          <h3>View Logs</h3>
+          <pre><code># Stream live logs
 az webapp log tail --name $APP_NAME --resource-group $RESOURCE_GROUP
 
 # View deployment logs
 az webapp log deployment show --name $APP_NAME --resource-group $RESOURCE_GROUP</code></pre>
-    </section>
+        </section>
 
-    <section id="optional-config" class="card">
-      <h2>Optional Configuration</h2>
-      
-      <h3>Custom Footer (PAGE_FOOTER)</h3>
-      <p>You can customize the footer displayed on all pages by setting the <code>PAGE_FOOTER</code> application setting. The value supports HTML including links.</p>
-      
-      <h4>Setting via Azure Portal</h4>
-      <ol>
-        <li>Navigate to your App Service in the Azure Portal</li>
-        <li>Go to <strong>Settings → Environment variables</strong></li>
-        <li>Click <strong>+ Add</strong></li>
-        <li>Set Name: <code>PAGE_FOOTER</code></li>
-        <li>Set Value (example):
-          <pre><code>Created by &lt;a href="https://speckit.org/" target="_blank"&gt;SpecKit&lt;/a&gt; and &lt;a href="https://github.com/copilot" target="_blank"&gt;Github Copilot&lt;/a&gt; in collaboration with &lt;a href="mailto:rhamlett@microsoft.com"&gt;Richard Hamlett&lt;/a&gt;</code></pre>
-        </li>
-        <li>Click <strong>Apply</strong> and then <strong>Confirm</strong> to restart the app</li>
-      </ol>
-
-      <h4>Setting via Azure CLI</h4>
-      <pre><code># Set the PAGE_FOOTER application setting
-az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
-  --settings 'PAGE_FOOTER=Created by &lt;a href="https://speckit.org/" target="_blank"&gt;SpecKit&lt;/a&gt; and &lt;a href="https://github.com/copilot" target="_blank"&gt;Github Copilot&lt;/a&gt; in collaboration with &lt;a href="mailto:rhamlett@microsoft.com"&gt;Richard Hamlett&lt;/a&gt;'</code></pre>
-
-      <p><strong>Note:</strong> If <code>PAGE_FOOTER</code> is not set, the footer will display only the app description and build timestamp.</p>
-
-      <h3>GitHub Repository Link (GITHUB_USER_NAME, GITHUB_REPO_NAME)</h3>
-      <p>You can display a GitHub repository link in the navigation menu by setting two environment variables. If both are provided, the link will appear in the sidebar; otherwise it remains hidden.</p>
-      
-      <h4>Setting via Azure Portal</h4>
-      <ol>
-        <li>Navigate to your App Service in the Azure Portal</li>
-        <li>Go to <strong>Settings → Environment variables</strong></li>
-        <li>Click <strong>+ Add</strong> and create two variables:</li>
-        <li>Set Name: <code>GITHUB_USER_NAME</code> and Value: your GitHub username or organization (e.g., <code>rhamlett</code>)</li>
-        <li>Set Name: <code>GITHUB_REPO_NAME</code> and Value: your repository name (e.g., <code>PerfSimNode</code>)</li>
-        <li>Click <strong>Apply</strong> and then <strong>Confirm</strong> to restart the app</li>
-      </ol>
-
-      <h4>Setting via Azure CLI</h4>
-      <pre><code># Set the GitHub repository link configuration
-az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
-  --settings GITHUB_USER_NAME=rhamlett GITHUB_REPO_NAME=PerfSimNode</code></pre>
-
-      <p><strong>Note:</strong> Both <code>GITHUB_USER_NAME</code> and <code>GITHUB_REPO_NAME</code> must be set for the GitHub link to appear. The link will point to <code>https://github.com/{GITHUB_USER_NAME}/{GITHUB_REPO_NAME}</code>.</p>
-    </section>
-
-    <section id="quick-reference" class="card">
-      <h2>Quick Reference - CLI One-Liner</h2>
-      <p>Complete setup script (customize variables at top):</p>
-      <pre><code># Full setup (customize variables at top)
-RESOURCE_GROUP="perfsimnode-rg"
-APP_NAME="perfsimnode"
+        <section id="quick-reference" class="card">
+          <h2>Quick Reference - CLI One-Liner</h2>
+          <p>Complete setup script (customize variables at top):</p>
+          <pre><code># Full setup (customize variables at top)
+RESOURCE_GROUP="your-resource-group"
+APP_NAME="your-app-name"
 LOCATION="eastus"
-GITHUB_REPO="YOUR_USERNAME/PerfSimNode"
+RUNTIME="your-runtime"  # e.g., "dotnet:8", "node:20-lts", "python:3.11"
+GITHUB_REPO="YOUR_USERNAME/YOUR_REPO"
 
 # Create resources
 az group create -n $RESOURCE_GROUP -l $LOCATION
-az appservice plan create -n "${APP_NAME}-plan" -g $RESOURCE_GROUP -l $LOCATION --sku B1 --is-linux
-az webapp create -n $APP_NAME -g $RESOURCE_GROUP -p "${APP_NAME}-plan" --runtime "NODE:24-lts"
+az appservice plan create -n "${APP_NAME}-plan" -g $RESOURCE_GROUP -l $LOCATION --sku B1
+az webapp create -n $APP_NAME -g $RESOURCE_GROUP -p "${APP_NAME}-plan" --runtime $RUNTIME
 az webapp config set -n $APP_NAME -g $RESOURCE_GROUP --web-sockets-enabled true
 
 # Create App Registration and get IDs
@@ -727,9 +557,8 @@ az role assignment create --assignee $APP_ID --role Contributor --scope $APP_SER
 echo "AZURE_CLIENT_ID=$APP_ID"
 echo "AZURE_TENANT_ID=$TENANT_ID"
 echo "AZURE_SUBSCRIPTION_ID=$SUB_ID"</code></pre>
-    </section>
-
-    </main>
+        </section>
+      </main>
     </div><!-- /.doc-main -->
 
     <!-- Right Sidebar Table of Contents -->
@@ -741,8 +570,8 @@ echo "AZURE_SUBSCRIPTION_ID=$SUB_ID"</code></pre>
             <li class="doc-toc-item">
               <a href="#overview"><span class="toc-icon">📋</span>Overview</a>
             </li>
-            <div class="doc-toc-divider"></div>
-            <div class="doc-toc-section-label">Setup Steps</div>
+            <li class="doc-toc-divider" aria-hidden="true"></li>
+            <li class="doc-toc-section-label" aria-hidden="true">Setup Steps</li>
             <li class="doc-toc-item">
               <a href="#app-service"><span class="toc-icon">1️⃣</span>Create App Service</a>
             </li>
@@ -761,16 +590,16 @@ echo "AZURE_SUBSCRIPTION_ID=$SUB_ID"</code></pre>
             <li class="doc-toc-item">
               <a href="#deploy"><span class="toc-icon">6️⃣</span>Deploy</a>
             </li>
-            <div class="doc-toc-divider"></div>
-            <div class="doc-toc-section-label">Reference</div>
+            <li class="doc-toc-item">
+              <a href="#optional-config"><span class="toc-icon">⚙️</span>Optional Config</a>
+            </li>
+            <li class="doc-toc-divider" aria-hidden="true"></li>
+            <li class="doc-toc-section-label" aria-hidden="true">Reference</li>
             <li class="doc-toc-item">
               <a href="#troubleshooting"><span class="toc-icon">🔧</span>Troubleshooting</a>
             </li>
             <li class="doc-toc-item">
-              <a href="#optional-config"><span class="toc-icon">⚙️</span>Optional Config</a>
-            </li>
-            <li class="doc-toc-item">
-              <a href="#quick-reference"><span class="toc-icon">📋</span>Quick Reference</a>
+              <a href="#quick-reference"><span class="toc-icon">📝</span>Quick Reference</a>
             </li>
           </ul>
         </nav>
@@ -865,12 +694,12 @@ echo "AZURE_SUBSCRIPTION_ID=$SUB_ID"</code></pre>
 
       function updateActiveTocLink() {
         const scrollPos = window.scrollY + 120;
-        
+
         sections.forEach(section => {
           const sectionTop = section.offsetTop;
           const sectionHeight = section.offsetHeight;
           const sectionId = section.getAttribute('id');
-          
+
           if (sectionId && scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
             tocLinks.forEach(link => {
               link.classList.remove('active');

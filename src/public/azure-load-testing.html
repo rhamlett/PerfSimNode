@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure Load Testing Guide - Performance Problem Simulator</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    /* Doc Layout - Main + TOC Sidebar */
+    .doc-layout {
+      display: flex;
+      gap: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .doc-main {
+      flex: 1;
+      min-width: 0;
+    }
+    .loadtest-container {
+      max-width: 900px;
+      display: block;
+      margin: 0;
+      padding: 0;
+    }
+    .doc-toc {
+      width: 280px;
+      flex-shrink: 0;
+    }
+    .doc-toc-sticky {
+      position: sticky;
+      top: 80px;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+    }
+    .doc-toc-card {
+      background: var(--color-card);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      padding: 1.25rem;
+    }
+    .doc-toc-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--color-bg);
+    }
+    .doc-toc ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .doc-toc-item {
+      margin-bottom: 0.25rem;
+    }
+    .doc-toc-item a {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      color: var(--color-text-muted);
+      font-size: 0.875rem;
+      transition: all var(--transition-fast);
+      border-left: 2px solid transparent;
+    }
+    .doc-toc-item a:hover {
+      background: rgba(57, 95, 57, 0.08);
+      color: var(--color-primary);
+      border-left-color: var(--color-primary);
+    }
+    .doc-toc-item a.active {
+      background: rgba(57, 95, 57, 0.12);
+      color: var(--color-primary);
+      font-weight: 500;
+      border-left-color: var(--color-primary);
+    }
+    .toc-icon {
+      font-size: 1rem;
+      width: 1.25rem;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .doc-toc-divider {
+      height: 1px;
+      background: var(--color-bg);
+      margin: 0.75rem 0;
+    }
+    .doc-toc-section-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      padding: 0.5rem 0.75rem 0.25rem;
+      opacity: 0.7;
+    }
+
+    /* Page Content Styles */
+    .loadtest-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .loadtest-header h1 {
+      color: var(--color-primary);
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+    }
+    .loadtest-header p {
+      color: var(--color-text-muted);
+      font-size: 1.1rem;
+    }
+    .card {
+      background: var(--color-card);
+      border-radius: var(--radius-md);
+      padding: 1.5rem 2rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      scroll-margin-top: 80px;
+    }
+    .card h2 {
+      color: var(--color-primary);
+      border-bottom: 2px solid var(--color-bg);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .card h3 {
+      color: var(--color-text);
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .card h4 {
+      color: var(--color-text-muted);
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .card p, .card li {
+      line-height: 1.6;
+      color: var(--color-text-muted);
+    }
+    .card ul, .card ol {
+      margin: 0.5rem 0 1rem 1.5rem;
+    }
+    .card li {
+      margin-bottom: 0.25rem;
+    }
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      margin: 1rem 0;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+    }
+    code {
+      background: rgba(0,0,0,0.05);
+      padding: 0.2rem 0.4rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.9em;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      color: var(--color-danger);
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid var(--color-bg);
+      padding: 0.75rem;
+      text-align: left;
+    }
+    th {
+      background: var(--color-bg);
+      font-weight: 600;
+      color: var(--color-text);
+    }
+    .info-box {
+      background: rgba(0, 120, 212, 0.1);
+      border-left: 4px solid var(--color-cpu);
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    }
+    .info-box p {
+      margin: 0;
+      color: var(--color-text);
+    }
+    .warning-box {
+      background: linear-gradient(135deg, rgba(255, 185, 0, 0.15) 0%, rgba(209, 52, 56, 0.1) 100%);
+      border-left: 4px solid var(--color-warning);
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    }
+    .warning-box p {
+      margin: 0;
+      color: var(--color-text);
+    }
+    .step-number {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      background: var(--color-primary);
+      color: white;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 28px;
+      font-weight: bold;
+      margin-right: 0.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .doc-layout {
+        flex-direction: column;
+      }
+      .doc-toc {
+        width: 100%;
+        order: -1;
+      }
+      .doc-toc-sticky {
+        position: relative;
+        top: 0;
+        max-height: none;
+      }
+      .doc-toc ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .doc-toc-item {
+        margin-bottom: 0;
+      }
+      .doc-toc-item a {
+        padding: 0.375rem 0.625rem;
+        border-left: none;
+        border-radius: var(--radius-md);
+        background: var(--color-bg);
+      }
+      .doc-toc-divider,
+      .doc-toc-section-label {
+        display: none;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .doc-layout {
+        padding: 1rem;
+      }
+      table {
+        font-size: 0.8rem;
+      }
+      th, td {
+        padding: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body class="page-doc">
+  <header>
+    <button id="hamburger-btn" class="hamburger-btn" aria-label="Open navigation menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <svg class="header-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 2L29 9.5V24.5L16 32L3 24.5V9.5L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="currentColor">JS</text>
+    </svg>
+    <h1>Performance Problem Simulator - Node 24</h1>
+    <span id="sku-badge" class="sku-badge">SKU: Local</span>
+    <nav>
+      <a href="/" class="btn-panel-toggle">🏠 Dashboard</a>
+    </nav>
+  </header>
+
+  <!-- Sidebar Drawer Navigation -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+  <aside id="sidebar-drawer" class="sidebar-drawer">
+    <div class="sidebar-header">
+      <svg class="sidebar-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 2L29 9.5V24.5L16 32L3 24.5V9.5L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/>
+        <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="currentColor">JS</text>
+      </svg>
+      <h2>PerfSimNode</h2>
+      <button id="sidebar-close" class="sidebar-close" aria-label="Close navigation">&times;</button>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Application</div>
+      <a href="/" class="sidebar-nav-item">
+        <span class="nav-icon">🎮</span>
+        <span class="nav-label">Dashboard<span class="nav-desc">Live metrics & controls</span></span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">Documentation</div>
+      <a href="/docs.html" class="sidebar-nav-item">
+        <span class="nav-icon">📚</span>
+        <span class="nav-label">Documentation<span class="nav-desc">API reference & guides</span></span>
+      </a>
+      <a href="/azure-diagnostics.html" class="sidebar-nav-item">
+        <span class="nav-icon">☁️</span>
+        <span class="nav-label">Azure Diagnostics<span class="nav-desc">Diagnose issues in App Service</span></span>
+      </a>
+      <a href="/azure-load-testing.html" class="sidebar-nav-item active">
+        <span class="nav-icon">📈</span>
+        <span class="nav-label">Azure Load Testing<span class="nav-desc">Load test endpoint & parameters</span></span>
+      </a>
+      <a href="/azure-deployment.html" class="sidebar-nav-item">
+        <span class="nav-icon">🚀</span>
+        <span class="nav-label">Deploy to Azure<span class="nav-desc">GitHub Actions + OIDC setup</span></span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">External</div>
+      <a id="github-nav-item" href="#" target="_blank" rel="noopener" class="sidebar-nav-item hidden">
+        <span class="nav-icon">🐙</span>
+        <span class="nav-label">GitHub Repository<span class="nav-desc">Source code & issues</span></span>
+      </a>
+      <a href="/swagger" target="_blank" rel="noopener" class="sidebar-nav-item">
+        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="128" cy="128" r="128" fill="#85ea2d"/><path d="M128 40c-48.6 0-88 39.4-88 88s39.4 88 88 88 88-39.4 88-88-39.4-88-88-88zm-8 132h-16v-16h16v16zm0-32h-16V76h16v64zm32 32h-16v-16h16v16zm0-32h-16V76h16v64z" fill="#173647"/></svg></span>
+        <span class="nav-label">Swagger<span class="nav-desc">Supported by SMARTBEAR</span></span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="sidebar-build-info">Build: Loading...</div>
+    </div>
+  </aside>
+
+  <div class="doc-layout">
+    <div class="doc-main">
+      <main class="loadtest-container">
+        <div class="loadtest-header">
+          <h1>📈 Azure Load Testing Guide</h1>
+          <p>Load test endpoint designed for Azure Load Testing integration</p>
+        </div>
+
+        <!-- Overview Section -->
+        <section id="overview" class="card">
+          <h2>🔬 Overview</h2>
+          <p>
+            The Performance Problem Simulator includes a dedicated load testing endpoint
+            designed for use with Azure Load Testing. This endpoint simulates realistic
+            application behavior that degrades gracefully under load.
+          </p>
+          <p>The <code>/api/loadtest</code> endpoint is designed to:</p>
+          <ul>
+            <li>Perform sustained CPU work (interleaved spin-loop cycles at configurable intensity)</li>
+            <li>Hold memory buffers for entire request duration (split between V8 heap and native Buffer for realistic pressure)</li>
+            <li>Degrade gracefully as concurrent requests increase (soft limit pattern)</li>
+            <li>Throw random exceptions when concurrent requests exceed a configurable threshold</li>
+            <li>Eventually trigger Azure's 230-second timeout under extreme load</li>
+          </ul>
+        </section>
+
+        <!-- Setting Up Azure Load Testing -->
+        <section id="setup" class="card">
+          <h2>⚙️ Setting Up Azure Load Testing</h2>
+          <ol>
+            <li>In the Azure Portal, create an Azure Load Testing resource</li>
+            <li>Create a new test and configure the target URL using one of these options:</li>
+          </ol>
+
+          <h3>GET with Query Parameters</h3>
+          <p>Use the target URL directly — no JMeter script required:</p>
+          <pre><code># With defaults
+https://your-app.azurewebsites.net/api/loadtest
+
+# Custom parameters
+https://your-app.azurewebsites.net/api/loadtest?workIterations=2000&bufferSizeKb=50000
+
+# Event loop only (no CPU work)
+https://your-app.azurewebsites.net/api/loadtest?workIterations=0&bufferSizeKb=100</code></pre>
+
+          <ol start="3">
+            <li>Configure load pattern (ramp up, steady state, ramp down)</li>
+            <li>Set up Azure Monitor integration to correlate metrics</li>
+          </ol>
+        </section>
+
+        <!-- Query Parameters Reference -->
+        <section id="parameters" class="card">
+          <h2>📋 Query Parameters Reference</h2>
+          <p>Each parameter controls a specific resource independently:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Default</th>
+                <th>Target Resource</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>workIterations</code></td>
+                <td>700</td>
+                <td>CPU</td>
+                <td>Spin-loop iterations per CPU work cycle. ms per cycle = workIterations/10. Default 700 → 70ms spin per cycle.</td>
+              </tr>
+              <tr>
+                <td><code>bufferSizeKb</code></td>
+                <td>10000</td>
+                <td>Memory</td>
+                <td>Memory held for entire request duration in KB (10 MB default). Split 50/50 between V8 heap and native Buffer.</td>
+              </tr>
+              <tr>
+                <td><code>baselineDelayMs</code></td>
+                <td>1000</td>
+                <td>Event Loop</td>
+                <td>Minimum request duration (ms). CPU work and sleep interleaved throughout.</td>
+              </tr>
+              <tr>
+                <td><code>softLimit</code></td>
+                <td>20</td>
+                <td>Concurrency</td>
+                <td>Concurrent requests before degradation begins. Lower = faster degradation.</td>
+              </tr>
+              <tr>
+                <td><code>degradationFactor</code></td>
+                <td>1000</td>
+                <td>Concurrency</td>
+                <td>Additional delay (ms) per request over softLimit.</td>
+              </tr>
+              <tr>
+                <td><code>errorAboveConcurrent</code></td>
+                <td>20</td>
+                <td>Chaos</td>
+                <td>Concurrent request threshold for error injection. When concurrent requests exceed this value, errors may be thrown. Same as softLimit by default. Set to 0 to disable.</td>
+              </tr>
+              <tr>
+                <td><code>errorPercent</code></td>
+                <td>20</td>
+                <td>Chaos</td>
+                <td>Percentage chance (0-100) of throwing a random exception when above errorAboveConcurrent threshold.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Understanding the Soft Limit -->
+        <section id="soft-limit" class="card">
+          <h2>📊 Understanding the Soft Limit</h2>
+          <p>
+            The soft limit creates a degradation curve where response times increase as
+            concurrent requests exceed the threshold. The degradation formula is:
+          </p>
+          <pre><code>additionalDelay = max(0, concurrent - softLimit) × degradationFactor</code></pre>
+
+          <div class="info-box">
+            <p><strong>Note:</strong> Actual response times will vary based on your Azure App Service tier, current
+            load, and other factors. Use Azure Load Testing to establish baseline performance
+            for your specific environment. The default parameters are tuned for a Premium0V3 worker.
+            Any other SKU or worker size will need individual tuning.</p>
+          </div>
+
+          <h3>Example Degradation Pattern</h3>
+          <p>With default settings (<code>softLimit=20</code>, <code>degradationFactor=1000</code>):</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Concurrent Requests</th>
+                <th>Additional Delay</th>
+                <th>Expected Response Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>10</td>
+                <td>0ms</td>
+                <td>~1000ms (baseline only)</td>
+              </tr>
+              <tr>
+                <td>20</td>
+                <td>0ms</td>
+                <td>~1000ms (at soft limit)</td>
+              </tr>
+              <tr>
+                <td>30</td>
+                <td>10,000ms</td>
+                <td>~11s</td>
+              </tr>
+              <tr>
+                <td>50</td>
+                <td>30,000ms</td>
+                <td>~31s</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Tuning Parameters for Different Scenarios -->
+        <section id="scenarios" class="card">
+          <h2>🎛️ Tuning Parameters for Different Scenarios</h2>
+          <p>Complete parameter examples for various test scenarios:</p>
+
+          <div class="warning-box">
+            <p><strong>Note:</strong> Actual response times will vary based on your Azure App Service tier, current
+            load, and other factors. Use Azure Load Testing to establish baseline performance
+            for your specific environment. These example scenarios, and the defaults, are
+            for a Premium0V3 worker. Any other SKU or worker size will need individual tuning.</p>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Scenario</th>
+                <th>workIterations</th>
+                <th>bufferSizeKb</th>
+                <th>baselineDelayMs</th>
+                <th>softLimit</th>
+                <th>degradationFactor</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Event loop only</td>
+                <td>0</td>
+                <td>10000</td>
+                <td>1000</td>
+                <td>20</td>
+                <td>1000</td>
+                <td>Event loop exhaustion, minimal CPU</td>
+              </tr>
+              <tr>
+                <td>CPU intensive</td>
+                <td>35000</td>
+                <td>10000</td>
+                <td>0</td>
+                <td>400</td>
+                <td>50</td>
+                <td>High CPU, minimal blocking</td>
+              </tr>
+              <tr>
+                <td>Memory pressure</td>
+                <td>70</td>
+                <td>500000</td>
+                <td>200</td>
+                <td>80</td>
+                <td>250</td>
+                <td>High memory allocation (500MB/request)</td>
+              </tr>
+              <tr>
+                <td>Balanced (default)</td>
+                <td>700</td>
+                <td>10000</td>
+                <td>1000</td>
+                <td>20</td>
+                <td>1000</td>
+                <td>Balanced resource consumption</td>
+              </tr>
+              <tr>
+                <td>High concurrency</td>
+                <td>350</td>
+                <td>50000</td>
+                <td>400</td>
+                <td>200</td>
+                <td>100</td>
+                <td>Gradual degradation under high load</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Example URLs for Each Scenario</h3>
+          <pre><code># Event loop only
+/api/loadtest?workIterations=0&bufferSizeKb=10000&baselineDelayMs=1000&softLimit=20&degradationFactor=1000
+
+# CPU intensive
+/api/loadtest?workIterations=35000&bufferSizeKb=10000&baselineDelayMs=0&softLimit=400&degradationFactor=50
+
+# Memory pressure
+/api/loadtest?workIterations=70&bufferSizeKb=500000&baselineDelayMs=200&softLimit=80&degradationFactor=250
+
+# Balanced (default - just use without parameters)
+/api/loadtest
+
+# High concurrency
+/api/loadtest?workIterations=350&bufferSizeKb=50000&baselineDelayMs=400&softLimit=200&degradationFactor=100</code></pre>
+        </section>
+
+        <!-- Error Injection -->
+        <section id="error-injection" class="card">
+          <h2>💥 Error Injection</h2>
+          <p>
+            The load test endpoint can inject random exceptions to simulate realistic
+            application failures. This is controlled by two parameters:
+          </p>
+          <ul>
+            <li><code>errorAboveConcurrent</code> (default: 20) - Concurrent request threshold before errors may start (same as softLimit)</li>
+            <li><code>errorPercent</code> (default: 20) - Probability of error once threshold is reached</li>
+          </ul>
+
+          <div class="info-box">
+            <p><strong>💡 Concurrency-Based Error Injection:</strong> Error injection is enabled by default and triggers 
+            when concurrent requests exceed <code>errorAboveConcurrent</code> (default: 20, same as <code>softLimit</code>). 
+            This means errors naturally start occurring when the system begins degrading under load. 
+            Set <code>errorAboveConcurrent=0</code> to disable error injection entirely.</p>
+          </div>
+
+          <h3>Exception Types</h3>
+          <p>Random exceptions are selected from a pool of realistic JavaScript/Node.js exceptions:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Exception Type</th>
+                <th>Example Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>Error</code></td>
+                <td>InvalidOperationError: Operation is not valid due to current state</td>
+              </tr>
+              <tr>
+                <td><code>TypeError</code></td>
+                <td>Cannot read properties of null</td>
+              </tr>
+              <tr>
+                <td><code>ReferenceError</code></td>
+                <td>Object reference not set to an instance of an object</td>
+              </tr>
+              <tr>
+                <td><code>RangeError</code></td>
+                <td>Index was outside the bounds of the array</td>
+              </tr>
+              <tr>
+                <td><code>Error</code></td>
+                <td>TimeoutError: The operation has timed out</td>
+              </tr>
+              <tr>
+                <td><code>Error</code></td>
+                <td>IOException: Unable to read data from the transport connection</td>
+              </tr>
+              <tr>
+                <td><code>Error</code></td>
+                <td>OutOfMemoryError: Insufficient memory to continue execution</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Chaos Testing Examples</h3>
+          <pre><code># Errors when concurrent requests exceed 10 (50% chance each)
+/api/loadtest?errorAboveConcurrent=10&errorPercent=50
+
+# Errors when concurrent requests exceed 25 (rare, 5% chance)
+/api/loadtest?errorAboveConcurrent=25&errorPercent=5
+
+# Disable random errors (enabled by default at softLimit)
+/api/loadtest?errorAboveConcurrent=0</code></pre>
+        </section>
+
+        <!-- Diagnosing Load Test Results -->
+        <section id="diagnosing" class="card">
+          <h2>🔍 Diagnosing Load Test Results</h2>
+
+          <h3>1. Application Insights Integration</h3>
+          <ul>
+            <li>Go to Application Insights > Performance</li>
+            <li>Filter by operation name <code>GET /api/loadtest</code></li>
+            <li>Observe response time percentiles (p50, p95, p99)</li>
+            <li>Check failure rates when error injection is enabled</li>
+          </ul>
+
+          <h3>2. Azure Monitor Metrics</h3>
+          <ul>
+            <li><strong>Requests</strong> - Total request count and rate</li>
+            <li><strong>Response Time</strong> - Average and percentile latencies</li>
+            <li><strong>Http Server Errors</strong> - 5xx errors from random exceptions</li>
+            <li><strong>CPU Percentage</strong> - Should increase with load</li>
+            <li><strong>Memory Working Set</strong> - Should increase with bufferSizeKb</li>
+          </ul>
+
+          <h3>3. Load Testing Statistics Endpoint</h3>
+          <p>Query the stats endpoint during the test:</p>
+          <pre><code>GET /api/loadtest/stats
+
+{
+  "currentConcurrentRequests": 127,
+  "totalRequestsProcessed": 45230,
+  "totalExceptionsThrown": 23,
+  "averageResponseTimeMs": 847.5
+}</code></pre>
+        </section>
+
+        <!-- Response Format -->
+        <section id="response" class="card">
+          <h2>📤 Response Format</h2>
+          <p>Each successful request returns:</p>
+          <pre><code>{
+  "elapsedMs": 1247,
+  "queueTimeMs": 15,
+  "workTimeMs": 1232,
+  "concurrentRequestsAtStart": 42,
+  "degradationDelayAppliedMs": 8500,
+  "workIterationsCompleted": 700,
+  "memoryAllocatedBytes": 10240000,
+  "workCompleted": true,
+  "message": "Load test completed in 1247ms"
+}</code></pre>
+
+          <h3>Response Fields</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>elapsedMs</code></td>
+                <td>Total request duration in milliseconds (including queue time)</td>
+              </tr>
+              <tr>
+                <td><code>queueTimeMs</code></td>
+                <td>Time spent waiting in the event loop queue before work began</td>
+              </tr>
+              <tr>
+                <td><code>workTimeMs</code></td>
+                <td>Actual time spent doing work (elapsedMs - queueTimeMs)</td>
+              </tr>
+              <tr>
+                <td><code>concurrentRequestsAtStart</code></td>
+                <td>Number of concurrent requests when this request started</td>
+              </tr>
+              <tr>
+                <td><code>degradationDelayAppliedMs</code></td>
+                <td>Additional delay applied due to exceeding soft limit</td>
+              </tr>
+              <tr>
+                <td><code>workIterationsCompleted</code></td>
+                <td>Number of CPU work cycles completed</td>
+              </tr>
+              <tr>
+                <td><code>memoryAllocatedBytes</code></td>
+                <td>Memory buffer size allocated for this request</td>
+              </tr>
+              <tr>
+                <td><code>workCompleted</code></td>
+                <td>Whether all work completed successfully</td>
+              </tr>
+              <tr>
+                <td><code>message</code></td>
+                <td>Human-readable completion message</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Best Practices -->
+        <section id="best-practices" class="card">
+          <h2>✅ Best Practices</h2>
+
+          <h3>DO:</h3>
+          <ul>
+            <li>✅ Start with default parameters to establish a baseline</li>
+            <li>✅ Monitor Azure metrics during load tests</li>
+            <li>✅ Use the /api/loadtest/stats endpoint to track concurrency</li>
+            <li>✅ Gradually increase load to find breaking points</li>
+            <li>✅ Correlate load test results with Application Insights</li>
+            <li>✅ Test with realistic load patterns (ramp up, steady state, ramp down)</li>
+          </ul>
+
+          <h3>DON'T:</h3>
+          <ul>
+            <li>❌ Start with extreme parameter values</li>
+            <li>❌ Ignore memory metrics when using large bufferSizeKb</li>
+            <li>❌ Disable error injection (errorAboveConcurrent=0) if you want to see realistic failures</li>
+            <li>❌ Assume results from one SKU apply to another</li>
+          </ul>
+        </section>
+
+        <!-- Related Resources -->
+        <section id="resources" class="card">
+          <h2>📚 Related Resources</h2>
+          <ul>
+            <li><a href="https://docs.microsoft.com/en-us/azure/load-testing/" target="_blank" rel="noopener">Azure Load Testing Documentation</a></li>
+            <li><a href="https://docs.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview" target="_blank" rel="noopener">Application Insights Overview</a></li>
+            <li><a href="https://docs.microsoft.com/en-us/azure/app-service/troubleshoot-performance-issues" target="_blank" rel="noopener">Troubleshoot Performance Issues in Azure App Service</a></li>
+            <li><a href="/azure-diagnostics.html">Azure Diagnostics Guide</a> - Diagnose performance issues</li>
+            <li><a href="/swagger" target="_blank" rel="noopener">API Documentation</a> - Full API reference (Swagger)</li>
+          </ul>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- Table of Contents -->
+    <aside class="doc-toc">
+      <div class="doc-toc-sticky">
+        <div class="doc-toc-card">
+          <div class="doc-toc-title">On This Page</div>
+          <ul>
+            <li class="doc-toc-item"><a href="#overview"><span class="toc-icon">🔬</span> Overview</a></li>
+            <li class="doc-toc-item"><a href="#setup"><span class="toc-icon">⚙️</span> Setup</a></li>
+            <li class="doc-toc-item"><a href="#parameters"><span class="toc-icon">📋</span> Parameters</a></li>
+            <li class="doc-toc-item"><a href="#soft-limit"><span class="toc-icon">📊</span> Soft Limit</a></li>
+            <li class="doc-toc-item"><a href="#scenarios"><span class="toc-icon">🎛️</span> Scenarios</a></li>
+            <li class="doc-toc-item"><a href="#error-injection"><span class="toc-icon">💥</span> Error Injection</a></li>
+            <li class="doc-toc-item"><a href="#diagnosing"><span class="toc-icon">🔍</span> Diagnosing</a></li>
+            <li class="doc-toc-item"><a href="#response"><span class="toc-icon">📤</span> Response</a></li>
+            <li class="doc-toc-item"><a href="#best-practices"><span class="toc-icon">✅</span> Best Practices</a></li>
+            <li class="doc-toc-item"><a href="#resources"><span class="toc-icon">📚</span> Resources</a></li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <p>Performance Problem Simulator — Educational Tool for Azure App Service Diagnostics</p>
+    <p id="footer-credits"></p>
+    <p id="build-info">Build: Loading...</p>
+  </footer>
+
+  <script>
+    // Hamburger menu functionality
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+    const sidebarDrawer = document.getElementById('sidebar-drawer');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const sidebarClose = document.getElementById('sidebar-close');
+
+    function openSidebar() {
+      sidebarDrawer.classList.add('active');
+      sidebarOverlay.classList.add('active');
+      hamburgerBtn.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      hamburgerBtn.classList.remove('attention');
+    }
+
+    function closeSidebar() {
+      sidebarDrawer.classList.remove('active');
+      sidebarOverlay.classList.remove('active');
+      hamburgerBtn.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    hamburgerBtn.addEventListener('click', openSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar);
+    sidebarClose.addEventListener('click', closeSidebar);
+
+    // TOC active state tracking
+    const tocLinks = document.querySelectorAll('.doc-toc-item a');
+    const sections = document.querySelectorAll('section[id]');
+
+    function updateActiveTocLink() {
+      let currentSection = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        if (window.scrollY >= sectionTop - 100) {
+          currentSection = section.id;
+        }
+      });
+      tocLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + currentSection) {
+          link.classList.add('active');
+        }
+      });
+    }
+
+    window.addEventListener('scroll', updateActiveTocLink);
+    updateActiveTocLink();
+
+    // Fetch build info and SKU
+    async function fetchBuildInfo() {
+      try {
+        const response = await fetch('/api/health/build');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.buildTime) {
+            document.getElementById('build-info').textContent = 'Build: ' + data.buildTime;
+            document.getElementById('sidebar-build-info').textContent = 'Build: ' + data.buildTime;
+          }
+          if (data.sku) {
+            document.getElementById('sku-badge').textContent = 'SKU: ' + data.sku;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch build info', e);
+      }
+    }
+
+    // Fetch GitHub URL
+    async function fetchGitHubUrl() {
+      try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          const config = await response.json();
+          if (config.githubUrl) {
+            const githubNavItem = document.getElementById('github-nav-item');
+            githubNavItem.href = config.githubUrl;
+            githubNavItem.classList.remove('hidden');
+          }
+          if (config.pageFooter) {
+            document.getElementById('footer-credits').innerHTML = config.pageFooter;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch config', e);
+      }
+    }
+
+    fetchBuildInfo();
+    fetchGitHubUrl();
+  </script>
+</body>
+</html>
