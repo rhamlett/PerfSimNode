@@ -81,7 +81,7 @@ section[id] {
    Header
    -------------------------------------------------------------------------- */
 header {
-  background: #395f39;
+  background: linear-gradient(90deg, #4a7a4a 0%, #2d4d2d 100%);
   color: white;
   padding: 0.75rem 1.5rem;
   display: flex;
@@ -293,6 +293,7 @@ header nav {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  background: linear-gradient(90deg, #4a7a4a 0%, #2d4d2d 100%);
 }
 
 .sidebar-logo {
@@ -1103,7 +1104,7 @@ section h2, section h3 {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  background: linear-gradient(90deg, #4a7a4a 0%, #2d4d2d 100%);
   color: white;
 }
 
