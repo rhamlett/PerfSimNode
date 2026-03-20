@@ -898,20 +898,17 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&bufferSizeKb=10
     // Fetch GitHub URL
     async function fetchGitHubUrl() {
       try {
-        const response = await fetch('/api/config');
+        const response = await fetch('/api/health/github');
         if (response.ok) {
-          const config = await response.json();
-          if (config.githubUrl) {
+          const data = await response.json();
+          if (data.url) {
             const githubNavItem = document.getElementById('github-nav-item');
-            githubNavItem.href = config.githubUrl;
+            githubNavItem.href = data.url;
             githubNavItem.classList.remove('hidden');
-          }
-          if (config.pageFooter) {
-            document.getElementById('footer-credits').innerHTML = config.pageFooter;
           }
         }
       } catch (e) {
-        console.error('Failed to fetch config', e);
+        console.error('Failed to fetch GitHub URL', e);
       }
     }
 
