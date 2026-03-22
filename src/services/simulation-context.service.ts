@@ -42,7 +42,7 @@
  * @module services/simulation-context
  */
 
-import appInsights from 'applicationinsights';
+import { getAppInsightsClient } from '../instrumentation';
 
 /**
  * Simulation context information.
@@ -60,21 +60,6 @@ export interface SimulationContextInfo {
  * - Enable filtering of App Insights telemetry by simulation ID
  */
 class SimulationContextServiceClass {
-  /**
-   * Gets the Application Insights telemetry client.
-   * Returns null if App Insights is not configured.
-   */
-  private getClient(): appInsights.TelemetryClient | null {
-    try {
-      if (appInsights && appInsights.defaultClient) {
-        return appInsights.defaultClient;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
   /**
    * Sets the simulation context by tracking a SimulationStarted event.
    *
@@ -107,13 +92,13 @@ class SimulationContextServiceClass {
     simulationId: string,
     simulationType: string
   ): void {
-    const client = this.getClient();
-    if (!client) {
-      // No client - App Insights not configured, silently skip
-      return;
-    }
-
     try {
+      const client = getAppInsightsClient();
+      if (!client) {
+        // No client - App Insights not configured, silently skip
+        return;
+      }
+
       client.trackEvent({
         name: eventName,
         properties: {
