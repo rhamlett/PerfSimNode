@@ -69,7 +69,16 @@ class SimulationContextServiceClass {
    * Returns null if App Insights is not configured.
    */
   private getClient(): appInsights.TelemetryClient | null {
-    return appInsights.defaultClient || null;
+    try {
+      // Check if appInsights module and defaultClient exist
+      if (appInsights && appInsights.defaultClient) {
+        return appInsights.defaultClient;
+      }
+      return null;
+    } catch {
+      // App Insights not initialized - return null silently
+      return null;
+    }
   }
 
   /**
