@@ -42,6 +42,7 @@ import path from 'path';
 import { Simulation, CpuStressParams } from '../types';
 import { SimulationTrackerService } from './simulation-tracker.service';
 import { EventLogService } from './event-log.service';
+import { SimulationContextService } from './simulation-context.service';
 
 /** Active CPU stress processes by simulation ID */
 const activeProcesses: Map<string, ChildProcess[]> = new Map();
@@ -81,6 +82,9 @@ class CpuStressServiceClass {
       { type: 'CPU_STRESS', ...params },
       durationSeconds
     );
+
+    // Set Application Insights correlation context
+    SimulationContextService.setContext(simulation.id, 'CPU_STRESS');
 
     // Log the start
     EventLogService.info('SIMULATION_STARTED', `CPU stress simulation started (${intensity}) for ${durationSeconds}s`, {

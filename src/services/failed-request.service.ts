@@ -39,6 +39,7 @@ import http from 'http';
 import { Simulation, FailedRequestParams } from '../types';
 import { SimulationTrackerService } from './simulation-tracker.service';
 import { EventLogService } from './event-log.service';
+import { SimulationContextService } from './simulation-context.service';
 import { config } from '../config';
 
 /**
@@ -86,6 +87,9 @@ class FailedRequestServiceClass {
       { type: 'FAILED_REQUEST', requestCount },
       60 // Max 60 seconds for the batch
     );
+
+    // Set Application Insights correlation context
+    SimulationContextService.setContext(simulation.id, 'FAILED_REQUEST');
 
     // Log the start
     EventLogService.info('SIMULATION_STARTED', `Failed request simulation started: generating ${requestCount} HTTP 5xx errors`, {

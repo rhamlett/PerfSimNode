@@ -48,6 +48,7 @@ import { pbkdf2Sync } from 'crypto';
 import { Simulation, EventLoopBlockingParams } from '../types';
 import { SimulationTrackerService } from './simulation-tracker.service';
 import { EventLogService } from './event-log.service';
+import { SimulationContextService } from './simulation-context.service';
 
 /** Default chunk duration — long enough to spike latency, short enough to let probes through */
 const DEFAULT_CHUNK_MS = 200;
@@ -80,6 +81,9 @@ class EventLoopBlockServiceClass {
       { type: 'EVENT_LOOP_BLOCKING', durationSeconds, chunkMs },
       durationSeconds
     );
+
+    // Set Application Insights correlation context
+    SimulationContextService.setContext(simulation.id, 'EVENT_LOOP_BLOCKING');
 
     // Log the start
     EventLogService.warn(

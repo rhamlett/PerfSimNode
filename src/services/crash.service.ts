@@ -53,6 +53,9 @@ import { EventLogService } from './event-log.service';
  * This ensures the event log entry is written and the HTTP response is sent
  * BEFORE the process terminates. Without this, the client would see a
  * connection reset instead of the 202 response.
+ * 
+ * NOTE: Crash simulations are exempt from simulation ID tracking since
+ * the process terminates before any meaningful telemetry correlation can occur.
  */
 class CrashServiceClass {
   /**

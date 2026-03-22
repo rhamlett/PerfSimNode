@@ -44,6 +44,7 @@
 import { Simulation, MemoryPressureParams } from '../types';
 import { SimulationTrackerService } from './simulation-tracker.service';
 import { EventLogService } from './event-log.service';
+import { SimulationContextService } from './simulation-context.service';
 
 /** Memory allocation entry with data and size tracking */
 interface MemoryAllocation {
@@ -97,6 +98,9 @@ class MemoryPressureServiceClass {
     // Initialize allocation immediately so it shows up
     const data: object[] = [];
     allocations.set(simulation.id, { data, sizeMb });
+
+    // Set Application Insights correlation context
+    SimulationContextService.setContext(simulation.id, 'MEMORY_PRESSURE');
 
     // Log the start
     EventLogService.info('MEMORY_ALLOCATING', `Starting allocation of ${sizeMb}MB...`, {

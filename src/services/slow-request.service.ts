@@ -52,6 +52,7 @@ import path from 'path';
 import { Simulation, SlowRequestParams, SlowRequestBlockingPattern } from '../types';
 import { SimulationTrackerService } from './simulation-tracker.service';
 import { EventLogService } from './event-log.service';
+import { SimulationContextService } from './simulation-context.service';
 import { delay } from '../utils';
 
 // Default libuv thread pool size is 4
@@ -78,6 +79,9 @@ class SlowRequestServiceClass {
       { type: 'SLOW_REQUEST', delaySeconds, blockingPattern },
       delaySeconds
     );
+
+    // Set Application Insights correlation context
+    SimulationContextService.setContext(simulation.id, 'SLOW_REQUEST');
 
     // Log the start with pattern info
     const patternDesc = this.getPatternDescription(blockingPattern);

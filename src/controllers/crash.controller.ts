@@ -64,7 +64,7 @@ crashRouter.post('/failfast', (_req: Request, res: Response) => {
 crashRouter.post('/stackoverflow', (_req: Request, res: Response) => {
   res.status(202).json({
     message: 'Stack overflow initiated - process will terminate via infinite recursion',
-    warning: 'The process will terminate. In Azure App Service, it will restart automatically.',
+    warning: 'The process will terminate. On Azure App Service, may require manual restart.',
     timestamp: new Date().toISOString(),
   });
 
@@ -108,7 +108,7 @@ crashRouter.post('/memory', (_req: Request, res: Response) => {
   // Send response before crashing
   res.status(202).json({
     message: 'Memory exhaustion initiated - process will terminate with OOM error',
-    warning: 'The process will terminate. In Azure App Service, it will restart automatically.',
+    warning: 'The process will terminate. On Azure App Service, may require manual restart.',
     timestamp: new Date().toISOString(),
   });
 

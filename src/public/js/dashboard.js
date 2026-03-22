@@ -71,6 +71,13 @@ function getMetricColor(value, warningThreshold, dangerThreshold) {
  */
 function onSocketConnected() {
   console.log('[Dashboard] Socket connected, loading initial data');
+  
+  // Initialize click-to-copy handlers for simulation IDs (only once)
+  if (!window._simIdCopyHandlersInitialized) {
+    initSimulationIdCopyHandlers();
+    window._simIdCopyHandlersInitialized = true;
+  }
+  
   loadActiveSimulations();
   // Only load event log on initial connection to prevent clearing accumulated events
   if (!initialLoadComplete) {
@@ -233,6 +240,7 @@ function addEventToLog(event, skipRender = false) {
     level: event.level || 'info',
     message: event.message || (event.event ? `${event.event}: ${event.message}` : ''),
     simulationType: event.simulationType || null,
+    simulationId: event.simulationId || null,
     eventType: event.event || null
   };
   
@@ -240,6 +248,51 @@ function addEventToLog(event, skipRender = false) {
   if (!skipRender) {
     renderEventLog();
   }
+}
+
+/**
+ * Wraps a message with a simulation ID tooltip for correlation.
+ * Clicking the message copies the simulation ID to clipboard.
+ * @param {string} message - The message to display
+ * @param {string} simulationId - The full GUID simulation ID (shown in tooltip)
+ * @returns {string} HTML string with message and tooltip
+ */
+function withSimulationId(message, simulationId) {
+  if (!simulationId) return message;
+  return `<span class="sim-msg" data-simid="${simulationId}" title="Click to copy Simulation ID: ${simulationId}">${message}</span>`;
+}
+
+/**
+ * Copies the simulation ID to clipboard when a sim-msg element is clicked.
+ * Shows a brief visual feedback to indicate successful copy.
+ */
+function initSimulationIdCopyHandlers() {
+  const eventLogEl = document.getElementById('event-log');
+  if (!eventLogEl) return;
+  
+  eventLogEl.addEventListener('click', async (e) => {
+    const simMsg = e.target.closest('.sim-msg');
+    if (!simMsg) return;
+    
+    const simId = simMsg.dataset.simid;
+    if (!simId) return;
+    
+    try {
+      await navigator.clipboard.writeText(simId);
+      
+      // Visual feedback
+      simMsg.classList.add('copied');
+      const originalTitle = simMsg.title;
+      simMsg.title = 'Copied!';
+      
+      setTimeout(() => {
+        simMsg.classList.remove('copied');
+        simMsg.title = originalTitle;
+      }, 1500);
+    } catch (err) {
+      console.error('[Dashboard] Failed to copy simulation ID:', err);
+    }
+  });
 }
 
 /**
@@ -295,6 +348,7 @@ function getEventIconAndClass(event) {
 /**
  * Renders the event log with UTC timestamps matching Azure diagnostics.
  * Always sorts by timestamp descending to ensure correct order.
+ * Events with simulation IDs display clickable messages for copying.
  */
 function renderEventLog() {
   const container = document.getElementById('event-log');
@@ -308,9 +362,13 @@ function renderEventLog() {
       const time = formatUtcTime(new Date(event.timestamp));
       const { icon, colorClass } = getEventIconAndClass(event);
       const iconPart = icon ? `${icon} ` : '';
+      // Wrap message with simulation ID tooltip if present
+      const messageHtml = event.simulationId 
+        ? withSimulationId(`${iconPart}${event.message}`, event.simulationId)
+        : `${iconPart}${event.message}`;
       return `<div class="log-entry ${colorClass}">
         <span class="log-time">${time} UTC</span>
-        <span class="log-message">${iconPart}${event.message}</span>
+        <span class="log-message">${messageHtml}</span>
       </div>`;
     })
     .join('');

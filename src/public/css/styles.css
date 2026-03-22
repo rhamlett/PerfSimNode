@@ -1640,6 +1640,24 @@ button:disabled {
 }
 
 /* --------------------------------------------------------------------------
+   Simulation ID Click-to-Copy Styling
+   -------------------------------------------------------------------------- */
+.sim-msg {
+  cursor: pointer;
+  border-bottom: 1px dotted currentColor;
+  transition: background-color 0.15s ease;
+}
+
+.sim-msg:hover {
+  background-color: rgba(0, 120, 212, 0.1);
+  border-radius: 2px;
+}
+
+.sim-msg.copied {
+  background-color: rgba(16, 124, 16, 0.2);
+}
+
+/* --------------------------------------------------------------------------
    Footer
    -------------------------------------------------------------------------- */
 footer {
