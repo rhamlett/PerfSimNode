@@ -6,6 +6,7 @@
  * PURPOSE:
  *   Initializes Azure Monitor OpenTelemetry SDK for automatic distributed tracing,
  *   metrics collection, and log correlation in Azure Application Insights.
+ *   Also initializes the classic Application Insights SDK for custom events.
  *
  * CRITICAL REQUIREMENT:
  *   This module MUST be imported BEFORE any other application code. OpenTelemetry
@@ -34,6 +35,7 @@
  */
 
 import { useAzureMonitor, AzureMonitorOpenTelemetryOptions } from '@azure/monitor-opentelemetry';
+import appInsights from 'applicationinsights';
 
 // Configure Azure Monitor OpenTelemetry
 const options: AzureMonitorOpenTelemetryOptions = {
@@ -56,6 +58,20 @@ if (connectionString) {
   console.log('[PerfSimNode] Initializing Azure Monitor OpenTelemetry...');
   useAzureMonitor(options);
   console.log('[PerfSimNode] Azure Monitor OpenTelemetry initialized');
+  
+  // Also initialize the classic Application Insights SDK for custom events (trackEvent)
+  // OpenTelemetry handles auto-instrumentation, but we need the classic SDK for custom events
+  console.log('[PerfSimNode] Initializing Application Insights SDK for custom events...');
+  appInsights.setup(connectionString)
+    .setAutoCollectRequests(false)  // Disabled - OpenTelemetry handles this
+    .setAutoCollectPerformance(false, false)  // Disabled - OpenTelemetry handles this
+    .setAutoCollectExceptions(false)  // Disabled - OpenTelemetry handles this
+    .setAutoCollectDependencies(false)  // Disabled - OpenTelemetry handles this
+    .setAutoCollectConsole(false)
+    .setUseDiskRetryCaching(true)
+    .setSendLiveMetrics(false)
+    .start();
+  console.log('[PerfSimNode] Application Insights SDK initialized');
 } else {
   console.log('[PerfSimNode] APPLICATIONINSIGHTS_CONNECTION_STRING not set - Application Insights disabled');
 }

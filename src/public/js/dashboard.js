@@ -846,16 +846,25 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
   
   const patternDesc = getPatternDescription(blockingPattern);
   
+  // Generate a session-level simulation ID for all slow request events in this session
+  // This matches the .NET behavior where one simulation ID covers the entire slow request session
+  const sessionSimulationId = crypto.randomUUID ? crypto.randomUUID() : 
+    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  
   // Notify server to reduce probe frequency during profiling
   if (typeof sendSlowRequestState === 'function') {
     sendSlowRequestState(true, 0, maxRequests, 0);
   }
   
-  // Log simulation start
+  // Log simulation start with session simulation ID
   addEventToLog({
     timestamp: new Date().toISOString(),
     level: 'info',
     simulationType: 'SLOW_REQUEST',
+    simulationId: sessionSimulationId,
     message: `Starting Slow Request simulation: ${maxRequests} requests × ${delaySeconds}s delay @ ${intervalSeconds}s intervals (${patternDesc})`
   });
   

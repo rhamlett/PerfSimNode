@@ -63,49 +63,13 @@ export interface SimulationContextInfo {
  * - Enable filtering of App Insights telemetry by simulation ID
  */
 class SimulationContextServiceClass {
-  private client: appInsights.TelemetryClient | null = null;
-  private initialized = false;
-
   /**
-   * Initializes the Application Insights SDK for custom event tracking.
-   * This is separate from the OpenTelemetry auto-instrumentation in instrumentation.ts.
-   * Called lazily on first use.
+   * Gets the Application Insights telemetry client.
+   * The client is initialized in instrumentation.ts at application startup.
+   * Returns null if App Insights is not configured.
    */
-  private ensureInitialized(): void {
-    if (this.initialized) return;
-    this.initialized = true;
-
-    const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
-    if (!connectionString) {
-      console.log('[SimulationContext] APPLICATIONINSIGHTS_CONNECTION_STRING not set - custom events disabled');
-      return;
-    }
-
-    try {
-      // Initialize the classic Application Insights SDK for custom event tracking
-      // This is separate from the @azure/monitor-opentelemetry SDK used for auto-instrumentation
-      console.log('[SimulationContext] Initializing Application Insights SDK for custom events...');
-      
-      appInsights.setup(connectionString)
-        .setAutoCollectRequests(false)  // Disable - OpenTelemetry handles this
-        .setAutoCollectPerformance(false, false)
-        .setAutoCollectExceptions(false)
-        .setAutoCollectDependencies(false)
-        .setAutoCollectConsole(false)
-        .setUseDiskRetryCaching(true)
-        .setSendLiveMetrics(false)
-        .start();
-      
-      this.client = appInsights.defaultClient;
-      
-      if (this.client) {
-        console.log('[SimulationContext] Application Insights SDK initialized successfully');
-      } else {
-        console.error('[SimulationContext] Failed to get Application Insights client after setup');
-      }
-    } catch (error) {
-      console.error('[SimulationContext] Failed to initialize Application Insights SDK:', error);
-    }
+  private getClient(): appInsights.TelemetryClient | null {
+    return appInsights.defaultClient || null;
   }
 
   /**
@@ -118,8 +82,6 @@ class SimulationContextServiceClass {
    * @param simulationType - Type of simulation (e.g., 'CPU_STRESS', 'MEMORY_PRESSURE')
    */
   setContext(simulationId: string, simulationType: string): void {
-    this.ensureInitialized();
-
     // Track the SimulationStarted custom event
     this.trackCustomEvent('SimulationStarted', simulationId, simulationType);
 
@@ -160,13 +122,14 @@ class SimulationContextServiceClass {
     simulationType: string,
     additionalProperties?: Record<string, string>
   ): void {
-    if (!this.client) {
+    const client = this.getClient();
+    if (!client) {
       console.log(`[SimulationContext] No client available - skipping ${eventName} event for ${simulationType}`);
       return;
     }
 
     try {
-      this.client.trackEvent({
+      client.trackEvent({
         name: eventName,
         properties: {
           SimulationId: simulationId,
@@ -176,7 +139,7 @@ class SimulationContextServiceClass {
       });
 
       // Flush immediately to ensure event is sent (don't wait for batching)
-      this.client.flush();
+      client.flush();
 
       console.log(`[SimulationContext] Tracked and flushed ${eventName} for ${simulationType} (${simulationId.substring(0, 8)}...)`);
     } catch (error) {
@@ -192,7 +155,6 @@ class SimulationContextServiceClass {
    * @returns A function to call when the simulation ends
    */
   trackSimulationStart(simulationId: string, simulationType: string): () => void {
-    this.ensureInitialized();
     this.trackCustomEvent('SimulationStarted', simulationId, simulationType);
 
     // Also start an OpenTelemetry span for trace correlation
