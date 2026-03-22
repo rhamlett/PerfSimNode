@@ -4,41 +4,47 @@
  * =============================================================================
  *
  * PURPOSE:
- *   Tracks the current simulation context and correlates it with Azure Application
- *   Insights telemetry via OpenTelemetry Activity (span) tags. This enables users
- *   to filter Application Insights logs and traces by simulation ID.
+ *   Tracks simulation lifecycle events in Azure Application Insights, enabling
+ *   users to filter and correlate telemetry by simulation ID using KQL queries.
  *
  * HOW IT WORKS:
- *   1. When a simulation starts, set tags on the current OpenTelemetry span
- *   2. Tags flow automatically to Application Insights as custom dimensions
- *   3. Users can query: customDimensions["SimulationId"] == "abc-123"
+ *   1. When a simulation starts, tracks a "SimulationStarted" custom event
+ *   2. When a simulation ends, tracks a "SimulationEnded" custom event
+ *   3. Both events include SimulationId and SimulationType as properties
+ *   4. Also sets OpenTelemetry span attributes for trace correlation
  *
  * APPLICATION INSIGHTS INTEGRATION:
- *   - Uses OpenTelemetry API to access the current span (Activity in .NET terms)
- *   - Sets SimulationId and SimulationType as span attributes
- *   - Attributes appear as customDimensions in App Insights queries
- *   - Works transparently — if App Insights is not configured, tags are simply ignored
+ *   - Uses the applicationinsights SDK's trackEvent() for custom events
+ *   - Custom events appear in the customEvents table in Log Analytics
+ *   - Properties appear in customDimensions for KQL filtering
+ *   - Works transparently — if App Insights is not configured, calls are no-ops
  *
  * KQL QUERY EXAMPLES:
- *   // Find all traces for a specific simulation
- *   traces
- *   | where customDimensions["SimulationId"] == "abc123-def4-..."
+ *   // Find all simulation events
+ *   customEvents
+ *   | where name in ("SimulationStarted", "SimulationEnded")
+ *   | project timestamp, name, customDimensions.SimulationId, customDimensions.SimulationType
+ *
+ *   // Find all events for a specific simulation
+ *   customEvents
+ *   | where customDimensions.SimulationId == "abc123-def4-..."
  *   | order by timestamp desc
  *
  *   // Find all CPU stress simulations
- *   traces
- *   | where customDimensions["SimulationType"] == "CPU_STRESS"
+ *   customEvents
+ *   | where customDimensions.SimulationType == "CPU_STRESS"
  *   | order by timestamp desc
  *
  * PORTING NOTES:
- *   - .NET: Use System.Diagnostics.Activity.Current?.SetTag()
- *   - Java: Use OpenTelemetry Span.current().setAttribute()
- *   - Python: Use opentelemetry.trace.get_current_span().set_attribute()
+ *   - .NET: Use TelemetryClient.TrackEvent()
+ *   - Java: Use TelemetryClient.trackEvent()
+ *   - Python: Use azure.monitor.opentelemetry or applicationinsights SDK
  *
  * @module services/simulation-context
  */
 
 import { trace, SpanStatusCode } from '@opentelemetry/api';
+import appInsights from 'applicationinsights';
 
 /**
  * Simulation context information.
@@ -52,32 +58,74 @@ export interface SimulationContextInfo {
  * Service for tracking simulation context and correlating with Application Insights.
  *
  * This service provides methods to:
+ * - Track simulation start/end as custom events in App Insights
  * - Set simulation context on the current OpenTelemetry span
- * - Track simulation start/end events as custom metrics
  * - Enable filtering of App Insights telemetry by simulation ID
  */
 class SimulationContextServiceClass {
+  private client: appInsights.TelemetryClient | null = null;
+  private initialized = false;
+
+  /**
+   * Initializes the Application Insights client if not already initialized.
+   * Called lazily on first use to allow the main instrumentation to set up first.
+   */
+  private ensureInitialized(): void {
+    if (this.initialized) return;
+    this.initialized = true;
+
+    try {
+      // Check if Application Insights is configured (connection string set)
+      const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+      if (!connectionString) {
+        console.log('[SimulationContext] App Insights not configured - custom events disabled');
+        return;
+      }
+
+      // Get the default client that was initialized by the main instrumentation
+      // or create a new one if needed
+      if (appInsights.defaultClient) {
+        this.client = appInsights.defaultClient;
+        console.log('[SimulationContext] Using existing App Insights client');
+      } else {
+        // Initialize if not already done (shouldn't happen in normal flow)
+        appInsights.setup(connectionString)
+          .setAutoCollectRequests(false) // Don't duplicate - OpenTelemetry handles this
+          .setAutoCollectPerformance(false, false) // (enabled, collectExtendedMetrics)
+          .setAutoCollectExceptions(false)
+          .setAutoCollectDependencies(false)
+          .setAutoCollectConsole(false)
+          .setUseDiskRetryCaching(true)
+          .start();
+        this.client = appInsights.defaultClient;
+        console.log('[SimulationContext] Initialized new App Insights client');
+      }
+    } catch (error) {
+      console.debug('[SimulationContext] Failed to initialize App Insights client:', error);
+    }
+  }
+
   /**
    * Sets the simulation context on the current OpenTelemetry span.
    *
    * This adds SimulationId and SimulationType as span attributes, which flow
-   * to Application Insights as customDimensions for KQL filtering.
+   * to Application Insights as customDimensions for KQL filtering on traces.
    *
    * @param simulationId - Unique identifier for the simulation
    * @param simulationType - Type of simulation (e.g., 'CPU_STRESS', 'MEMORY_PRESSURE')
    */
   setContext(simulationId: string, simulationType: string): void {
+    this.ensureInitialized();
+
+    // Track the SimulationStarted custom event
+    this.trackCustomEvent('SimulationStarted', simulationId, simulationType);
+
+    // Also set OpenTelemetry span attributes for trace correlation
     try {
-      // Get the active span from OpenTelemetry context
       const activeSpan = trace.getActiveSpan();
-      
       if (activeSpan) {
-        // Set attributes that will flow to Application Insights as customDimensions
         activeSpan.setAttribute('SimulationId', simulationId);
         activeSpan.setAttribute('SimulationType', simulationType);
-        
-        // Also add to the span name for better visibility in traces
-        activeSpan.updateName(`simulation:${simulationType}:${simulationId.substring(0, 8)}`);
       }
     } catch (error) {
       // Silent fail - telemetry is optional
@@ -86,75 +134,87 @@ class SimulationContextServiceClass {
   }
 
   /**
-   * Tracks a simulation start event.
+   * Tracks a simulation ended event.
    *
-   * Creates a new span for the simulation and sets context attributes.
-   * Returns a function to end the span when the simulation completes.
+   * @param simulationId - Unique identifier for the simulation
+   * @param simulationType - Type of simulation
+   */
+  trackSimulationEnded(simulationId: string, simulationType: string): void {
+    this.trackCustomEvent('SimulationEnded', simulationId, simulationType);
+  }
+
+  /**
+   * Tracks a custom event in Application Insights.
+   *
+   * @param eventName - Name of the event (e.g., 'SimulationStarted', 'SimulationEnded')
+   * @param simulationId - Unique identifier for the simulation
+   * @param simulationType - Type of simulation
+   * @param additionalProperties - Optional additional properties to include
+   */
+  private trackCustomEvent(
+    eventName: string,
+    simulationId: string,
+    simulationType: string,
+    additionalProperties?: Record<string, string>
+  ): void {
+    if (!this.client) {
+      console.debug(`[SimulationContext] No client - skipping ${eventName} event`);
+      return;
+    }
+
+    try {
+      this.client.trackEvent({
+        name: eventName,
+        properties: {
+          SimulationId: simulationId,
+          SimulationType: simulationType,
+          ...additionalProperties,
+        },
+      });
+
+      console.log(`[SimulationContext] Tracked ${eventName} for ${simulationType} (${simulationId.substring(0, 8)}...)`);
+    } catch (error) {
+      console.debug(`[SimulationContext] Failed to track ${eventName}:`, error);
+    }
+  }
+
+  /**
+   * Tracks a simulation start event with a cleanup function for the end event.
    *
    * @param simulationId - Unique identifier for the simulation
    * @param simulationType - Type of simulation
    * @returns A function to call when the simulation ends
    */
   trackSimulationStart(simulationId: string, simulationType: string): () => void {
+    this.ensureInitialized();
+    this.trackCustomEvent('SimulationStarted', simulationId, simulationType);
+
+    // Also start an OpenTelemetry span for trace correlation
+    let span: ReturnType<ReturnType<typeof trace.getTracer>['startSpan']> | null = null;
     try {
       const tracer = trace.getTracer('perfsimnode');
-      
-      // Start a new span for the simulation
-      const span = tracer.startSpan(`simulation:${simulationType}`, {
+      span = tracer.startSpan(`simulation:${simulationType}`, {
         attributes: {
           'SimulationId': simulationId,
           'SimulationType': simulationType,
-          'simulation.event': 'started',
         },
       });
+    } catch (error) {
+      console.debug('[SimulationContext] Failed to start span:', error);
+    }
 
-      // Return a cleanup function
-      return () => {
-        span.setAttribute('simulation.event', 'ended');
+    // Return cleanup function
+    return () => {
+      this.trackCustomEvent('SimulationEnded', simulationId, simulationType);
+      if (span) {
         span.setStatus({ code: SpanStatusCode.OK });
         span.end();
-      };
-    } catch (error) {
-      // Silent fail - telemetry is optional
-      console.debug('[SimulationContext] Failed to track simulation start:', error);
-      return () => {}; // No-op cleanup function
-    }
-  }
-
-  /**
-   * Tracks a simulation event (e.g., progress update, error).
-   *
-   * @param simulationId - Simulation ID
-   * @param simulationType - Type of simulation
-   * @param eventName - Name of the event
-   * @param attributes - Additional attributes to include
-   */
-  trackEvent(
-    simulationId: string,
-    simulationType: string,
-    eventName: string,
-    attributes?: Record<string, string | number | boolean>
-  ): void {
-    try {
-      const activeSpan = trace.getActiveSpan();
-      
-      if (activeSpan) {
-        activeSpan.addEvent(eventName, {
-          'SimulationId': simulationId,
-          'SimulationType': simulationType,
-          ...attributes,
-        });
       }
-    } catch (error) {
-      // Silent fail - telemetry is optional
-      console.debug('[SimulationContext] Failed to track event:', error);
-    }
+    };
   }
 
   /**
    * Creates a wrapper that sets simulation context for async operations.
-   *
-   * Use this when you need to ensure simulation context flows across async boundaries.
    *
    * @param simulationId - Simulation ID
    * @param simulationType - Type of simulation
@@ -166,27 +226,14 @@ class SimulationContextServiceClass {
     simulationType: string,
     fn: () => Promise<T>
   ): Promise<T> {
-    const tracer = trace.getTracer('perfsimnode');
-    
-    return tracer.startActiveSpan(`simulation:${simulationType}`, async (span) => {
-      try {
-        span.setAttribute('SimulationId', simulationId);
-        span.setAttribute('SimulationType', simulationType);
-        
-        const result = await fn();
-        
-        span.setStatus({ code: SpanStatusCode.OK });
-        return result;
-      } catch (error) {
-        span.setStatus({
-          code: SpanStatusCode.ERROR,
-          message: error instanceof Error ? error.message : 'Unknown error',
-        });
-        throw error;
-      } finally {
-        span.end();
-      }
-    });
+    const endTracking = this.trackSimulationStart(simulationId, simulationType);
+
+    try {
+      const result = await fn();
+      return result;
+    } finally {
+      endTracking();
+    }
   }
 }
 
