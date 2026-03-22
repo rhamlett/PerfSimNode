@@ -67,41 +67,44 @@ class SimulationContextServiceClass {
   private initialized = false;
 
   /**
-   * Initializes the Application Insights client if not already initialized.
-   * Called lazily on first use to allow the main instrumentation to set up first.
+   * Initializes the Application Insights SDK for custom event tracking.
+   * This is separate from the OpenTelemetry auto-instrumentation in instrumentation.ts.
+   * Called lazily on first use.
    */
   private ensureInitialized(): void {
     if (this.initialized) return;
     this.initialized = true;
 
-    try {
-      // Check if Application Insights is configured (connection string set)
-      const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
-      if (!connectionString) {
-        console.log('[SimulationContext] App Insights not configured - custom events disabled');
-        return;
-      }
+    const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+    if (!connectionString) {
+      console.log('[SimulationContext] APPLICATIONINSIGHTS_CONNECTION_STRING not set - custom events disabled');
+      return;
+    }
 
-      // Get the default client that was initialized by the main instrumentation
-      // or create a new one if needed
-      if (appInsights.defaultClient) {
-        this.client = appInsights.defaultClient;
-        console.log('[SimulationContext] Using existing App Insights client');
+    try {
+      // Initialize the classic Application Insights SDK for custom event tracking
+      // This is separate from the @azure/monitor-opentelemetry SDK used for auto-instrumentation
+      console.log('[SimulationContext] Initializing Application Insights SDK for custom events...');
+      
+      appInsights.setup(connectionString)
+        .setAutoCollectRequests(false)  // Disable - OpenTelemetry handles this
+        .setAutoCollectPerformance(false, false)
+        .setAutoCollectExceptions(false)
+        .setAutoCollectDependencies(false)
+        .setAutoCollectConsole(false)
+        .setUseDiskRetryCaching(true)
+        .setSendLiveMetrics(false)
+        .start();
+      
+      this.client = appInsights.defaultClient;
+      
+      if (this.client) {
+        console.log('[SimulationContext] Application Insights SDK initialized successfully');
       } else {
-        // Initialize if not already done (shouldn't happen in normal flow)
-        appInsights.setup(connectionString)
-          .setAutoCollectRequests(false) // Don't duplicate - OpenTelemetry handles this
-          .setAutoCollectPerformance(false, false) // (enabled, collectExtendedMetrics)
-          .setAutoCollectExceptions(false)
-          .setAutoCollectDependencies(false)
-          .setAutoCollectConsole(false)
-          .setUseDiskRetryCaching(true)
-          .start();
-        this.client = appInsights.defaultClient;
-        console.log('[SimulationContext] Initialized new App Insights client');
+        console.error('[SimulationContext] Failed to get Application Insights client after setup');
       }
     } catch (error) {
-      console.debug('[SimulationContext] Failed to initialize App Insights client:', error);
+      console.error('[SimulationContext] Failed to initialize Application Insights SDK:', error);
     }
   }
 
@@ -158,7 +161,7 @@ class SimulationContextServiceClass {
     additionalProperties?: Record<string, string>
   ): void {
     if (!this.client) {
-      console.debug(`[SimulationContext] No client - skipping ${eventName} event`);
+      console.log(`[SimulationContext] No client available - skipping ${eventName} event for ${simulationType}`);
       return;
     }
 
@@ -172,9 +175,12 @@ class SimulationContextServiceClass {
         },
       });
 
-      console.log(`[SimulationContext] Tracked ${eventName} for ${simulationType} (${simulationId.substring(0, 8)}...)`);
+      // Flush immediately to ensure event is sent (don't wait for batching)
+      this.client.flush();
+
+      console.log(`[SimulationContext] Tracked and flushed ${eventName} for ${simulationType} (${simulationId.substring(0, 8)}...)`);
     } catch (error) {
-      console.debug(`[SimulationContext] Failed to track ${eventName}:`, error);
+      console.error(`[SimulationContext] Failed to track ${eventName}:`, error);
     }
   }
 
