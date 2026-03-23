@@ -71,9 +71,13 @@ healthRouter.get('/environment', (_req: Request, res: Response) => {
   const websiteSku = process.env.WEBSITE_SKU;
   const websiteSiteName = process.env.WEBSITE_SITE_NAME;
   const websiteInstanceId = process.env.WEBSITE_INSTANCE_ID;
-  // os.hostname() is the reliable cross-platform way to get the machine name
-  // In Azure App Service, this returns the worker/container hostname
-  const computerName = os.hostname();
+  
+  // Worker name detection:
+  // - Windows App Service: COMPUTERNAME env var contains the worker name
+  // - Linux App Service: HOSTNAME env var contains the worker name
+  // - os.hostname() returns container ID on Linux, use as last fallback
+  const computerName = process.env.COMPUTERNAME || process.env.HOSTNAME || null;
+  const containerHostname = os.hostname();
   
   const isAzure = !!(websiteSiteName || websiteInstanceId);
   
@@ -82,7 +86,8 @@ healthRouter.get('/environment', (_req: Request, res: Response) => {
     sku: websiteSku || (isAzure ? 'Unknown' : 'Local'),
     siteName: websiteSiteName || null,
     instanceId: websiteInstanceId ? websiteInstanceId.slice(0, 8) : null,
-    computerName,
+    computerName,         // Worker name (from COMPUTERNAME or HOSTNAME env var)
+    containerHostname,    // Container hostname from os.hostname()
   });
 });
 

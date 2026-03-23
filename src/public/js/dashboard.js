@@ -467,10 +467,13 @@ async function loadEventLog() {
     const response = await fetch('/api/health/environment');
     const env = await response.json();
     let envMessage;
-    if (env.isAzure && env.computerName) {
-      envMessage = `Application is currently running on ${env.sku} SKU on container hostname ${env.computerName}`;
-    } else if (env.isAzure) {
-      envMessage = `Application is currently running on ${env.sku} SKU`;
+    if (env.isAzure) {
+      // computerName comes from COMPUTERNAME (Windows) or HOSTNAME (Linux) env var
+      if (env.computerName) {
+        envMessage = `Application is currently running on ${env.sku} SKU on worker name ${env.computerName}`;
+      } else {
+        envMessage = `Application is currently running on ${env.sku} SKU`;
+      }
     } else {
       envMessage = 'Application is currently running on Local';
     }
