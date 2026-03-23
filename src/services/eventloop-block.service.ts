@@ -82,8 +82,9 @@ class EventLoopBlockServiceClass {
       durationSeconds
     );
 
-    // Set Application Insights correlation context
-    SimulationContextService.setContext(simulation.id, 'EVENT_LOOP_BLOCKING');
+    // Set Application Insights correlation context - use async version to ensure
+    // the event is flushed BEFORE we block the event loop
+    await SimulationContextService.setContextAsync(simulation.id, 'EVENT_LOOP_BLOCKING');
 
     // Log the start
     EventLogService.warn(

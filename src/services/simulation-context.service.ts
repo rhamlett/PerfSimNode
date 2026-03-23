@@ -71,6 +71,18 @@ class SimulationContextServiceClass {
   }
 
   /**
+   * Sets the simulation context and waits for the flush to complete.
+   * Use this for simulations that block the event loop or cause heavy resource usage,
+   * which might prevent the async flush from completing.
+   *
+   * @param simulationId - Unique identifier for the simulation
+   * @param simulationType - Type of simulation
+   */
+  async setContextAsync(simulationId: string, simulationType: string): Promise<void> {
+    await this.trackCustomEventAsync('SimulationStarted', simulationId, simulationType);
+  }
+
+  /**
    * Tracks a simulation ended event.
    *
    * @param simulationId - Unique identifier for the simulation
@@ -109,6 +121,44 @@ class SimulationContextServiceClass {
       client.flush();
     } catch (error) {
       // Silent fail - telemetry should never break the app
+      console.debug(`[SimulationContext] Failed to track ${eventName}:`, error);
+    }
+  }
+
+  /**
+   * Tracks a custom event and waits for flush to complete.
+   * Use for operations that will block the event loop.
+   */
+  private async trackCustomEventAsync(
+    eventName: string,
+    simulationId: string,
+    simulationType: string
+  ): Promise<void> {
+    try {
+      const client = getAppInsightsClient();
+      if (!client) {
+        return;
+      }
+
+      client.trackEvent({
+        name: eventName,
+        properties: {
+          SimulationId: simulationId,
+          SimulationType: simulationType,
+        },
+      });
+
+      // Wait for flush with a timeout to ensure data is sent before blocking operations
+      await new Promise<void>((resolve) => {
+        const timeout = setTimeout(resolve, 1000); // Max 1 second wait
+        // flush() is synchronous but sends data async; add a small delay to allow send
+        client.flush();
+        setTimeout(() => {
+          clearTimeout(timeout);
+          resolve();
+        }, 100); // Give 100ms for the network send
+      });
+    } catch (error) {
       console.debug(`[SimulationContext] Failed to track ${eventName}:`, error);
     }
   }
