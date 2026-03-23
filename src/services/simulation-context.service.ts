@@ -107,9 +107,11 @@ class SimulationContextServiceClass {
     try {
       const client = getAppInsightsClient();
       if (!client) {
-        // No client - App Insights not configured, silently skip
+        console.log(`[SimulationContext] No App Insights client for ${eventName} (${simulationType})`);
         return;
       }
+
+      console.log(`[SimulationContext] Tracking ${eventName} for ${simulationType} (${simulationId})`);
 
       client.trackEvent({
         name: eventName,
@@ -119,6 +121,8 @@ class SimulationContextServiceClass {
         },
       });
       client.flush();
+      
+      console.log(`[SimulationContext] Queued flush for ${eventName} (${simulationType})`);
     } catch (error) {
       // Silent fail - telemetry should never break the app
       console.debug(`[SimulationContext] Failed to track ${eventName}:`, error);
@@ -137,9 +141,12 @@ class SimulationContextServiceClass {
     try {
       const client = getAppInsightsClient();
       if (!client) {
+        console.log(`[SimulationContext] No App Insights client for ${eventName} (${simulationType})`);
         return;
       }
 
+      console.log(`[SimulationContext] Tracking ${eventName} for ${simulationType} (${simulationId})`);
+      
       client.trackEvent({
         name: eventName,
         properties: {
@@ -150,16 +157,14 @@ class SimulationContextServiceClass {
 
       // Wait for flush with a timeout to ensure data is sent before blocking operations
       await new Promise<void>((resolve) => {
-        const timeout = setTimeout(resolve, 1000); // Max 1 second wait
-        // flush() is synchronous but sends data async; add a small delay to allow send
         client.flush();
-        setTimeout(() => {
-          clearTimeout(timeout);
-          resolve();
-        }, 100); // Give 100ms for the network send
+        // Give 500ms for the network send to complete
+        setTimeout(resolve, 500);
       });
+      
+      console.log(`[SimulationContext] Flushed ${eventName} for ${simulationType}`);
     } catch (error) {
-      console.debug(`[SimulationContext] Failed to track ${eventName}:`, error);
+      console.error(`[SimulationContext] Failed to track ${eventName}:`, error);
     }
   }
 
