@@ -446,6 +446,9 @@ async function loadEventLog() {
   // Add startup messages
   addEventToLog({ level: 'success', message: 'Connected to metrics hub' }, true);
   
+  // Add liability disclaimer
+  addEventToLog({ level: 'warning', message: '⚖️ This software is provided "AS IS" without warranty. The author shall not be liable for any damages arising from use or misuse. Deploy only in isolated, non-production environments. Licensed under MIT License.' }, true);
+  
   // Fetch config for probe rate and idle timeout
   let probeRate = 200;
   let idleTimeout = 20;
@@ -465,7 +468,7 @@ async function loadEventLog() {
     const env = await response.json();
     let envMessage;
     if (env.isAzure && env.computerName) {
-      envMessage = `Application is currently running on ${env.sku} SKU on worker ${env.computerName}`;
+      envMessage = `Application is currently running on ${env.sku} SKU on container hostname ${env.computerName}`;
     } else if (env.isAzure) {
       envMessage = `Application is currently running on ${env.sku} SKU`;
     } else {

@@ -646,6 +646,90 @@
       </div>
     </section>
 
+    <!-- Simulation ID Correlation -->
+    <section id="simulation-ids" class="card">
+      <h2>🔗 Simulation ID Correlation</h2>
+      <p>Every simulation instance is assigned a unique Simulation ID (GUID) that enables end-to-end correlation between the dashboard UI and Azure diagnostics.</p>
+
+      <h3>Finding Simulation IDs</h3>
+      <p><strong>In the Dashboard:</strong> Hover over any simulation-related message in the Event Log (marked with a dotted underline) to see the full Simulation ID in a tooltip.</p>
+      <p><strong>In Azure:</strong> The same Simulation ID is emitted in server-side logs and can be found in:</p>
+      <ul>
+        <li><strong>Application Insights</strong> - Search traces and custom events by Simulation ID</li>
+        <li><strong>Log Analytics</strong> - Query logs using the ID as a filter</li>
+        <li><strong>Container/App Service Logs</strong> - Filter stdout/stderr by the GUID</li>
+      </ul>
+
+      <h3>Correlation Queries</h3>
+      <p>Use these KQL queries in Log Analytics to correlate dashboard events with server telemetry:</p>
+
+      <div class="alert-box warning">
+        <h4>⚠️ Table Name Differences</h4>
+        <p>Log Analytics workspaces use different table and column names than classic Application Insights. If you see errors like "The name 'traces' does not refer to any known table", use the Log Analytics names below:</p>
+      </div>
+
+      <table class="comparison-table">
+        <thead>
+          <tr><th>Classic App Insights</th><th>Log Analytics</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>traces</td><td>AppTraces</td></tr>
+          <tr><td>customEvents</td><td>AppEvents</td></tr>
+          <tr><td>requests</td><td>AppRequests</td></tr>
+          <tr><td>exceptions</td><td>AppExceptions</td></tr>
+          <tr><td>dependencies</td><td>AppDependencies</td></tr>
+          <tr><td>message</td><td>Message</td></tr>
+          <tr><td>timestamp</td><td>TimeGenerated</td></tr>
+          <tr><td>customDimensions</td><td>Properties</td></tr>
+        </tbody>
+      </table>
+
+<pre><code>// Find simulation start/end events by Simulation ID
+AppEvents
+| where Name in ("SimulationStarted", "SimulationEnded")
+| where Properties["SimulationId"] == "YOUR-SIMULATION-ID-HERE"
+| project TimeGenerated, Name, Properties
+| order by TimeGenerated asc</code></pre>
+
+<pre><code>// Find all requests during a simulation time window
+let simStart = toscalar(
+    AppEvents 
+    | where Name == "SimulationStarted" and Properties["SimulationId"] == "YOUR-SIMULATION-ID-HERE"
+    | project TimeGenerated);
+let simEnd = toscalar(
+    AppEvents 
+    | where Name == "SimulationEnded" and Properties["SimulationId"] == "YOUR-SIMULATION-ID-HERE"
+    | project TimeGenerated);
+AppRequests
+| where TimeGenerated between (simStart .. simEnd)
+| order by TimeGenerated asc</code></pre>
+
+<pre><code>// Find failed requests during a simulation
+let simId = "YOUR-SIMULATION-ID-HERE";
+let simEvents = AppEvents | where Properties["SimulationId"] == simId;
+let simStart = toscalar(simEvents | where Name == "SimulationStarted" | project TimeGenerated);
+let simEnd = toscalar(simEvents | where Name == "SimulationEnded" | project TimeGenerated);
+AppRequests
+| where TimeGenerated between (simStart .. simEnd)
+| where Success == false
+| project TimeGenerated, Name, ResultCode, DurationMs, Url
+| order by TimeGenerated asc</code></pre>
+
+      <h3>Troubleshooting Workflow</h3>
+      <ol>
+        <li>Start a simulation from the dashboard</li>
+        <li>Hover over the start message in the Event Log to copy the Simulation ID</li>
+        <li>Open Azure Portal → Application Insights → Logs (or Log Analytics)</li>
+        <li>Query logs using the Simulation ID to see all related server-side activity</li>
+        <li>Correlate timestamps between dashboard events and server metrics</li>
+      </ol>
+
+      <div class="alert-box info">
+        <strong>💡 Tip</strong>
+        <p>The Simulation ID helps isolate telemetry when running multiple concurrent simulations or when the dashboard is used by multiple users.</p>
+      </div>
+    </section>
+
     <!-- Azure Tools -->
     <section id="azure-tools" class="card">
       <h2>🛠️ Azure Diagnostic Tools</h2>
@@ -997,6 +1081,7 @@ process.on('SIGUSR2', takeHeapSnapshot);</code></pre>
         <ul>
           <li class="doc-toc-item"><a href="#understanding-metrics"><span class="toc-icon">📊</span> Understanding Metrics</a></li>
           <li class="doc-toc-item"><a href="#diagnostic-scenarios"><span class="toc-icon">🔍</span> Diagnostic Scenarios</a></li>
+          <li class="doc-toc-item"><a href="#simulation-ids"><span class="toc-icon">🔗</span> Simulation ID Correlation</a></li>
         </ul>
         <div class="doc-toc-divider"></div>
         <div class="doc-toc-section-label">TOOLS</div>
