@@ -29,6 +29,8 @@ function initializeAppInsights(): void {
     const appInsights = require('applicationinsights');
     
     console.log('[PerfSimNode] Initializing Application Insights SDK...');
+    console.log('[PerfSimNode] Connection string prefix:', connectionString.substring(0, 50) + '...');
+    
     appInsights.setup(connectionString)
       .setAutoCollectRequests(true)
       .setAutoCollectPerformance(true, true)
@@ -40,7 +42,14 @@ function initializeAppInsights(): void {
       .start();
     
     appInsightsClient = appInsights.defaultClient;
-    console.log('[PerfSimNode] Application Insights SDK initialized');
+    
+    if (appInsightsClient) {
+      console.log('[PerfSimNode] Application Insights SDK initialized');
+      console.log('[PerfSimNode] Client config - instrumentationKey:', 
+        appInsightsClient.config?.instrumentationKey?.substring(0, 8) + '...');
+    } else {
+      console.error('[PerfSimNode] SDK started but defaultClient is null!');
+    }
   } catch (error) {
     console.error('[PerfSimNode] Failed to initialize Application Insights SDK:', error);
     console.log('[PerfSimNode] Continuing without Application Insights');

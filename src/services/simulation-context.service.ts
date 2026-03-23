@@ -146,6 +146,7 @@ class SimulationContextServiceClass {
       }
 
       console.log(`[SimulationContext] Tracking ${eventName} for ${simulationType} (${simulationId})`);
+      console.log(`[SimulationContext] Client endpoint: ${client.config?.endpointUrl}`);
       
       client.trackEvent({
         name: eventName,
@@ -157,9 +158,14 @@ class SimulationContextServiceClass {
 
       // Wait for flush with a timeout to ensure data is sent before blocking operations
       await new Promise<void>((resolve) => {
-        client.flush();
-        // Give 500ms for the network send to complete
-        setTimeout(resolve, 500);
+        client.flush({
+          callback: (response) => {
+            console.log(`[SimulationContext] Flush response for ${eventName}: ${response}`);
+            resolve();
+          }
+        });
+        // Fallback timeout in case callback doesn't fire
+        setTimeout(resolve, 2000);
       });
       
       console.log(`[SimulationContext] Flushed ${eventName} for ${simulationType}`);
