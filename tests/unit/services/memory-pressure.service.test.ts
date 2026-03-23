@@ -16,8 +16,8 @@ describe('MemoryPressureService', () => {
   });
 
   describe('allocate', () => {
-    it('should allocate memory and create simulation', async () => {
-      const simulation = await MemoryPressureService.allocate({ sizeMb: 10 });
+    it('should allocate memory and create simulation', () => {
+      const simulation = MemoryPressureService.allocate({ sizeMb: 10 });
 
       expect(simulation).toBeDefined();
       expect(simulation.id).toBeDefined();
@@ -28,11 +28,11 @@ describe('MemoryPressureService', () => {
       MemoryPressureService.release(simulation.id);
     });
 
-    it('should track total allocated memory', async () => {
-      const sim1 = await MemoryPressureService.allocate({ sizeMb: 10 });
+    it('should track total allocated memory', () => {
+      const sim1 = MemoryPressureService.allocate({ sizeMb: 10 });
       expect(MemoryPressureService.getTotalAllocatedMb()).toBeCloseTo(10, 0);
 
-      const sim2 = await MemoryPressureService.allocate({ sizeMb: 20 });
+      const sim2 = MemoryPressureService.allocate({ sizeMb: 20 });
       expect(MemoryPressureService.getTotalAllocatedMb()).toBeCloseTo(30, 0);
 
       // Cleanup
@@ -42,8 +42,8 @@ describe('MemoryPressureService', () => {
   });
 
   describe('release', () => {
-    it('should release allocated memory', async () => {
-      const simulation = await MemoryPressureService.allocate({ sizeMb: 10 });
+    it('should release allocated memory', () => {
+      const simulation = MemoryPressureService.allocate({ sizeMb: 10 });
 
       const totalBefore = MemoryPressureService.getTotalAllocatedMb();
       expect(totalBefore).toBeGreaterThan(0);
@@ -62,9 +62,9 @@ describe('MemoryPressureService', () => {
   });
 
   describe('getActiveAllocations', () => {
-    it('should return all active memory allocations', async () => {
-      const sim1 = await MemoryPressureService.allocate({ sizeMb: 10 });
-      const sim2 = await MemoryPressureService.allocate({ sizeMb: 20 });
+    it('should return all active memory allocations', () => {
+      const sim1 = MemoryPressureService.allocate({ sizeMb: 10 });
+      const sim2 = MemoryPressureService.allocate({ sizeMb: 20 });
 
       const allocations = MemoryPressureService.getActiveAllocations();
 
@@ -78,8 +78,8 @@ describe('MemoryPressureService', () => {
   });
 
   describe('getAllocationSize', () => {
-    it('should return allocation size for valid ID', async () => {
-      const simulation = await MemoryPressureService.allocate({ sizeMb: 50 });
+    it('should return allocation size for valid ID', () => {
+      const simulation = MemoryPressureService.allocate({ sizeMb: 50 });
 
       const size = MemoryPressureService.getAllocationSize(simulation.id);
 
@@ -96,10 +96,10 @@ describe('MemoryPressureService', () => {
   });
 
   describe('releaseAll', () => {
-    it('should release all allocations', async () => {
-      await MemoryPressureService.allocate({ sizeMb: 10 });
-      await MemoryPressureService.allocate({ sizeMb: 20 });
-      await MemoryPressureService.allocate({ sizeMb: 30 });
+    it('should release all allocations', () => {
+      MemoryPressureService.allocate({ sizeMb: 10 });
+      MemoryPressureService.allocate({ sizeMb: 20 });
+      MemoryPressureService.allocate({ sizeMb: 30 });
 
       expect(MemoryPressureService.getActiveCount()).toBe(3);
 
@@ -111,13 +111,13 @@ describe('MemoryPressureService', () => {
   });
 
   describe('getActiveCount', () => {
-    it('should return correct count', async () => {
+    it('should return correct count', () => {
       expect(MemoryPressureService.getActiveCount()).toBe(0);
 
-      const sim1 = await MemoryPressureService.allocate({ sizeMb: 10 });
+      const sim1 = MemoryPressureService.allocate({ sizeMb: 10 });
       expect(MemoryPressureService.getActiveCount()).toBe(1);
 
-      const sim2 = await MemoryPressureService.allocate({ sizeMb: 10 });
+      const sim2 = MemoryPressureService.allocate({ sizeMb: 10 });
       expect(MemoryPressureService.getActiveCount()).toBe(2);
 
       MemoryPressureService.release(sim1.id);

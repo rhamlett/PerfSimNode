@@ -84,7 +84,7 @@ class MemoryPressureServiceClass {
    * @param params - Memory pressure parameters (sizeMb)
    * @returns The created simulation record
    */
-  async allocate(params: MemoryPressureParams): Promise<Simulation> {
+  allocate(params: MemoryPressureParams): Simulation {
     const { sizeMb } = params;
 
     // Create simulation record (no auto-expiry for memory allocations)
@@ -99,9 +99,8 @@ class MemoryPressureServiceClass {
     const data: object[] = [];
     allocations.set(simulation.id, { data, sizeMb });
 
-    // Set Application Insights correlation context - use async version to ensure
-    // the event is flushed before heavy memory allocation
-    await SimulationContextService.setContextAsync(simulation.id, 'MEMORY_PRESSURE');
+    // Set Application Insights correlation context
+    SimulationContextService.setContext(simulation.id, 'MEMORY_PRESSURE');
 
     // Log the start
     EventLogService.info('MEMORY_ALLOCATING', `Starting allocation of ${sizeMb}MB...`, {

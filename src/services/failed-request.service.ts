@@ -118,8 +118,9 @@ class FailedRequestServiceClass {
         const errorType = result.errorType || 'Unknown Error';
         errors.push(errorType);
         
-        // Log each failed request with its error type (no simulation ID - intermediate message)
+        // Log each failed request with its error type
         EventLogService.error('FAILED_REQUEST_ERROR', `HTTP 500 generated: ${errorType} - ${result.errorMessage || 'No message'}`, {
+          simulationId: simulation.id,
           simulationType: 'FAILED_REQUEST',
           details: {
             statusCode: result.statusCode,

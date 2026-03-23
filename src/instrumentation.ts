@@ -1,70 +1,64 @@
 /**
  * =============================================================================
- * APPLICATION INSIGHTS INSTRUMENTATION — Application Performance Monitoring
+ * OPENTELEMETRY INSTRUMENTATION — Application Performance Monitoring
  * =============================================================================
  *
  * PURPOSE:
- *   Initializes Azure Application Insights SDK for automatic request tracking,
- *   dependency tracking, exception tracking, and custom events.
+ *   Initializes Azure Monitor OpenTelemetry SDK for automatic distributed tracing,
+ *   metrics collection, and log correlation in Azure Application Insights.
  *
- * CRITICAL: This module is designed to NEVER crash the application, even if
- * Application Insights fails to initialize. All errors are caught and logged.
+ * CRITICAL REQUIREMENT:
+ *   This module MUST be imported BEFORE any other application code. OpenTelemetry
+ *   needs to monkey-patch HTTP, Express, and other modules before they are loaded
+ *   to automatically instrument them. If imported after, traces won't be captured.
+ *
+ * HOW IT WORKS:
+ *   - Checks for APPLICATIONINSIGHTS_CONNECTION_STRING environment variable
+ *   - If present (Azure App Service sets this automatically): enables full telemetry
+ *   - If absent (local development): silently disables — app runs without APM
+ *   - Auto-instruments: HTTP requests, Express routes, dependencies
+ *
+ * PORTING NOTES:
+ *   Every cloud platform has an equivalent APM SDK:
+ *   - Java: Azure Monitor OpenTelemetry (applicationinsights-agent) or Spring Boot Actuator
+ *   - Python: azure-monitor-opentelemetry or opentelemetry-sdk
+ *   - C#: Azure.Monitor.OpenTelemetry.AspNetCore or Application Insights SDK
+ *   - PHP: OpenTelemetry PHP SDK with Azure Monitor exporter
+ *
+ *   The pattern is always:
+ *   1. Import/initialize the SDK at the very start of the application
+ *   2. Configure via connection string (from environment variable)
+ *   3. Auto-instrumentation handles most tracing — no code changes needed
  *
  * @module instrumentation
  */
 
-let appInsightsClient: import('applicationinsights').TelemetryClient | null = null;
+import { useAzureMonitor, AzureMonitorOpenTelemetryOptions } from '@azure/monitor-opentelemetry';
 
-// Defer initialization to avoid crashing during module load
-function initializeAppInsights(): void {
-  const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
-  
-  if (!connectionString) {
-    console.log('[PerfSimNode] APPLICATIONINSIGHTS_CONNECTION_STRING not set - Application Insights disabled');
-    return;
-  }
+// Configure Azure Monitor OpenTelemetry
+const options: AzureMonitorOpenTelemetryOptions = {
+  azureMonitorExporterOptions: {
+    // Connection string is read from APPLICATIONINSIGHTS_CONNECTION_STRING env var by default
+    // Can be set explicitly here for local development:
+    // connectionString: 'InstrumentationKey=...'
+  },
+  instrumentationOptions: {
+    // Enable all auto-instrumentation
+    http: { enabled: true },
+  },
+};
 
-  try {
-    // Dynamic import to avoid issues if the module has problems
-    const appInsights = require('applicationinsights');
-    
-    console.log('[PerfSimNode] Initializing Application Insights SDK...');
-    console.log('[PerfSimNode] Connection string prefix:', connectionString.substring(0, 50) + '...');
-    
-    appInsights.setup(connectionString)
-      .setAutoCollectRequests(true)
-      .setAutoCollectPerformance(true, true)
-      .setAutoCollectExceptions(true)
-      .setAutoCollectDependencies(true)
-      .setAutoCollectConsole(false)
-      .setUseDiskRetryCaching(true)
-      .setSendLiveMetrics(false)
-      .start();
-    
-    appInsightsClient = appInsights.defaultClient;
-    
-    if (appInsightsClient) {
-      console.log('[PerfSimNode] Application Insights SDK initialized');
-      console.log('[PerfSimNode] Client config - instrumentationKey:', 
-        appInsightsClient.config?.instrumentationKey?.substring(0, 8) + '...');
-    } else {
-      console.error('[PerfSimNode] SDK started but defaultClient is null!');
-    }
-  } catch (error) {
-    console.error('[PerfSimNode] Failed to initialize Application Insights SDK:', error);
-    console.log('[PerfSimNode] Continuing without Application Insights');
-    appInsightsClient = null;
-  }
+// Check if we should enable Application Insights
+// Only enable if connection string is available (in Azure or explicitly set)
+const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+
+if (connectionString) {
+  console.log('[PerfSimNode] Initializing Azure Monitor OpenTelemetry...');
+  useAzureMonitor(options);
+  console.log('[PerfSimNode] Azure Monitor OpenTelemetry initialized');
+} else {
+  console.log('[PerfSimNode] APPLICATIONINSIGHTS_CONNECTION_STRING not set - Application Insights disabled');
 }
 
-// Initialize on first import - but safely
-try {
-  initializeAppInsights();
-} catch (error) {
-  console.error('[PerfSimNode] Unexpected error during App Insights init:', error);
-}
-
-// Export getter function for the client
-export function getAppInsightsClient(): import('applicationinsights').TelemetryClient | null {
-  return appInsightsClient;
-}
+// Re-export for potential future use
+export { options as azureMonitorOptions };

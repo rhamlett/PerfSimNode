@@ -37,13 +37,13 @@ export const memoryRouter = Router();
  * @body {number} sizeMb - Memory to allocate in megabytes (no limit)
  * @returns {SimulationResponse} Created allocation details
  */
-memoryRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
+memoryRouter.post('/', (req: Request, res: Response, next: NextFunction) => {
   try {
     // Validate input parameters
     const { sizeMb } = validateMemoryPressureParams(req.body.sizeMb);
 
-    // Allocate memory (async to allow App Insights flush before heavy allocation)
-    const simulation = await MemoryPressureService.allocate({ sizeMb });
+    // Allocate memory
+    const simulation = MemoryPressureService.allocate({ sizeMb });
 
     res.status(201).json({
       id: simulation.id,
