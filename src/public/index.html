@@ -226,7 +226,7 @@
           <form id="cpu-form">
             <label>
               Duration (s):
-              <input type="number" name="durationSeconds" value="30" min="1" max="300">
+              <input type="number" name="durationSeconds" value="30">
             </label>
             <label>
               Intensity:
@@ -250,7 +250,7 @@
           <form id="memory-form">
             <label>
               Size (MB):
-              <input type="number" name="sizeMb" value="512" min="1" max="2000">
+              <input type="number" name="sizeMb" value="512">
             </label>
             <div class="btn-group">
               <button type="submit" class="btn-trigger btn-memory">📈 Allocate</button>
@@ -275,11 +275,11 @@
           <form id="eventloop-form">
             <label>
               Block Duration (s):
-              <input type="number" name="durationSeconds" value="5" min="1" max="60">
+              <input type="number" name="durationSeconds" value="5">
             </label>
             <label>
               Chunk (ms):
-              <input type="number" name="chunkMs" value="200" min="50" max="2000" title="Duration of each blocking chunk. Between chunks, queued I/O flushes so the dashboard updates in real-time. Larger = more severe spikes, smaller = smoother chart.">
+              <input type="number" name="chunkMs" value="200" title="Duration of each blocking chunk. Between chunks, queued I/O flushes so the dashboard updates in real-time. Larger = more severe spikes, smaller = smoother chart.">
             </label>
             <button type="submit" class="btn-trigger btn-eventloop">🧵 Block Event Loop</button>
           </form>
@@ -288,31 +288,23 @@
 
         <!-- Slow Requests -->
         <div class="control-section slow-section">
-          <h3>🐌 Slow Requests <span class="info-icon" title="Simulates slow responses with different blocking patterns">ℹ️</span></h3>
-          <p class="control-description">Simulates slow HTTP responses. Choose a blocking pattern to observe different resource contention behaviors.</p>
+          <h3>🐌 Slow Requests <span class="info-icon" title="Simulates slow responses with randomly selected blocking patterns">ℹ️</span></h3>
+          <p class="control-description">Simulates slow HTTP responses. Blocking pattern is randomly selected (setTimeout, libuv, or worker).</p>
           <div class="slow-note">
             ⚠️ Note: Requests exceeding 30 seconds total time (queue + execution) are flagged as critical
           </div>
           <form id="slow-form">
             <label>
-              Blocking Pattern:
-              <select name="blockingPattern" class="blocking-pattern-select">
-                <option value="setTimeout">setTimeout (non-blocking)</option>
-                <option value="libuv">libuv Thread Pool Saturation</option>
-                <option value="worker">Worker Thread Blocking</option>
-              </select>
-            </label>
-            <label>
               Request Execution Time (s) <span class="info-icon" title="Time for each request">ⓘ</span>:
-              <input type="number" name="delaySeconds" value="10" min="1" max="300">
+              <input type="number" name="delaySeconds" value="10">
             </label>
             <label>
               Interval (s):
-              <input type="number" name="intervalSeconds" value="5" min="1" max="60">
+              <input type="number" name="intervalSeconds" value="5">
             </label>
             <label>
               Max Requests:
-              <input type="number" name="maxRequests" value="3" min="1" max="100">
+              <input type="number" name="maxRequests" value="3">
             </label>
             <div class="btn-group">
               <button type="submit" class="btn-trigger btn-slow">🐌 Start Slow Requests</button>
@@ -331,7 +323,7 @@
           <form id="failed-form">
             <label>
               Number of Errors:
-              <input type="number" name="requestCount" value="5" min="1" max="50">
+              <input type="number" name="requestCount" value="5">
             </label>
             <button type="submit" class="btn-trigger btn-failed">❌ Generate Failed Requests</button>
           </form>

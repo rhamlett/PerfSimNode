@@ -271,7 +271,7 @@
     }
   </style>
 </head>
-<body class="page-doc">
+<body class="page-docs">
   <header>
     <button id="hamburger-btn" class="hamburger-btn" aria-label="Open navigation menu">
       <span></span>
@@ -886,12 +886,23 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&bufferSizeKb=10
             document.getElementById('build-info').textContent = 'Build: ' + data.buildTime;
             document.getElementById('sidebar-build-info').textContent = 'Build: ' + data.buildTime;
           }
-          if (data.sku) {
-            document.getElementById('sku-badge').textContent = 'SKU: ' + data.sku;
-          }
         }
       } catch (e) {
         console.error('Failed to fetch build info', e);
+      }
+    }
+
+    // Load environment info for SKU badge
+    async function fetchEnvironment() {
+      try {
+        const response = await fetch('/api/health/environment');
+        if (response.ok) {
+          const env = await response.json();
+          const badge = document.getElementById('sku-badge');
+          if (badge && env.sku) badge.textContent = 'SKU: ' + env.sku;
+        }
+      } catch (e) {
+        console.error('Failed to fetch environment info', e);
       }
     }
 
@@ -913,6 +924,7 @@ https://your-app.azurewebsites.net/api/loadtest?workIterations=0&bufferSizeKb=10
     }
 
     fetchBuildInfo();
+    fetchEnvironment();
     fetchGitHubUrl();
   </script>
 </body>

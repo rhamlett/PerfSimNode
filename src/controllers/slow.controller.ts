@@ -37,12 +37,10 @@ export const slowRouter = Router();
  * @param value - The pattern value to validate
  * @returns Valid blocking pattern or default
  */
-function validateBlockingPattern(value: unknown): SlowRequestBlockingPattern {
-  const validPatterns: SlowRequestBlockingPattern[] = ['setTimeout', 'libuv', 'worker'];
-  if (typeof value === 'string' && validPatterns.includes(value as SlowRequestBlockingPattern)) {
-    return value as SlowRequestBlockingPattern;
-  }
-  return 'setTimeout';
+const BLOCKING_PATTERNS: SlowRequestBlockingPattern[] = ['setTimeout', 'libuv', 'worker'];
+
+function getRandomBlockingPattern(): SlowRequestBlockingPattern {
+  return BLOCKING_PATTERNS[Math.floor(Math.random() * BLOCKING_PATTERNS.length)];
 }
 
 /**
@@ -54,7 +52,6 @@ function validateBlockingPattern(value: unknown): SlowRequestBlockingPattern {
  *
  * @route GET /api/simulations/slow
  * @query {number} delaySeconds - Delay in seconds (no limit, default: 5)
- * @query {string} blockingPattern - Pattern: setTimeout, libuv, or worker (default: setTimeout)
  * @returns {SlowRequestResponse} Response after delay
  */
 slowRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
@@ -68,7 +65,8 @@ slowRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
       defaults.slowRequestDelaySeconds
     );
     
-    const blockingPattern = validateBlockingPattern(req.query.blockingPattern);
+    // Randomly select a blocking pattern
+    const blockingPattern = getRandomBlockingPattern();
 
     // Execute the slow request
     const simulation = await SlowRequestService.delay({ delaySeconds, blockingPattern });

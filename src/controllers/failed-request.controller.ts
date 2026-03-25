@@ -41,13 +41,13 @@ export const failedRouter = Router();
  */
 failedRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Validate input parameters
+    // Validate input parameters (no upper limit)
     const requestCount = validateOptionalInteger(
       req.body.requestCount,
       'requestCount',
-      1,    // min
-      50,   // max (prevent excessive load)
-      5     // default
+      1,        // min
+      Infinity, // no max limit
+      5         // default
     );
 
     // Generate the failed requests

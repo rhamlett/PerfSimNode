@@ -446,8 +446,9 @@ async function loadEventLog() {
   // Add startup messages
   addEventToLog({ level: 'success', message: 'Connected to metrics hub' }, true);
   
-  // Add liability disclaimer
-  addEventToLog({ level: 'warning', message: '⚖️ This software is provided "AS IS" without warranty. The author shall not be liable for any damages arising from use or misuse. Deploy only in isolated, non-production environments. Licensed under MIT License.' }, true);
+  // Add liability disclaimer (reverse order since newest appears at top)
+  addEventToLog({ level: 'warning', message: '⚖️ Deploy only in isolated, non-production environments. Licensed under MIT License.' }, true);
+  addEventToLog({ level: 'warning', message: '⚖️ This software is provided "AS IS" without warranty. The author shall not be liable for any damages arising from use or misuse.' }, true);
   
   // Fetch config for probe rate and idle timeout
   let probeRate = 200;
