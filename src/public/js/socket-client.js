@@ -38,10 +38,9 @@ let isConnected = false;
 let reconnectAttempts = 0;
 const maxReconnectAttempts = 10;
 
-// Track whether this is the initial page load connection
-// Used to distinguish between fresh page loads (which should wake from idle)
-// and automatic reconnections (which should not reset idle timer)
-let isInitialConnection = true;
+// When true, the WebSocket was closed intentionally (idle transition).
+// Suppresses disconnect status indicator updates and prevents auto-reconnect.
+let intentionalDisconnect = false;
 
 /**
  * Initializes the Socket.IO connection.
@@ -64,17 +63,10 @@ function initSocket() {
   socket.on('connect', () => {
     isConnected = true;
     reconnectAttempts = 0;
+    intentionalDisconnect = false;
     statusEl.textContent = 'Connected';
     statusEl.className = 'status-connected';
     console.log('[Socket] Connected to server');
-
-    // On initial page load, signal activity to wake from idle state.
-    // Automatic reconnections (after brief disconnects) should NOT reset idle timer.
-    if (isInitialConnection) {
-      isInitialConnection = false;
-      socket.emit('activity');
-      console.log('[Socket] Sent activity signal (initial page load)');
-    }
 
     // Notify dashboard of connection
     if (typeof onSocketConnected === 'function') {
@@ -84,9 +76,15 @@ function initSocket() {
 
   socket.on('disconnect', (reason) => {
     isConnected = false;
+    console.log('[Socket] Disconnected:', reason);
+
+    // Intentional disconnect (idle transition) — do not update status or reconnect
+    if (intentionalDisconnect) {
+      return;
+    }
+
     statusEl.textContent = 'Disconnected';
     statusEl.className = 'status-disconnected';
-    console.log('[Socket] Disconnected:', reason);
     
     // Log disconnection to event log
     if (typeof addEventToLog === 'function') {
@@ -96,6 +94,7 @@ function initSocket() {
 
   // Reconnection events are emitted by the Manager (socket.io), not the Socket instance
   socket.io.on('reconnect_attempt', (attempt) => {
+    if (intentionalDisconnect) return;
     reconnectAttempts = attempt;
     statusEl.textContent = `Reconnecting (${attempt}/${maxReconnectAttempts})...`;
     statusEl.className = 'status-reconnecting';
@@ -110,6 +109,7 @@ function initSocket() {
   });
 
   socket.io.on('reconnect_failed', () => {
+    if (intentionalDisconnect) return;
     statusEl.textContent = 'Connection Failed';
     statusEl.className = 'status-disconnected';
     console.error('[Socket] Failed to reconnect after', maxReconnectAttempts, 'attempts');
@@ -226,5 +226,43 @@ function sendSlowRequestState(active, completed = 0, total = 0, activeCount = 0)
   }
 }
 
-// Initialize socket when DOM is ready
-document.addEventListener('DOMContentLoaded', initSocket);
+/**
+ * Intentionally closes the WebSocket during idle transition.
+ * Sets the intentionalDisconnect flag so the onclose handler
+ * does not update the status indicator or schedule a reconnect.
+ */
+function closeWebSocketForIdle() {
+  intentionalDisconnect = true;
+  if (socket) {
+    socket.disconnect();
+  }
+}
+
+/**
+ * Ensures the WebSocket is connected. If closed or closing, reconnects.
+ * Called at the top of every simulation trigger so that clicking a button
+ * while idle automatically re-establishes the connection.
+ */
+function ensureWebSocket() {
+  if (!socket) {
+    intentionalDisconnect = false;
+    initSocket();
+    return;
+  }
+  if (socket.disconnected) {
+    intentionalDisconnect = false;
+    socket.connect();
+  }
+}
+
+// Initialize socket when DOM is ready.
+// An HTTP request fires first to wake the server from idle via the activity
+// tracker middleware, so the first WebSocket broadcast has is_idle: false.
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    await fetch('/api/health/probe', { cache: 'no-store' });
+  } catch (e) {
+    // Server may still be starting — socket will retry
+  }
+  initSocket();
+});

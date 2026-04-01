@@ -78,6 +78,14 @@ function onSocketConnected() {
     window._simIdCopyHandlersInitialized = true;
   }
   
+  // Restart latency monitoring (may have been stopped during idle)
+  if (typeof startHeartbeatProbe === 'function') {
+    startHeartbeatProbe();
+  }
+  if (typeof startLatencyInterpolation === 'function') {
+    startLatencyInterpolation();
+  }
+
   loadActiveSimulations();
   // Only load event log on initial connection to prevent clearing accumulated events
   if (!initialLoadComplete) {
@@ -180,8 +188,16 @@ function onIdleStatusUpdate(status) {
 
   if (status.isIdle) {
     console.log('[Dashboard] Setting status to Idle');
+    // Stop latency probes — no meaningful data while idle
+    if (typeof stopLatencyProbes === 'function') {
+      stopLatencyProbes();
+    }
     statusEl.textContent = 'Idle';
     statusEl.className = 'status-idle';
+    // Intentionally close WebSocket to prevent reconnect-induced status flicker
+    if (typeof closeWebSocketForIdle === 'function') {
+      closeWebSocketForIdle();
+    }
   } else {
     console.log('[Dashboard] Setting status to Connected');
     // Restore to connected state when no longer idle
@@ -586,6 +602,7 @@ function renderActiveSimulationsList() {
  * Starts a CPU stress simulation.
  */
 async function startCpuStress(intensity, durationSeconds) {
+  ensureWebSocket();
   try {
     const response = await fetch('/api/simulations/cpu', {
       method: 'POST',
@@ -627,6 +644,7 @@ async function startCpuStress(intensity, durationSeconds) {
  * Stops a CPU stress simulation.
  */
 async function stopCpuSimulation(id) {
+  ensureWebSocket();
   try {
     const response = await fetch(`/api/simulations/cpu/${id}`, {
       method: 'DELETE',
@@ -665,6 +683,7 @@ async function stopAllCpuSimulations() {
  * Allocates memory.
  */
 async function allocateMemory(sizeMb) {
+  ensureWebSocket();
   try {
     const response = await fetch('/api/simulations/memory', {
       method: 'POST',
@@ -698,6 +717,7 @@ async function allocateMemory(sizeMb) {
  * Releases memory allocation.
  */
 async function releaseMemory(id) {
+  ensureWebSocket();
   try {
     // Get the size before deleting for the log message
     const sim = activeSimulations.memory.get(id);
@@ -728,6 +748,7 @@ async function releaseMemory(id) {
  * Triggers event loop blocking with impact measurement.
  */
 async function blockEventLoop(durationSeconds, chunkMs) {
+  ensureWebSocket();
   const impactEl = document.getElementById('eventloop-impact');
   
   // Clear previous impact results
@@ -846,6 +867,7 @@ function getPatternDescription(pattern) {
  * Requests are fired at the specified interval rate, allowing them to overlap.
  */
 async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, blockingPattern = 'setTimeout') {
+  ensureWebSocket();
   const statusEl = document.getElementById('slow-status');
   
   slowRequestRunning = true;
@@ -1044,6 +1066,7 @@ function stopSlowRequests() {
  * @param {number} requestCount - Number of failed requests to generate
  */
 async function triggerFailedRequests(requestCount) {
+  ensureWebSocket();
   try {
     // Add optimistic event log entry
     addEventToLog({
@@ -1091,6 +1114,7 @@ async function triggerFailedRequests(requestCount) {
  * @param {string} crashType - The type of crash (failfast, stackoverflow, exception, oom)
  */
 async function triggerCrash(crashType) {
+  ensureWebSocket();
   const crashDescriptions = {
     failfast: 'FailFast (SIGABRT)',
     stackoverflow: 'Stack Overflow',

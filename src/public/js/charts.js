@@ -408,6 +408,21 @@ function startHeartbeatProbe() {
 }
 
 /**
+ * Stops latency probe monitoring and chart interpolation.
+ * Called when the app transitions to idle and the WebSocket is closed.
+ */
+function stopLatencyProbes() {
+  if (serverResponsiveness.probeInterval) {
+    clearInterval(serverResponsiveness.probeInterval);
+    serverResponsiveness.probeInterval = null;
+  }
+  if (latencyInterpolation.interpolationTimer) {
+    clearInterval(latencyInterpolation.interpolationTimer);
+    latencyInterpolation.interpolationTimer = null;
+  }
+}
+
+/**
  * Records a probe result for visualization.
  */
 function recordProbeResult(latency, success) {
