@@ -256,11 +256,22 @@ function ensureWebSocket() {
 }
 
 // Initialize socket when DOM is ready.
-// An HTTP request fires first to wake the server from idle via the activity
-// tracker middleware, so the first WebSocket broadcast has is_idle: false.
+// Record activity FIRST to wake server from idle, then connect WebSocket.
+// This ensures the server's idle flag is cleared before it sends idleStatus
+// to the newly connected client.
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    await fetch('/api/health/probe', { cache: 'no-store' });
+    const resp = await fetch('/api/health/activity', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+    if (resp.ok) {
+      const result = await resp.json();
+      if (result.wokeFromIdle) {
+        console.log('[Socket] Woke server from idle via /api/health/activity');
+      }
+    }
   } catch (e) {
     // Server may still be starting — socket will retry
   }

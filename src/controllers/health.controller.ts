@@ -32,6 +32,7 @@ import { Router, Request, Response } from 'express';
 import os from 'os';
 import { APP_VERSION } from '../config';
 import { HealthResponse } from '../types';
+import { IdleTimeoutService } from '../services/idle-timeout.service';
 
 /**
  * Express router for health endpoints.
@@ -138,6 +139,25 @@ healthRouter.get('/footer', (_req: Request, res: Response) => {
  */
 healthRouter.get('/probe', (_req: Request, res: Response) => {
   res.json({ ts: Date.now() });
+});
+
+/**
+ * POST /api/health/activity
+ *
+ * Records user activity to reset the idle timer and wake from idle.
+ * Called by the dashboard on page load BEFORE WebSocket connection.
+ * This ensures the server is awake before the first idleStatus is sent.
+ *
+ * @route POST /api/health/activity
+ * @returns {Object} Whether the app was woken from idle
+ */
+healthRouter.post('/activity', (_req: Request, res: Response) => {
+  const wasIdle = IdleTimeoutService.isIdle();
+  IdleTimeoutService.recordActivity('page_load');
+  res.json({
+    wokeFromIdle: wasIdle,
+    idleTimeoutMinutes: Math.round(IdleTimeoutService.getIdleTimeoutMs() / 1000 / 60),
+  });
 });
 
 /**

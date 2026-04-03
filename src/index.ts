@@ -134,15 +134,9 @@ async function main(): Promise<void> {
     // Log to console only (not to event log - reduces noise for users)
     console.log(`[Socket.IO] Client connected: ${socket.id}`);
 
-    // Wake from idle on new connections. Since the client disconnects when
-    // idle (closeWebSocketForIdle), a new connection means a page load or
-    // explicit user action — both are genuine activity signals.
-    IdleTimeoutService.recordActivity('dashboard connection');
-
     // Send current idle status to newly connected clients immediately.
-    // Because recordActivity() above clears the idle flag first, this
-    // will send isIdle=false after a wake-up, preventing the client from
-    // immediately re-entering idle state.
+    // This ensures clients know the current state even if they missed
+    // a prior state change broadcast (e.g., reconnecting to an idle server).
     const currentStatus = IdleTimeoutService.getStatus();
     socket.emit('idleStatus', currentStatus);
     console.log(`[Socket.IO] Sent initial idleStatus to ${socket.id}: isIdle=${currentStatus.isIdle}`);
