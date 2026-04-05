@@ -270,6 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const result = await resp.json();
       if (result.wokeFromIdle) {
         console.log('[Socket] Woke server from idle via /api/health/activity');
+        window._wokeFromIdle = true;
       }
     }
   } catch (e) {

@@ -1623,6 +1623,7 @@ button:disabled {
 .log-entry.warning { color: var(--color-warning); }
 .log-entry.error { color: var(--color-danger); }
 .log-entry.danger { color: var(--color-danger); }
+.log-entry.system { color: var(--color-success); }
 
 /* Simulation-type-specific log entry colors */
 .log-entry.cpu { color: var(--color-cpu); }

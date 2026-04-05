@@ -357,8 +357,8 @@ function getEventIconAndClass(event) {
     }
   }
   
-  // Connection events and system messages - no icon, use default level color
-  return { icon: '', colorClass: event.level };
+  // Connection events and system messages - green for non-simulation events
+  return { icon: '', colorClass: 'system' };
 }
 
 /**
@@ -459,14 +459,15 @@ async function loadEventLog() {
   // Clear all events - start fresh each browser session
   eventLog.length = 0;
   
-  // Add startup messages
-  addEventToLog({ level: 'success', message: 'Connected to metrics hub' }, true);
+  // Use a base timestamp with small offsets to guarantee deterministic sort order.
+  // Messages are listed oldest-first; renderEventLog() sorts newest-first.
+  const baseTime = Date.now();
   
-  // Add liability disclaimer (reverse order since newest appears at top)
-  addEventToLog({ level: 'warning', message: '⚖️ Deploy only in isolated, non-production environments. Licensed under MIT License.' }, true);
-  addEventToLog({ level: 'warning', message: '⚖️ This software is provided "AS IS" without warranty. The author shall not be liable for any damages arising from use or misuse.' }, true);
+  // 1. Liability disclaimers (oldest — appear at bottom of log)
+  addEventToLog({ timestamp: new Date(baseTime).toISOString(), level: 'warning', message: '⚖️ Deploy only in isolated, non-production environments. Licensed under MIT License.' }, true);
+  addEventToLog({ timestamp: new Date(baseTime + 1).toISOString(), level: 'warning', message: '⚖️ This software is provided "AS IS" without warranty. The author shall not be liable for any damages arising from use or misuse.' }, true);
   
-  // Fetch config for probe rate and idle timeout
+  // 2. Dashboard config info
   let probeRate = 200;
   let idleTimeout = 20;
   try {
@@ -477,9 +478,9 @@ async function loadEventLog() {
   } catch (error) {
     console.log('[Dashboard] Could not load config values for event log');
   }
-  addEventToLog({ level: 'info', message: `Dashboard initialized (probe rate: ${probeRate}ms, idle timeout: ${idleTimeout}m)` }, true);
+  addEventToLog({ timestamp: new Date(baseTime + 2).toISOString(), level: 'info', message: `Dashboard initialized (probe rate: ${probeRate}ms, idle timeout: ${idleTimeout}m)` }, true);
   
-  // Add environment info message
+  // 3. Environment info
   try {
     const response = await fetch('/api/health/environment');
     const env = await response.json();
@@ -494,9 +495,18 @@ async function loadEventLog() {
     } else {
       envMessage = 'Application is currently running on Local';
     }
-    addEventToLog({ level: 'info', message: envMessage }, true);
+    addEventToLog({ timestamp: new Date(baseTime + 3).toISOString(), level: 'info', message: envMessage }, true);
   } catch (error) {
     console.log('[Dashboard] Could not load environment info for event log');
+  }
+  
+  // 4. Connected message
+  addEventToLog({ timestamp: new Date(baseTime + 4).toISOString(), level: 'success', message: 'Connected to metrics hub' }, true);
+  
+  // 5. Wake from idle message (newest — appears at top of log)
+  if (window._wokeFromIdle) {
+    addEventToLog({ timestamp: new Date(baseTime + 5).toISOString(), level: 'info', message: 'App waking up from idle state. There may be gaps in diagnostics and logs.' }, true);
+    window._wokeFromIdle = false;
   }
   
   renderEventLog();
