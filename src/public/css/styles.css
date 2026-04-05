@@ -1638,6 +1638,24 @@ button:disabled {
 .log-time {
   color: var(--color-text-muted);
   margin-right: 0.75rem;
+  position: relative;
+  border-bottom: 1px dotted currentColor;
+}
+
+.log-time[data-localtime]:hover::after {
+  content: attr(data-localtime);
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 4px;
+  background: #323130;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
 }
 
 /* --------------------------------------------------------------------------

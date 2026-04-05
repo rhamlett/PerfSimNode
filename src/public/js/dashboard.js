@@ -241,6 +241,17 @@ function formatUtcTime(date) {
   return `${hours}:${minutes}:${seconds}`;
 }
 
+/**
+ * Gets the local time as a formatted string (HH:MM:SS)
+ */
+function formatLocalTime(date) {
+  if (!date || !(date instanceof Date)) date = new Date();
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const seconds = date.getSeconds().toString().padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
+}
+
 // Track last known process ID for restart detection
 let lastProcessId = null;
 
@@ -376,6 +387,7 @@ function renderEventLog() {
   container.innerHTML = eventLog
     .map((event) => {
       const time = formatUtcTime(new Date(event.timestamp));
+      const localTime = formatLocalTime(new Date(event.timestamp));
       const { icon, colorClass } = getEventIconAndClass(event);
       const iconPart = icon ? `${icon} ` : '';
       // Wrap message with simulation ID tooltip if present
@@ -383,7 +395,7 @@ function renderEventLog() {
         ? withSimulationId(`${iconPart}${event.message}`, event.simulationId)
         : `${iconPart}${event.message}`;
       return `<div class="log-entry ${colorClass}">
-        <span class="log-time">${time} UTC</span>
+        <span class="log-time" data-localtime="Local Time: ${localTime}">${time} UTC</span>
         <span class="log-message">${messageHtml}</span>
       </div>`;
     })
