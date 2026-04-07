@@ -59,6 +59,26 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Configure App Service for built-in Node.js on Linux
+        run: |
+          RESOURCE_GROUP=$(az webapp list --query "[?name=='${{ env.AZURE_WEBAPP_NAME }}'].resourceGroup | [0]" -o tsv)
+          if [ -z "$RESOURCE_GROUP" ]; then
+            echo "Unable to resolve resource group for app '${{ env.AZURE_WEBAPP_NAME }}'"
+            exit 1
+          fi
+
+          # Ensure App Service uses built-in Node.js runtime instead of container image.
+          az webapp config set \
+            --name "${{ env.AZURE_WEBAPP_NAME }}" \
+            --resource-group "$RESOURCE_GROUP" \
+            --linux-fx-version "NODE|${{ env.NODE_VERSION }}-lts"
+
+          # Remove container-specific app settings if they exist.
+          az webapp config appsettings delete \
+            --name "${{ env.AZURE_WEBAPP_NAME }}" \
+            --resource-group "$RESOURCE_GROUP" \
+            --setting-names WEBSITES_PORT DOCKER_REGISTRY_SERVER_URL DOCKER_REGISTRY_SERVER_USERNAME DOCKER_REGISTRY_SERVER_PASSWORD || true
+
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
         with:
