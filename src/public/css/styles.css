@@ -405,15 +405,11 @@ header nav {
 }
 
 #connection-status {
-  padding: 0.3rem 0.6rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
+  font-size: 0.875rem;
   background: transparent;
-  border: 1px solid rgba(255,255,255,0.4);
 }
 
 .status-connected {
@@ -423,10 +419,11 @@ header nav {
 
 .status-connected::before {
   content: "";
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: #91de91;
+  background: #2ecc40;
+  box-shadow: 0 0 8px #2ecc40;
   display: inline-block;
 }
 
@@ -437,8 +434,8 @@ header nav {
 
 .status-disconnected::before {
   content: "";
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: #ff6b6b;
   display: inline-block;
@@ -451,8 +448,8 @@ header nav {
 
 .status-idle::before {
   content: "";
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: #9e9e9e;
   display: inline-block;
@@ -465,8 +462,8 @@ header nav {
 
 .status-reconnecting::before {
   content: "";
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: #ffb900;
   display: inline-block;

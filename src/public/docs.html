@@ -364,76 +364,6 @@
       </div>
     </section>
 
-    <section id="architecture" class="docs-section">
-      <h2>Architecture</h2>
-      <p>The application runs as a Node.js process with Express.js, Socket.IO for real-time metrics, and in-memory state. A sidecar process handles latency probing to avoid measuring overhead on the main event loop.</p>
-      
-      <h3>Key Components</h3>
-      <ul>
-        <li><strong>Main Process</strong> - Express.js server with Socket.IO for real-time dashboard updates</li>
-        <li><strong>Sidecar Process</strong> - Separate process that measures request latency by probing the app through Azure's frontend</li>
-        <li><strong>Worker Processes</strong> - CPU stress and slow request simulations use child processes to avoid blocking the main event loop</li>
-      </ul>
-
-      <h3>Source Structure</h3>
-      <pre><code>src/
-├── app.ts                      # Express app configuration
-├── index.ts                    # Entry point, starts server & sidecar
-├── instrumentation.ts          # OpenTelemetry / App Insights setup
-│
-├── controllers/                # API endpoints
-│   ├── admin.controller.ts
-│   ├── cpu.controller.ts
-│   ├── crash.controller.ts
-│   ├── eventloop.controller.ts
-│   ├── failed-request.controller.ts
-│   ├── health.controller.ts
-│   ├── loadtest.controller.ts
-│   ├── memory.controller.ts
-│   ├── metrics.controller.ts
-│   └── slow.controller.ts
-│
-├── services/                   # Business logic
-│   ├── cpu-stress.service.ts   # Spawns cpu-worker.ts processes
-│   ├── cpu-worker.ts           # Child process for CPU burning
-│   ├── crash.service.ts
-│   ├── event-log.service.ts
-│   ├── eventloop-block.service.ts
-│   ├── failed-request.service.ts
-│   ├── idle-timeout.service.ts # Suspends probes when idle
-│   ├── load-test.service.ts
-│   ├── memory-pressure.service.ts
-│   ├── metrics.service.ts
-│   ├── simulation-tracker.service.ts
-│   ├── slow-request-worker.ts  # Worker thread for slow requests
-│   └── slow-request.service.ts
-│
-├── sidecar/                    # Latency measurement
-│   └── probe-sidecar.ts        # Probes app via Azure frontend
-│
-├── middleware/                 # Express middleware
-│   ├── error-handler.ts
-│   ├── request-logger.ts
-│   └── validation.ts
-│
-├── config/                     # Configuration
-├── types/                      # TypeScript interfaces
-├── utils/                      # Utility functions
-│
-└── public/                     # Static dashboard
-    ├── index.html              # Main dashboard
-    ├── docs.html               # Documentation
-    ├── azure-diagnostics.html  # Azure diagnostics guide
-    ├── azure-deployment.html   # Deployment guide
-    ├── azure-load-testing.html # Load testing guide
-    ├── openapi.yaml            # OpenAPI specification
-    ├── css/styles.css          # Stylesheet
-    └── js/
-        ├── charts.js           # Real-time Chart.js charts
-        ├── dashboard.js        # UI interactions & controls
-        └── socket-client.js    # Socket.IO client</code></pre>
-    </section>
-
     <section id="cpu-stress" class="docs-section">
       <h2>CPU Stress Simulation</h2>
       <p>Generates high CPU usage using separate OS processes via <code>child_process.fork()</code>.</p>
@@ -621,7 +551,6 @@ GET /api/simulations/slow?delaySeconds=10&blockingPattern=worker</code></pre>
         <li>Testing timeout configurations</li>
         <li>Simulating thread pool starvation</li>
         <li>Understanding blocking vs non-blocking behavior</li>
-        <li>Comparing Node.js concurrency model to .NET</li>
       </ul>
     </section>
 
@@ -710,6 +639,207 @@ GET /api/simulations/slow?delaySeconds=10&blockingPattern=worker</code></pre>
       </ul>
     </section>
 
+    <section id="optional-config" class="docs-section">
+      <h2>Optional Configuration</h2>
+      <p>You can customize the application behavior using Azure App Service environment variables.</p>
+
+      <h3>Health Probe Rate</h3>
+      <p>Control how often the server sends health probes to measure request latency. All probes are routed through the Azure frontend to capture realistic end-to-end latency.</p>
+
+      <h4>Environment Variable</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Variable Name</th>
+            <th>Description</th>
+            <th>Default</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>HEALTH_PROBE_RATE</code></td>
+            <td>Probe interval in milliseconds. Minimum 100ms.</td>
+            <td><code>200</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>Setting via Azure CLI</h4>
+      <pre><code># Slow down probes if CLR profiler shows overlapping requests
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings HEALTH_PROBE_RATE=400</code></pre>
+
+      <h3>Idle Timeout</h3>
+      <p>When the application is idle (no dashboard connections or load test requests), health probes are automatically suspended to reduce unnecessary network traffic to Azure's frontend and Application Insights telemetry.</p>
+
+      <h4>Environment Variable</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Variable Name</th>
+            <th>Description</th>
+            <th>Default</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>IDLE_TIMEOUT_MINUTES</code></td>
+            <td>Minutes of inactivity before suspending health probes. Activity resumes automatically when the dashboard is opened or any request is received.</td>
+            <td><code>20</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>Setting via Azure CLI</h4>
+      <pre><code># Extend idle timeout to 30 minutes
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings IDLE_TIMEOUT_MINUTES=30</code></pre>
+
+      <h3>Custom Page Footer</h3>
+      <p>Set a custom footer message that appears on all pages. The footer supports HTML, allowing you to include links.</p>
+
+      <h4>Environment Variable</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Variable Name</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>PAGE_FOOTER</code></td>
+            <td>HTML content for the footer's second line. If not set, only the app description and build info are shown.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>Example Value</h4>
+      <pre><code>Created by &lt;a href="https://yoursite.com"&gt;Your Team&lt;/a&gt; for training purposes</code></pre>
+
+      <h4>Setting via Azure CLI</h4>
+      <pre><code># Set the footer via Azure CLI
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings 'PAGE_FOOTER=Created by &lt;a href="https://yoursite.com"&gt;Your Team&lt;/a&gt; for training purposes'</code></pre>
+
+      <h4>Setting via Azure Portal</h4>
+      <ol>
+        <li>Navigate to your App Service in the Azure Portal</li>
+        <li>Go to <strong>Settings</strong> → <strong>Environment variables</strong></li>
+        <li>Click <strong>+ Add</strong></li>
+        <li>Set Name: <code>PAGE_FOOTER</code></li>
+        <li>Set Value: Your HTML footer content</li>
+        <li>Click <strong>Apply</strong>, then <strong>Confirm</strong></li>
+      </ol>
+
+      <h3>GitHub Repository Link</h3>
+      <p>Optionally display a GitHub Repository link in the sidebar navigation menu. The link is hidden by default. When both environment variables are provided, the link will appear in the menu and point to <code>https://github.com/{GITHUB_USER_NAME}/{GITHUB_REPO_NAME}</code>.</p>
+
+      <h4>Environment Variables</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Variable Name</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>GITHUB_USER_NAME</code></td>
+            <td>GitHub username or organization name. Required to show the link.</td>
+          </tr>
+          <tr>
+            <td><code>GITHUB_REPO_NAME</code></td>
+            <td>GitHub repository name. Required to show the link.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>Setting via Azure CLI</h4>
+      <pre><code># Set the GitHub link via Azure CLI
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings GITHUB_USER_NAME=your-username GITHUB_REPO_NAME=your-repo-name</code></pre>
+
+      <h4>Setting via Azure Portal</h4>
+      <ol>
+        <li>Navigate to your App Service in the Azure Portal</li>
+        <li>Go to <strong>Settings</strong> → <strong>Environment variables</strong></li>
+        <li>Click <strong>+ Add</strong> and set Name: <code>GITHUB_USER_NAME</code>, Value: your GitHub username or organization</li>
+        <li>Click <strong>+ Add</strong> and set Name: <code>GITHUB_REPO_NAME</code>, Value: your repository name</li>
+        <li>Click <strong>Apply</strong>, then <strong>Confirm</strong></li>
+      </ol>
+    </section>
+
+    <section id="architecture" class="docs-section">
+      <h2>Architecture</h2>
+      <p>The application runs as a Node.js process with Express.js, Socket.IO for real-time metrics, and in-memory state. A sidecar process handles latency probing to avoid measuring overhead on the main event loop.</p>
+      
+      <h3>Key Components</h3>
+      <ul>
+        <li><strong>Main Process</strong> - Express.js server with Socket.IO for real-time dashboard updates</li>
+        <li><strong>Sidecar Process</strong> - Separate process that measures request latency by probing the app through Azure's frontend</li>
+        <li><strong>Worker Processes</strong> - CPU stress and slow request simulations use child processes to avoid blocking the main event loop</li>
+      </ul>
+
+      <h3>Source Structure</h3>
+      <pre><code>src/
+├── app.ts                      # Express app configuration
+├── index.ts                    # Entry point, starts server & sidecar
+├── instrumentation.ts          # OpenTelemetry / App Insights setup
+│
+├── controllers/                # API endpoints
+│   ├── admin.controller.ts
+│   ├── cpu.controller.ts
+│   ├── crash.controller.ts
+│   ├── eventloop.controller.ts
+│   ├── failed-request.controller.ts
+│   ├── health.controller.ts
+│   ├── loadtest.controller.ts
+│   ├── memory.controller.ts
+│   ├── metrics.controller.ts
+│   └── slow.controller.ts
+│
+├── services/                   # Business logic
+│   ├── cpu-stress.service.ts   # Spawns cpu-worker.ts processes
+│   ├── cpu-worker.ts           # Child process for CPU burning
+│   ├── crash.service.ts
+│   ├── event-log.service.ts
+│   ├── eventloop-block.service.ts
+│   ├── failed-request.service.ts
+│   ├── idle-timeout.service.ts # Suspends probes when idle
+│   ├── load-test.service.ts
+│   ├── memory-pressure.service.ts
+│   ├── metrics.service.ts
+│   ├── simulation-tracker.service.ts
+│   ├── slow-request-worker.ts  # Worker thread for slow requests
+│   └── slow-request.service.ts
+│
+├── sidecar/                    # Latency measurement
+│   └── probe-sidecar.ts        # Probes app via Azure frontend
+│
+├── middleware/                 # Express middleware
+│   ├── error-handler.ts
+│   ├── request-logger.ts
+│   └── validation.ts
+│
+├── config/                     # Configuration
+├── types/                      # TypeScript interfaces
+├── utils/                      # Utility functions
+│
+└── public/                     # Static dashboard
+    ├── index.html              # Main dashboard
+    ├── docs.html               # Documentation
+    ├── azure-diagnostics.html  # Azure diagnostics guide
+    ├── azure-deployment.html   # Deployment guide
+    ├── azure-load-testing.html # Load testing guide
+    ├── openapi.yaml            # OpenAPI specification
+    ├── css/styles.css          # Stylesheet
+    └── js/
+        ├── charts.js           # Real-time Chart.js charts
+        ├── dashboard.js        # UI interactions & controls
+        └── socket-client.js    # Socket.IO client</code></pre>
+    </section>
+
     </main>
     </div><!-- /.doc-main -->
 
@@ -721,9 +851,6 @@ GET /api/simulations/slow?delaySeconds=10&blockingPattern=worker</code></pre>
           <ul>
             <li class="doc-toc-item">
               <a href="#overview"><span class="toc-icon">📋</span>Overview</a>
-            </li>
-            <li class="doc-toc-item">
-              <a href="#architecture"><span class="toc-icon">🏗️</span>Architecture</a>
             </li>
             <li class="doc-toc-divider" aria-hidden="true"></li>
             <li class="doc-toc-section-label">Simulations</li>
@@ -744,6 +871,13 @@ GET /api/simulations/slow?delaySeconds=10&blockingPattern=worker</code></pre>
             </li>
             <li class="doc-toc-item">
               <a href="#crash-simulation"><span class="toc-icon">💥</span>Crash Simulation</a>
+            </li>
+            <li class="doc-toc-divider" aria-hidden="true"></li>
+            <li class="doc-toc-item">
+              <a href="#optional-config"><span class="toc-icon">⚙️</span>Optional Config</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#architecture"><span class="toc-icon">🏗️</span>Architecture</a>
             </li>
           </ul>
         </nav>
