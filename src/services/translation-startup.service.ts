@@ -42,15 +42,18 @@ const INTER_DOCUMENT_DELAY_MS = 10_000;
 export async function runStartupTranslation(): Promise<boolean> {
   const language = config.uiLanguage;
 
+  // Diagnostic: log raw env var and resolved config value
+  process.stdout.write(`[i18n] UI_LANGUAGE env var: '${process.env.UI_LANGUAGE || '(not set)'}', config.uiLanguage: '${language}'\n`);
+
   if (!language || language.toLowerCase() === 'en') {
-    console.log('[i18n] UI language is English — no translation needed');
+    process.stdout.write('[i18n] UI language is English — no translation needed\n');
     return true;
   }
 
-  console.log(`[i18n] Starting translation to '${language}'...`);
+  process.stdout.write(`[i18n] Starting translation to '${language}'...\n`);
 
   if (!config.translatorApiKey) {
-    console.warn(`[i18n] UI_LANGUAGE is set to '${language}' but TRANSLATOR_API_KEY is not configured. UI will fall back to English.`);
+    process.stdout.write(`[i18n] WARNING: UI_LANGUAGE is set to '${language}' but TRANSLATOR_API_KEY is not configured. UI will fall back to English.\n`);
     return false;
   }
 
@@ -64,15 +67,15 @@ export async function runStartupTranslation(): Promise<boolean> {
   const localesDir = path.join(publicDir, 'locales');
 
   // 1. Translate UI strings (en.json → {lang}.json)
-  console.log('[i18n] Phase 1: Translating UI strings...');
+  process.stdout.write('[i18n] Phase 1: Translating UI strings...\n');
   const stringsOk = await translationService.ensureTranslation(language, localesDir);
   if (!stringsOk) {
-    console.error('[i18n] UI string translation failed — UI will fall back to English');
+    process.stdout.write('[i18n] UI string translation failed — UI will fall back to English\n');
     return false;
   }
 
   // 2. Translate HTML documentation pages
-  console.log('[i18n] Phase 2: Translating documentation pages...');
+  process.stdout.write('[i18n] Phase 2: Translating documentation pages...\n');
   let allDocsOk = true;
   for (let i = 0; i < TRANSLATABLE_DOCS.length; i++) {
     const docFile = TRANSLATABLE_DOCS[i];
@@ -80,7 +83,7 @@ export async function runStartupTranslation(): Promise<boolean> {
 
     const docOk = await translationService.ensureDocumentTranslation(docPath, language);
     if (!docOk) {
-      console.warn(`[i18n] Failed to translate ${docFile} — will serve English version`);
+      process.stdout.write(`[i18n] Failed to translate ${docFile} — will serve English version\n`);
       allDocsOk = false;
     }
 
@@ -90,6 +93,6 @@ export async function runStartupTranslation(): Promise<boolean> {
     }
   }
 
-  console.log(`[i18n] Startup translation complete (strings: OK, docs: ${allDocsOk ? 'OK' : 'partial'})`);
+  process.stdout.write(`[i18n] Startup translation complete (strings: OK, docs: ${allDocsOk ? 'OK' : 'partial'})\n`);
   return true;
 }
