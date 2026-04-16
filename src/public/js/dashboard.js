@@ -479,7 +479,7 @@ async function loadEventLog() {
   // Messages are listed oldest-first; renderEventLog() sorts newest-first.
   const baseTime = Date.now();
   
-  // Fetch config and initialize i18n BEFORE generating log messages
+  // Fetch config for probe rate and idle timeout values
   let probeRate = 200;
   let idleTimeout = 20;
   try {
@@ -487,10 +487,6 @@ async function loadEventLog() {
     const configData = await configResponse.json();
     probeRate = configData.latencyProbeIntervalMs || 200;
     idleTimeout = configData.idleTimeoutMinutes || 20;
-    // Initialize i18n with the configured language
-    if (typeof I18N !== 'undefined' && configData.uiLanguage) {
-      await I18N.init(configData.uiLanguage);
-    }
   } catch (error) {
     console.log('[Dashboard] Could not load config values for event log');
   }

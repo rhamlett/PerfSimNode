@@ -260,6 +260,21 @@ function ensureWebSocket() {
 // This ensures the server's idle flag is cleared before it sends idleStatus
 // to the newly connected client.
 document.addEventListener('DOMContentLoaded', async () => {
+  // Initialize i18n BEFORE socket connects, so all strings are available
+  // when onSocketConnected triggers loadEventLog/renderActiveSimulations
+  try {
+    const configResp = await fetch('/api/admin/config');
+    const configData = await configResp.json();
+    if (typeof I18N !== 'undefined' && configData.uiLanguage) {
+      await I18N.init(configData.uiLanguage);
+    }
+  } catch (e) {
+    // Fallback: init with English if config fetch fails
+    if (typeof I18N !== 'undefined') {
+      await I18N.init('en');
+    }
+  }
+
   try {
     const resp = await fetch('/api/health/activity', {
       method: 'POST',
