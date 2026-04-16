@@ -349,7 +349,7 @@ function onProbeLatency(data) {
       if (!data.loadTestActive && unresponsiveDuration >= 10000 && typeof addEventToLog === 'function') {
         addEventToLog({
           level: 'success',
-          message: `Server responsive again after ${(unresponsiveDuration / 1000).toFixed(1)}s unresponsive`
+          message: typeof i18n === 'function' ? i18n('event.serverResponsive', { duration: (unresponsiveDuration / 1000).toFixed(1) }) : `Server responsive again after ${(unresponsiveDuration / 1000).toFixed(1)}s unresponsive`
         });
       }
     }
@@ -375,7 +375,7 @@ function onProbeLatency(data) {
         serverResponsiveness.lastWarningTime = now;
         addEventToLog({
           level: 'warning',
-          message: 'Server unresponsive - event loop may be blocked'
+          message: typeof i18n === 'function' ? i18n('event.serverUnresponsive') : 'Server unresponsive - event loop may be blocked'
         });
       }
     }

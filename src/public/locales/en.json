@@ -242,5 +242,36 @@
   "event.wsDisconnected": "WebSocket disconnected \u2013 real-time metrics paused",
   "event.appRestarted": "APPLICATION RESTARTED! Started at {newTime} (previously {prevTime}). This may indicate an unexpected crash (OOM, StackOverflow, etc.)",
   "event.goingIdle": "Application going idle, no health probes being sent. There will be gaps in diagnostics and logs.",
-  "event.wakingUp": "Application waking up from idle state. Health probes resuming."
+  "event.wakingUp": "Application waking up from idle state. Health probes resuming.",
+
+  "event.serverResponsive": "Server responsive again after {duration}s unresponsive",
+  "event.serverUnresponsive": "Server unresponsive – event loop may be blocked",
+
+  "metrics.memory.total": "of {total} GB",
+
+  "ui.clickToCopySimId": "Click to copy Simulation ID: {id}",
+  "ui.copied": "Copied!",
+  "ui.copyDone": "✓ Copied!",
+
+  "activeSim.cpuDetail": "{intensity} for {duration}s",
+  "activeSim.cpuBadge": "CPU Stress ({intensity})",
+  "activeSim.memoryBadge": "Memory ({size}MB)",
+
+  "alert.error": "Error: {message}",
+  "alert.cpuStartFailed": "Failed to start CPU stress simulation",
+  "alert.stopFailed": "Failed to stop simulation",
+  "alert.memoryAllocFailed": "Failed to allocate memory",
+  "alert.memoryReleaseFailed": "Failed to release memory",
+
+  "impact.title": "Impact Analysis:",
+  "impact.serverBlocked": "Server blocked:",
+  "impact.concurrentQueued": "Concurrent requests queued:",
+  "impact.avgLatency": "avg latency",
+  "impact.totalRoundTrip": "Total round-trip:",
+  "impact.requestFailed": "Request failed",
+  "impact.checkConsole": "Check browser console (F12) for details.",
+
+  "pattern.libuv": "libuv thread pool saturation",
+  "pattern.worker": "worker thread blocking",
+  "pattern.setTimeout": "non-blocking setTimeout"
 }

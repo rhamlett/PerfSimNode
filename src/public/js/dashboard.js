@@ -127,7 +127,7 @@ function onMetricsUpdate(metrics) {
   
   // Update total memory display
   const totalGb = (metrics.memory.totalSystemMb / 1024).toFixed(1);
-  document.getElementById('memory-total').textContent = `of ${totalGb} GB`;
+  document.getElementById('memory-total').textContent = typeof i18n === 'function' ? i18n('metrics.memory.total', { total: totalGb }) : `of ${totalGb} GB`;
 
   // Use heartbeatLagMs for real-time event loop blocking visibility
   const eventloopEl = document.getElementById('eventloop-value');
@@ -290,7 +290,7 @@ function addEventToLog(event, skipRender = false) {
  */
 function withSimulationId(message, simulationId) {
   if (!simulationId) return message;
-  return `<span class="sim-msg" data-simid="${simulationId}" title="Click to copy Simulation ID: ${simulationId}">${message}</span>`;
+  return `<span class="sim-msg" data-simid="${simulationId}" title="${i18n('ui.clickToCopySimId', { id: simulationId })}">${message}</span>`;
 }
 
 /**
@@ -314,7 +314,7 @@ function initSimulationIdCopyHandlers() {
       // Visual feedback
       simMsg.classList.add('copied');
       const originalTitle = simMsg.title;
-      simMsg.title = 'Copied!';
+      simMsg.title = i18n('ui.copied');
       
       setTimeout(() => {
         simMsg.classList.remove('copied');
@@ -426,7 +426,7 @@ function copyEventLog() {
   navigator.clipboard.writeText(textContent).then(() => {
     // Show success feedback
     const originalContent = btn.innerHTML;
-    btn.innerHTML = '<span class="copy-icon">✓</span> Copied!';
+    btn.innerHTML = `<span class="copy-icon">✓</span> ${i18n('ui.copied')}`;
     btn.classList.add('copied');
 
     // Reset after 2 seconds
@@ -543,9 +543,9 @@ function renderActiveCpuSimulations() {
         .map(
           (sim) => `
           <div class="active-simulation">
-            <span>${sim.parameters.intensity} for ${sim.parameters.durationSeconds}s</span>
+            <span>${i18n('activeSim.cpuDetail', { intensity: sim.parameters.intensity, duration: sim.parameters.durationSeconds })}</span>
             <span class="sim-id">${sim.id.slice(0, 8)}...</span>
-            <button class="btn-stop" onclick="stopCpuSimulation('${sim.id}')">Stop</button>
+            <button class="btn-stop" onclick="stopCpuSimulation('${sim.id}')">${i18n('sim.cpu.stop')}</button>
           </div>
         `
         )
@@ -573,7 +573,7 @@ function renderActiveMemorySimulations() {
           <div class="active-simulation">
             <span>${sim.parameters.sizeMb}MB</span>
             <span class="sim-id">${sim.id.slice(0, 8)}...</span>
-            <button class="btn-stop" onclick="releaseMemory('${sim.id}')">Release</button>
+            <button class="btn-stop" onclick="releaseMemory('${sim.id}')">${i18n('sim.memory.release')}</button>
           </div>
         `
         )
@@ -607,7 +607,7 @@ function renderActiveSimulationsList() {
     badges.push(`
       <div class="simulation-badge cpu">
         <span class="spinner"></span>
-        <span>CPU Stress (${sim.parameters.intensity})</span>
+        <span>${i18n('activeSim.cpuBadge', { intensity: sim.parameters.intensity })}</span>
       </div>
     `);
   });
@@ -617,7 +617,7 @@ function renderActiveSimulationsList() {
     badges.push(`
       <div class="simulation-badge memory">
         <span class="spinner"></span>
-        <span>Memory (${sim.parameters.sizeMb}MB)</span>
+        <span>${i18n('activeSim.memoryBadge', { size: sim.parameters.sizeMb })}</span>
       </div>
     `);
   });
@@ -640,7 +640,7 @@ async function startCpuStress(intensity, durationSeconds) {
     const data = await response.json();
 
     if (!response.ok) {
-      alert(`Error: ${data.message}`);
+      alert(i18n('alert.error', { message: data.message }));
       return;
     }
 
@@ -663,7 +663,7 @@ async function startCpuStress(intensity, durationSeconds) {
     }, durationSeconds * 1000);
   } catch (error) {
     console.error('[Dashboard] Failed to start CPU stress:', error);
-    alert('Failed to start CPU stress simulation');
+    alert(i18n('alert.cpuStartFailed'));
   }
 }
 
@@ -679,7 +679,7 @@ async function stopCpuSimulation(id) {
 
     if (!response.ok) {
       const data = await response.json();
-      alert(`Error: ${data.message}`);
+      alert(i18n('alert.error', { message: data.message }));
       return;
     }
 
@@ -688,7 +688,7 @@ async function stopCpuSimulation(id) {
     renderActiveCpuSimulations();
   } catch (error) {
     console.error('[Dashboard] Failed to stop CPU stress:', error);
-    alert('Failed to stop simulation');
+    alert(i18n('alert.stopFailed'));
   }
 }
 
@@ -721,7 +721,7 @@ async function allocateMemory(sizeMb) {
     const data = await response.json();
 
     if (!response.ok) {
-      alert(`Error: ${data.message}`);
+      alert(i18n('alert.error', { message: data.message }));
       return;
     }
 
@@ -736,7 +736,7 @@ async function allocateMemory(sizeMb) {
     // Backend broadcasts MEMORY_ALLOCATING and MEMORY_ALLOCATED events via WebSocket
   } catch (error) {
     console.error('[Dashboard] Failed to allocate memory:', error);
-    alert('Failed to allocate memory');
+    alert(i18n('alert.memoryAllocFailed'));
   }
 }
 
@@ -757,7 +757,7 @@ async function releaseMemory(id) {
     const data = await response.json();
 
     if (!response.ok) {
-      alert(`Error: ${data.message}`);
+      alert(i18n('alert.error', { message: data.message }));
       return;
     }
 
@@ -767,7 +767,7 @@ async function releaseMemory(id) {
     // Backend broadcasts MEMORY_RELEASED event via WebSocket
   } catch (error) {
     console.error('[Dashboard] Failed to release memory:', error);
-    alert('Failed to release memory');
+    alert(i18n('alert.memoryReleaseFailed'));
   }
 }
 
@@ -821,7 +821,7 @@ async function blockEventLoop(durationSeconds, chunkMs) {
     const data = await response.json();
 
     if (!response.ok) {
-      alert(`Error: ${data.message}`);
+      alert(i18n('alert.error', { message: data.message }));
       return;
     }
 
@@ -840,10 +840,10 @@ async function blockEventLoop(durationSeconds, chunkMs) {
     if (impactEl) {
       impactEl.innerHTML = `
         <div class="impact-result">
-          <strong>📊 Impact Analysis:</strong><br>
-          • Server blocked: <b>${(data.actualDurationMs / 1000).toFixed(1)}s</b><br>
-          • Concurrent requests queued: <b>${avgConcurrentLatency.toFixed(0)}ms</b> avg latency<br>
-          • Total round-trip: <b>${totalDuration.toFixed(1)}s</b>
+          <strong>📊 ${i18n('impact.title')}</strong><br>
+          • ${i18n('impact.serverBlocked')} <b>${(data.actualDurationMs / 1000).toFixed(1)}s</b><br>
+          • ${i18n('impact.concurrentQueued')} <b>${avgConcurrentLatency.toFixed(0)}ms</b> ${i18n('impact.avgLatency')}<br>
+          • ${i18n('impact.totalRoundTrip')} <b>${totalDuration.toFixed(1)}s</b>
         </div>
       `;
     }
@@ -863,9 +863,9 @@ async function blockEventLoop(durationSeconds, chunkMs) {
     if (impactEl) {
       impactEl.innerHTML = `
         <div class="impact-result" style="border-left-color: var(--color-danger);">
-          <strong>❌ Request failed</strong><br>
+          <strong>❌ ${i18n('impact.requestFailed')}</strong><br>
           ${errorMessage}<br>
-          <small>Check browser console (F12) for details.</small>
+          <small>${i18n('impact.checkConsole')}</small>
         </div>
       `;
     }
@@ -882,10 +882,10 @@ let slowRequestIntervalId = null;
  */
 function getPatternDescription(pattern) {
   switch (pattern) {
-    case 'libuv': return 'libuv thread pool saturation';
-    case 'worker': return 'worker thread blocking';
+    case 'libuv': return i18n('pattern.libuv');
+    case 'worker': return i18n('pattern.worker');
     case 'setTimeout':
-    default: return 'non-blocking setTimeout';
+    default: return i18n('pattern.setTimeout');
   }
 }
 
@@ -1143,10 +1143,10 @@ async function triggerFailedRequests(requestCount) {
 async function triggerCrash(crashType) {
   ensureWebSocket();
   const crashDescriptions = {
-    failfast: 'FailFast (SIGABRT)',
-    stackoverflow: 'Stack Overflow',
-    exception: 'Unhandled Exception',
-    oom: 'Out of Memory'
+    failfast: i18n('sim.crash.failfast'),
+    stackoverflow: i18n('sim.crash.stackOverflow'),
+    exception: i18n('sim.crash.unhandledException'),
+    oom: i18n('sim.crash.outOfMemory')
   };
   
   const crashEndpoints = {
