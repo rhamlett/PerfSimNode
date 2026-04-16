@@ -1,0 +1,1204 @@
+<!-- source_hash:b2c65e83d45de6b2 lang:pt generated:2026-04-16T18:51:11.567Z -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Problemas de Desempenho - Nó 24</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    /* Doc Layout - Main + TOC Sidebar */
+    .doc-layout {
+      display: flex;
+      gap: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .doc-main {
+      flex: 1;
+      min-width: 0;
+    }
+    .diag-container {
+      max-width: 900px;
+      display: block;
+      margin: 0;
+      padding: 0;
+    }
+    .doc-toc {
+      width: 280px;
+      flex-shrink: 0;
+    }
+    .doc-toc-sticky {
+      position: sticky;
+      top: 80px;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+    }
+    .doc-toc-card {
+      background: var(--color-card);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      padding: 1.25rem;
+    }
+    .doc-toc-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--color-bg);
+    }
+    .doc-toc ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .doc-toc-item {
+      margin-bottom: 0.25rem;
+    }
+    .doc-toc-item a {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      color: var(--color-text-muted);
+      font-size: 0.875rem;
+      transition: all var(--transition-fast);
+      border-left: 2px solid transparent;
+    }
+    .doc-toc-item a:hover {
+      background: rgba(57, 95, 57, 0.08);
+      color: var(--color-primary);
+      border-left-color: var(--color-primary);
+    }
+    .doc-toc-item a.active {
+      background: rgba(57, 95, 57, 0.12);
+      color: var(--color-primary);
+      font-weight: 500;
+      border-left-color: var(--color-primary);
+    }
+    .toc-icon {
+      font-size: 1rem;
+      width: 1.25rem;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .doc-toc-divider {
+      height: 1px;
+      background: var(--color-bg);
+      margin: 0.75rem 0;
+    }
+    .doc-toc-section-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      padding: 0.5rem 0.75rem 0.25rem;
+      opacity: 0.7;
+    }
+
+    /* Page Content Styles */
+    .diag-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .diag-header h1 {
+      color: var(--color-primary);
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+    }
+    .diag-header p {
+      color: var(--color-text-muted);
+      font-size: 1.1rem;
+    }
+    .card {
+      background: var(--color-card);
+      border-radius: var(--radius-md);
+      padding: 1.5rem 2rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      scroll-margin-top: 80px;
+    }
+    .card h2 {
+      color: var(--color-primary);
+      border-bottom: 2px solid var(--color-bg);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .card h3 {
+      color: var(--color-text);
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .card h4 {
+      color: var(--color-text-muted);
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .card p, .card li {
+      line-height: 1.6;
+      color: var(--color-text-muted);
+    }
+    .metric-explanation {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .metric-box {
+      border-left: 4px solid var(--color-primary);
+      background: var(--color-bg);
+      padding: 1rem;
+      border-radius: 0 8px 8px 0;
+    }
+    .metric-box.cpu { border-color: #ff8c00; }
+    .metric-box.memory { border-color: #0078d4; }
+    .metric-box.eventloop { border-color: #8764b8; }
+    .metric-box.latency { border-color: #107c10; }
+    .metric-box h4 {
+      margin: 0 0 0.5rem 0;
+      color: var(--color-text);
+    }
+    .metric-box p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--color-text-muted);
+    }
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin: 1rem 0;
+    }
+    .scenario-card {
+      border: 1px solid var(--color-bg);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .scenario-card .header {
+      padding: 1rem;
+      font-weight: 600;
+      color: white;
+    }
+    .scenario-card .header.cpu { background: linear-gradient(135deg, #d83b01, #ff8c00); }
+    .scenario-card .header.memory { background: linear-gradient(135deg, #0078d4, #00bcf2); }
+    .scenario-card .header.eventloop { background: linear-gradient(135deg, #5c2d91, #8764b8); }
+    .scenario-card .header.slow { background: linear-gradient(135deg, #ff8c00, #ffb900); }
+    .scenario-card .header.crash { background: linear-gradient(135deg, #a4262c, #d83b01); }
+    .scenario-card .body {
+      padding: 1rem;
+    }
+    .scenario-card .body h4 {
+      margin: 0.75rem 0 0.25rem;
+      font-size: 0.9rem;
+    }
+    .scenario-card .body ul {
+      margin: 0;
+      padding-left: 1.25rem;
+      font-size: 0.85rem;
+    }
+    .scenario-card .body li {
+      margin-bottom: 0.25rem;
+    }
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .tool-card {
+      background: var(--color-bg);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .tool-card h4 {
+      margin: 0 0 0.5rem;
+      color: var(--color-primary);
+    }
+    .tool-card p {
+      margin: 0 0 0.5rem;
+      font-size: 0.85rem;
+    }
+    .tool-card code {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+    }
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    .comparison-table th, .comparison-table td {
+      border: 1px solid var(--color-bg);
+      padding: 0.75rem;
+      text-align: left;
+    }
+    .comparison-table th {
+      background: var(--color-bg);
+      font-weight: 600;
+    }
+    .comparison-table tr:nth-child(even) {
+      background: rgba(0,0,0,0.02);
+    }
+    .alert-box {
+      padding: 1rem 1.25rem;
+      border-radius: 6px;
+      margin: 1rem 0;
+    }
+    .alert-box.info {
+      background: rgba(0, 120, 212, 0.1);
+      border-left: 4px solid var(--color-cpu);
+    }
+    .alert-box.warning {
+      background: rgba(255, 185, 0, 0.15);
+      border-left: 4px solid var(--color-warning);
+    }
+    .alert-box.success {
+      background: rgba(29, 111, 29, 0.1);
+      border-left: 4px solid var(--color-success);
+    }
+    .alert-box.caution {
+      background: rgba(255, 185, 0, 0.1);
+      border-left: 4px solid var(--color-danger);
+      margin-top: 20px;
+    }
+    .alert-box strong {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    .alert-box h4 {
+      margin-top: 0;
+    }
+    .alert-box p:last-child {
+      margin-bottom: 0;
+    }
+    .alert-box p + p {
+      margin-top: 10px;
+    }
+    .alert-box ol,
+    .alert-box ul {
+      margin: 0.5rem 0 0;
+      padding-left: 1.25rem;
+    }
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem;
+      border-radius: var(--radius-md);
+      overflow-x: auto;
+      font-size: 0.85rem;
+      margin: 1rem 0;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+    }
+    code {
+      background: var(--color-bg);
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      color: var(--color-danger);
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+    .flowchart {
+      background: var(--color-bg);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+      text-align: center;
+    }
+    .flowchart .step {
+      display: inline-block;
+      padding: 0.75rem 1rem;
+      background: var(--color-card);
+      border: 2px solid var(--color-primary);
+      border-radius: 6px;
+      margin: 0.25rem;
+    }
+    .flowchart .arrow {
+      display: inline-block;
+      color: var(--color-primary);
+      font-weight: bold;
+      margin: 0 0.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .doc-layout {
+        flex-direction: column;
+      }
+      .doc-toc {
+        width: 100%;
+        order: -1;
+      }
+      .doc-toc-sticky {
+        position: relative;
+        top: 0;
+        max-height: none;
+      }
+      .doc-toc ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .doc-toc-item {
+        margin-bottom: 0;
+      }
+      .doc-toc-item a {
+        padding: 0.375rem 0.625rem;
+        border-left: none;
+        border-radius: var(--radius-md);
+        background: var(--color-bg);
+      }
+      .doc-toc-divider,
+      .doc-toc-section-label {
+        display: none;
+      }
+    }
+    @media (max-width: 768px) {
+      .doc-layout {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body class="page-diagnostics">
+  <header>
+    <button id="hamburger-btn" class="hamburger-btn attention" aria-label="Open navigation menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <svg class="header-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 2L29 9.5V24.5L16 32L3 24.5V9.5L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="currentColor">JS</text>
+    </svg>
+    <h1>Azure Guia de Diagnóstico</h1>
+    <span id="sku-badge" class="sku-badge">SKU: Local</span>
+    <nav>
+      <a href="/" class="btn-panel-toggle">🎮 Painel</a>
+    </nav>
+  </header>
+
+  <!-- Sidebar Drawer Navigation -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+  <aside id="sidebar-drawer" class="sidebar-drawer">
+    <div class="sidebar-header">
+      <svg class="sidebar-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 2L29 9.5V24.5L16 32L3 24.5V9.5L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/>
+        <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="currentColor">JS</text>
+      </svg>
+      <h2>PerfSimNode</h2>
+      <button id="sidebar-close" class="sidebar-close" aria-label="Close navigation">×</button>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Aplicação</div>
+      <a href="/" class="sidebar-nav-item">
+        <span class="nav-icon">🎮</span>
+        <span class="nav-label">Painel<span class="nav-desc">Métricas e controles ao vivo</span></span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">Documentação</div>
+      <a href="/docs.html" class="sidebar-nav-item">
+        <span class="nav-icon">📚</span>
+        <span class="nav-label">Documentação<span class="nav-desc">API Referência & Guias</span></span>
+      </a>
+      <a href="/azure-diagnostics.html" class="sidebar-nav-item active">
+        <span class="nav-icon">☁️</span>
+        <span class="nav-label">Azure Diagnóstico<span class="nav-desc">Diagnosticar problemas na App Service</span></span>
+      </a>
+      <a href="/azure-load-testing.html" class="sidebar-nav-item">
+        <span class="nav-icon">📈</span>
+        <span class="nav-label">Azure Testes de Carga<span class="nav-desc">Endpoint e parâmetros do teste de carga</span></span>
+      </a>
+      <a href="/azure-deployment.html" class="sidebar-nav-item">
+        <span class="nav-icon">🚀</span>
+        <span class="nav-label">Desdobrar para Azure<span class="nav-desc">GitHub Ações + configuração OIDC</span></span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">Externo</div>
+      <a id="github-nav-item" href="#" target="_blank" rel="noopener" class="sidebar-nav-item hidden">
+        <span class="nav-icon">🐙</span>
+        <span class="nav-label">GitHub Repositório<span class="nav-desc">Código-fonte e problemas</span></span>
+      </a>
+      <a href="/swagger" target="_blank" rel="noopener" class="sidebar-nav-item">
+        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="128" cy="128" r="128" fill="#85ea2d"/><path d="M128 40c-48.6 0-88 39.4-88 88s39.4 88 88 88 88-39.4 88-88-39.4-88-88-88zm-8 132h-16v-16h16v16zm0-32h-16V76h16v64zm32 32h-16v-16h16v16zm0-32h-16V76h16v64z" fill="#173647"/></svg></span>
+        <span class="nav-label">Swagger<span class="nav-desc">Suportado pelo SMARTBEAR</span></span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="sidebar-build-info">Build: Carregando...</div>
+    </div>
+  </aside>
+
+  <div class="doc-layout">
+  <div class="doc-main">
+  <main class="diag-container">
+    <div class="diag-header">
+      <h1>☁️ Azure Guia de Diagnóstico</h1>
+      <p>Como diagnosticar Node.js problemas de desempenho usando ferramentas Azure e entender o que essas métricas significam</p>
+    </div>
+
+    <!-- Understanding Metrics -->
+    <section id="understanding-metrics" class="card">
+      <h2>📈 Entendendo as Métricas do Painel</h2>
+      <p>O painel PerfSimNode exibe métricas em tempo real que ajudam a identificar problemas de desempenho. Veja o que cada métrica significa:</p>
+
+      <div class="metric-explanation">
+        <div class="metric-box cpu">
+          <h4>⚡ CPU Uso (%)</h4>
+          <p><strong>O que ele mede:</strong> Percentual do tempo CPU consumido pelo processo Node.js.</p>
+          <p><strong>Por que isso importa:</strong> Alta CPU indica operações limitadas ao cálculo. Em Node.js, isso normalmente significa que código síncrono está rodando (cripto, JSON análise de objetos grandes, cálculos complexos).</p>
+          <p><strong>Faixa normal:</strong> 0-30% em idle, picos durante as requisições são normais.</p>
+          <p><strong>Sinais de alerta:</strong> Sustentado >70% indica um problema.</p>
+        </div>
+
+        <div class="metric-box memory">
+          <h4>📊 Conjunto de Trabalho de Memória (MB)</h4>
+          <p><strong>O que ele mede:</strong> Memória total que o processo Node.js alocou e está usando ativamente.</p>
+          <p><strong>Por que isso importa:</strong> Memória que cresce sem liberar indica vazamentos. Node.js usa o coletor de lixo do V8, mas referências mantidas por muito tempo impedem a limpeza.</p>
+          <p><strong>Faixa normal:</strong> Depende do aplicativo, mas deve estabilizar após o aquecimento.</p>
+          <p><strong>Sinais de alerta:</strong> Crescimento contínuo ao longo do tempo (padrão dente de serra é ok).</p>
+        </div>
+
+        <div class="metric-box eventloop">
+          <h4>🧵 Atraso do Loop de Eventos (ms)</h4>
+          <p><strong>O que ele mede:</strong> Tempo entre o agendamento de um callback e a execução efetiva.</p>
+          <p><strong>Por que isso importa:</strong> <em>Essa é a métrica chave para sync-over-async problemas!</em> Quando o código síncrono bloqueia o loop de eventos, TODAS as chamadas pendentes devem aguardar—incluindo as solicitações de HTTP recebidas.</p>
+          <p><strong>Faixa normal:</strong> &lt;10ms</p>
+          <p><strong>Sinais de alerta:</strong> >100ms causa atrasos perceptíveis; >1000ms significa bloqueio severo.</p>
+        </div>
+
+        <div class="metric-box latency">
+          <h4>⏱️ Latência de Solicitação (ms)</h4>
+          <p><strong>O que ele mede:</strong> Tempo desde o pedido recebido até a resposta enviada, incluindo o tempo de espera na fila do loop de eventos.</p>
+          <p><strong>Por que isso importa:</strong> Medida direta da experiência do usuário. Alta latência com baixa CPU frequentemente indica bloqueio ou problemas de dependência externa.</p>
+          <p><strong>Faixa normal:</strong> &lt;150ms para solicitações simples</p>
+          <p><strong>Sinais de alerta:</strong> >1 degradados; >30 anos crítico.</p>
+        </div>
+      </div>
+
+      <div class="alert-box info">
+        <strong>💡 Insight Chave: Atraso no Loop de Eventos</strong>Node.js usa um <em>Loop de eventos de thread única</em>. Quando você vê um alto Event Loop Lag, significa que a thread principal está bloqueada e TODOS os callbacks pendentes devem esperar — é por isso que uma única operação de bloqueio pode afetar TODAS as requisições simultaneamente.      </div>
+    </section>
+
+    <!-- Diagnostic Scenarios -->
+    <section id="diagnostic-scenarios" class="card">
+      <h2>🔍 Cenários Diagnósticos</h2>
+      <p>Veja como diagnosticar cada tipo de problema de desempenho que este simulador cria:</p>
+
+      <div class="scenario-grid">
+        <div class="scenario-card">
+          <div class="header cpu">🔥 Alto Uso CPU</div>
+          <div class="body">
+            <p><strong>Sintoma:</strong>CPU métrica fixada em alto, as requisições ainda podem ser concluídas normalmente (o loop de eventos não está bloqueado).</p>
+            <h4>O que está acontecendo</h4>
+            <ul>
+              <li>A simulação gera processos filhos via <code>fork()</code></li>
+              <li>Cada filho executa CPUcriptografia intensiva (PBKDF2)</li>
+              <li>O trabalho é isolado do ciclo de evento principal - o servidor permanece responsivo</li>
+              <li>Múltiplos <code>node</code> Processos visíveis em <code>top</code></li>
+            </ul>
+            <h4>Principais Insights</h4>
+            <p><em>CPU estresse ≠ bloqueio de loop de eventos!</em> Alta CPU em processos filhos não bloqueia o servidor. Cuidado com o Event Loop Lag – ele permanece baixo mesmo com CPUalto.</p>
+            <h4>Azure Ferramentas de Diagnóstico</h4>
+            <ul>
+              <li>App Service Diagnósticos → <strong>CPU Aprofundar</strong></li>
+              <li>Application Insights → <strong>Desempenho</strong></li>
+              <li>Kudu SSH → <code>top</code>, <code>ps aux | grep node</code></li>
+              <li><a href="#v8-profiling">Perfilamento V8</a> → <code>--prof</code> para identificar funções quentes</li>
+            </ul>
+            <h4>O que procurar</h4>
+            <ul>
+              <li>Qual(es) processo(s) consome CPU</li>
+              <li>Relação de processo pai/filho</li>
+              <li>O atraso do loop de eventos deve permanecer BAIXO</li>
+              <li>Saída do perfil V8 mostrando funções de alto tick</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="header memory">📊 Pressão de Memória</div>
+          <div class="body">
+            <p><strong>Sintoma:</strong> A memória cresce, permanece alta e pode eventualmente desmoronar com OOM.</p>
+            <h4>O que está acontecendo</h4>
+            <ul>
+              <li>A simulação aloca buffers e mantém referências</li>
+              <li>Coletor de lixo V8 não consegue liberar memória armazenada</li>
+              <li>Simula vazamentos de memória devido a cache que deram errado</li>
+            </ul>
+            <h4>Azure Ferramentas de Diagnóstico</h4>
+            <ul>
+              <li>App Service Diagnósticos → <strong>Análise de Memória</strong></li>
+              <li>Application Insights → <strong>Métricas</strong></li>
+              <li>Kudu → <strong>Explorador de Processos</strong></li>
+              <li><a href="#v8-profiling">Perfilamento V8</a> → Snapshots de heap via Chrome DevTools</li>
+            </ul>
+            <h4>O que procurar</h4>
+            <ul>
+              <li>Snapshots de heap para encontrar objetos retidos (use a visualização Retainer)</li>
+              <li>Compare instantâneos ao longo do tempo para identificar alocações crescentes</li>
+              <li>Padrão de crescimento de memória (vazamento vs. uso normal)</li>
+              <li>Correlação com operações específicas</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="header eventloop">🧵 Bloqueio de Loop de Eventos</div>
+          <div class="body">
+            <p><strong>Sintoma:</strong> Picos de lag no ciclo de eventos, fila de TODAS as requisições, gráfico de latência mostra latência alta sustentada em tempo real.</p>
+            <h4>O que está acontecendo</h4>
+            <ul>
+              <li>Criptomoedas síncronas rodam DENTRO do thread principal em blocos repetidos</li>
+              <li>Entre blocos, um rendimento breve permite que dados de sonda em fila esvazem</li>
+              <li>O loop de eventos é bloqueado ~97% das vezes — efetivamente não responsivo</li>
+              <li>O gráfico de latência é atualizado em tempo real mostrando o efeito de bloqueio</li>
+              <li><strong>Diferença chave em relação ao estresse CPU :</strong> O servidor não responde!</li>
+            </ul>
+            <h4>Como Identificar</h4>
+            <p><em>Verifique o Lag do Loop de Eventos!</em> Se for igual à duração do chunk, o loop de eventos é bloqueado. CPU estresse mostra alta CPU , mas BAIXO atraso no loop de eventos.</p>
+            <h4>Azure Ferramentas de Diagnóstico</h4>
+            <ul>
+              <li>Application Insights → <strong>Desempenho</strong></li>
+              <li>App Service Diagnósticos → <strong>Aplicativo Web Lento</strong></li>
+              <li>Azure Monitor → <strong>Métricas</strong> para picos de latência de requisição</li>
+              <li><a href="#v8-profiling">Perfilamento V8</a> → CPU perfil durante o bloco mostra código de bloqueio</li>
+            </ul>
+            <h4>O que procurar</h4>
+            <ul>
+              <li>Atraso do loop de evento = duração do chunk (~200ms padrão)</li>
+              <li>TODAS as solicitações afetadas simultaneamente</li>
+              <li>O gráfico de latência mostra latência elevada sustentada durante a simulação</li>
+              <li>CPU pode ser alto OU baixo (depende do trabalho de bloqueio)</li>
+              <li>O perfil V8 identifica a função síncrona (por exemplo, <code>pbkdf2Sync</code>)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="header slow">🐢 Pedidos Lentos</div>
+          <div class="body">
+            <p><strong>Sintoma:</strong> Endpoints específicos demoram muito, mas outros endpoints são NORMAIS.</p>
+            <h4>O que está acontecendo</h4>
+            <ul>
+              <li>Usos do handler de requisições <code>setTimeout()</code> para atraso</li>
+              <li>Não bloqueio: o ciclo de eventos continua processando</li>
+              <li>Simula chamadas lentas de banco de dados e API externas</li>
+              <li><strong>Diferença chave em relação ao Bloqueio de Loop de Eventos:</strong> Só o endpoint lento é afetado!</li>
+            </ul>
+            <h4>Como Identificar</h4>
+            <p><em>Verifique se OUTROS pedidos estão afetados.</em> Requisições lentas: só o endpoint lento é lento. Bloqueio de loop de eventos: TUDO é lento.</p>
+            <h4>Azure Ferramentas de Diagnóstico</h4>
+            <ul>
+              <li>Application Insights → <strong>Transação de ponta a ponta</strong></li>
+              <li>Application Insights → <strong>Rastreamento de dependências</strong></li>
+              <li>Análise de Logs → Duração da solicitação por endpoint</li>
+            </ul>
+            <h4>O que procurar</h4>
+            <ul>
+              <li>Qual endpoint específico é lento</li>
+              <li>Quebra de temporização de dependências</li>
+              <li>O atraso do loop de eventos permanece BAIXO</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="header crash">💥 Crash de Aplicação</div>
+          <div class="body">
+            <p><strong>Sintoma:</strong> O aplicativo fica sem resposta, reinicia ou retorna erros 502/503.</p>
+            <h4>O que está acontecendo</h4>
+            <ul>
+              <li>Processo de falhas de exceção não tratadas</li>
+              <li>OOM assassino encerra o processo</li>
+              <li>App Service pode reiniciar automaticamente</li>
+            </ul>
+            <h4>Azure Ferramentas de Diagnóstico</h4>
+            <ul>
+              <li>App Service Diagnósticos → <strong>App Web Reiniciado</strong></li>
+              <li>Application Insights → <strong>Falhas</strong></li>
+              <li>Kudu → <strong>LogFiles</strong></li>
+              <li><a href="#v8-profiling">Perfilamento V8</a> → snapshot de heap antes do travamento para identificar a causa</li>
+            </ul>
+            <h4>O que procurar</h4>
+            <ul>
+              <li>Análise de despejo de emergência</li>
+              <li>Rastreamento de pilha de exceção em logs</li>
+              <li>Uso de memória antes do crash (comparação de snapshots de heap)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Simulation ID Correlation -->
+    <section id="simulation-ids" class="card">
+      <h2>🔗 Correlação do ID da Simulação</h2>
+      <p>Cada instância de simulação recebe um ID de Simulação único (GUID) que permite correlação de ponta a ponta entre a interface do painel e os diagnósticos Azure .</p>
+
+      <h3>Encontrando IDs de Simulação</h3>
+      <p><strong>No Painel:</strong> Passe o mouse sobre qualquer mensagem relacionada à simulação no Registro de Eventos (marcada com um sublinhado pontilhado) para ver o ID completo da Simulação em uma dica de ferramenta.</p>
+      <p><strong>Em Azure:</strong> O mesmo ID de simulação é emitido nos logs do lado do servidor e pode ser encontrado em:</p>
+      <ul>
+        <li><strong>Application Insights</strong> - Rastreamentos de busca e eventos personalizados por ID de Simulação</li>
+        <li><strong>Análise de Logs</strong> - Logs de consulta usando o ID como filtro</li>
+        <li><strong>Troncos de Contêineres/App Service</strong> - Filtre stdout/stderr pelo GUID</li>
+      </ul>
+
+      <h3>Consultas de Correlação</h3>
+      <p>Use estas consultas KQL no Log Analytics para correlacionar eventos do painel com a telemetria do servidor:</p>
+
+      <div class="alert-box warning">
+        <h4>⚠️ Diferenças entre nomes de tabelas</h4>
+        <p>Os espaços de trabalho do Log Analytics usam nomes de tabelas e colunas diferentes dos Application Insightsclássicos. Se você encontrar erros como "O nome 'traces' não se refere a nenhuma tabela conhecida", use os nomes do Log Analytics abaixo:</p>
+      </div>
+
+      <table class="comparison-table">
+        <thead>
+          <tr><th>Classic App Insights</th><th>Análise de Logs</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Traços</td><td>AppTraces</td></tr>
+          <tr><td>Eventos personalizados</td><td>AppEvents</td></tr>
+          <tr><td>pedidos</td><td>AppRequests</td></tr>
+          <tr><td>Exceções</td><td>AppExceptions</td></tr>
+          <tr><td>Dependências</td><td>AppDependencies</td></tr>
+          <tr><td>Mensagem</td><td>Mensagem</td></tr>
+          <tr><td>Carimbo de tempo</td><td>TimeGenerated</td></tr>
+          <tr><td>customDimensões</td><td>Propriedades</td></tr>
+        </tbody>
+      </table>
+
+<pre><code>// Find simulation start/end events by Simulation ID
+AppEvents
+| where Name in ("SimulationStarted", "SimulationEnded")
+| where Properties["SimulationId"] == "YOUR-SIMULATION-ID-HERE"
+| project TimeGenerated, Name, Properties
+| order by TimeGenerated asc</code></pre>
+
+<pre><code>// Find all requests during a simulation time window
+let simStart = toscalar(
+    AppEvents 
+    | where Name == "SimulationStarted" and Properties["SimulationId"] == "YOUR-SIMULATION-ID-HERE"
+    | project TimeGenerated);
+let simEnd = toscalar(
+    AppEvents 
+    | where Name == "SimulationEnded" and Properties["SimulationId"] == "YOUR-SIMULATION-ID-HERE"
+    | project TimeGenerated);
+AppRequests
+| where TimeGenerated between (simStart .. simEnd)
+| order by TimeGenerated asc</code></pre>
+
+<pre><code>// Find failed requests during a simulation
+let simId = "YOUR-SIMULATION-ID-HERE";
+let simEvents = AppEvents | where Properties["SimulationId"] == simId;
+let simStart = toscalar(simEvents | where Name == "SimulationStarted" | project TimeGenerated);
+let simEnd = toscalar(simEvents | where Name == "SimulationEnded" | project TimeGenerated);
+AppRequests
+| where TimeGenerated between (simStart .. simEnd)
+| where Success == false
+| project TimeGenerated, Name, ResultCode, DurationMs, Url
+| order by TimeGenerated asc</code></pre>
+
+      <h3>Fluxo de Trabalho de Solução de Problemas</h3>
+      <ol>
+        <li>Inicie uma simulação a partir do painel</li>
+        <li>Passe o mouse sobre a mensagem de início no Log de Eventos para copiar o ID da Simulação</li>
+        <li>Abrir Azure Portal → Application Insights → Logs (ou Análise de Logs)</li>
+        <li>Consulte logs usando o ID de simulação para ver toda a atividade relacionada do lado do servidor</li>
+        <li>Correlacione carimbos de tempo entre eventos do painel e métricas de servidor</li>
+      </ol>
+
+      <div class="alert-box info">
+        <strong>💡 Dica</strong>
+        <p>O ID de Simulação ajuda a isolar a telemetria ao executar múltiplas simulações simultâneas ou quando o painel é usado por múltiplos usuários.</p>
+      </div>
+    </section>
+
+    <!-- Azure Tools -->
+    <section id="azure-tools" class="card">
+      <h2>🛠️ Azure Ferramentas de Diagnóstico</h2>
+      <p>Principais ferramentas Azure para diagnosticar problemas de desempenho Node.js:</p>
+
+      <div class="tool-grid">
+        <div class="tool-card">
+          <h4>App Service Diagnóstico</h4>
+          <p>Relatórios diagnósticos integrados no Azure Portal. Acesso via "Diagnosticar e resolver problemas".</p>
+          <p><strong>Melhor para:</strong> Visão geral rápida da saúde, análise CPU/memória, investigação de falhas.</p>
+        </div>
+        <div class="tool-card">
+          <h4>Application Insights</h4>
+          <p>Solução completa de APM com rastreamento de requisições, rastreamento de dependências e métricas personalizadas.</p>
+          <p><strong>Melhor para:</strong> Rastreamento de ponta a ponta, tendências de desempenho, análise de falhas.</p>
+        </div>
+        <div class="tool-card">
+          <h4>Kudu (SCM)</h4>
+          <p>Console de desenvolvedor em <code>yourapp.scm.azurewebsites.net</code></p>
+          <p><strong>Melhor para:</strong> Depuração em tempo real, acesso a logs, gerenciamento de processos.</p>
+        </div>
+        <div class="tool-card">
+          <h4>Análise de Logs</h4>
+          <p>Análise de logares baseada em consulta com KQL.</p>
+          <p><strong>Melhor para:</strong> Análise histórica, consultas personalizadas, alertas.</p>
+        </div>
+        <div class="tool-card">
+          <h4>Azure Métricas de Monitoramento</h4>
+          <p>Métricas de plataforma para CPU, memória, requisições, etc.</p>
+          <p><strong>Melhor para:</strong> Monitoramento em tempo real, painéis, alertas.</p>
+        </div>
+        <div class="tool-card">
+          <h4>Análise de Despejo de Acidentes</h4>
+          <p>Coleta automática ou manual de despejo para investigação de acidentes.</p>
+          <p><strong>Melhor para:</strong> Análise de acidentes post-mortem, investigação de vazamento de memória.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Diagnostic Workflow -->
+    <section id="diagnostic-workflow" class="card">
+      <h2>🔄 Fluxo de Trabalho de Diagnóstico</h2>
+      <p>Siga este fluxo de trabalho ao investigar um problema de desempenho Node.js:</p>
+
+      <div class="flowchart">
+        <span class="step">Relatório de Clientes</span>
+        <span class="arrow">→</span>
+        <span class="step">Verifique as métricas</span>
+        <span class="arrow">→</span>
+        <span class="step">Identificar Padrão</span>
+        <span class="arrow">→</span>
+        <span class="step">Mergulho profundo</span>
+        <span class="arrow">→</span>
+        <span class="step">Causa Raiz</span>
+      </div>
+
+      <h3>Passo 1: Avaliação Inicial</h3>
+      <ol>
+        <li>Consulte App Service Visão Geral para o estado de saúde</li>
+        <li>Veja métricas CPU, Memória, Solicitação no Azure Monitor</li>
+        <li>Note o período de tempo da edição</li>
+      </ol>
+
+      <h3>Passo 2: Identifique o Padrão</h3>
+      <table class="comparison-table">
+        <tr>
+          <th>Se você vê...</th>
+          <th>Provável Problema</th>
+          <th>Próximo passo</th>
+        </tr>
+        <tr>
+          <td>Tempo de resposta alto CPUe normal</td>
+          <td>Processamento CPUligado a - (esperado ou bug)</td>
+          <td>CPU perfiling via Kudu</td>
+        </tr>
+        <tr>
+          <td>Respostas CPUaltas e lentas</td>
+          <td>CPU a fome afetando os pedidos</td>
+          <td>Identificar caminho de código quente</td>
+        </tr>
+        <tr>
+          <td>CPUnormal, TODAS as respostas lentas</td>
+          <td>Bloqueio de loop de eventos (sync-over-async)</td>
+          <td>Verifique métricas de loop de eventos, revisão de código</td>
+        </tr>
+        <tr>
+          <td>Respostas CPUnormais, lentas ALGUMAS</td>
+          <td>Latência de dependência externa</td>
+          <td>Application Insights visão de dependência</td>
+        </tr>
+        <tr>
+          <td>Memória crescendo com o tempo</td>
+          <td>Vazamento de memória</td>
+          <td>Análise de snapshots de heap</td>
+        </tr>
+        <tr>
+          <td>Reiniciações repentinas, erros 502</td>
+          <td>Travamento (exceção ou OOM)</td>
+          <td>Despejo de falha, logs de erro</td>
+        </tr>
+      </table>
+
+      <h3>Passo 3: Aprofunde as Ferramentas por Edição</h3>
+      <div class="alert-box success">
+        <strong>🔥 Alto CPU</strong>
+        <ol>
+          <li>Kudu Process Explorer → Identificar processo</li>
+          <li>App Service Diagnósticos → CPU Aprofundamento</li>
+          <li>Perfil com <code>node --prof</code> ou <code>--inspect</code></li>
+        </ol>
+      </div>
+      <div class="alert-box success">
+        <strong>🧵 Bloqueio de Loop de Eventos</strong>
+        <ol>
+          <li>Verifique Application Insights para solicitações de lentidão correlacionadas</li>
+          <li>Procure operações de sincronização no código (fs.readFileSync, etc.)</li>
+          <li>Adicionar monitoramento com <code>perf_hooks.monitorEventLoopDelay()</code></li>
+        </ol>
+      </div>
+      <div class="alert-box success">
+        <strong>📊 Vazamento de Memória</strong>
+        <ol>
+          <li>Faça snapshot de heap via Kudu ou depuração remota</li>
+          <li>Compare instantâneos ao longo do tempo</li>
+          <li>Procure o aumento da contagem de objetos</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Kudu Console -->
+    <section id="kudu-console" class="card">
+      <h2>🖥️ Comandos do Console Kudu</h2>
+      <p>Comandos úteis quando conectado ao console Kudu (SCM):</p>
+
+      <h3>Informações de Processo</h3>
+      <pre><code># List Node.js processes
+ps aux | grep node
+
+# Show memory usage
+free -m
+
+# CPU and memory in real-time
+top -p $(pgrep -f node)</code></pre>
+
+      <h3>Perfilamento</h3>
+      <pre><code># Generate CPU profile (run this, reproduce issue, stop with Ctrl+C)
+# Profile saved as isolate-*.log
+node --prof /home/site/wwwroot/index.js
+
+# Process the profile
+node --prof-process isolate-*.log > profile.txt</code></pre>
+
+      <h3>Heap Snapshot</h3>
+      <pre><code># Find Node.js PID
+pgrep -f node
+
+# Send signal to generate heap snapshot
+kill -USR2 &lt;pid&gt;
+
+# Or connect with Chrome DevTools
+# 1. In Kudu, run: node --inspect=0.0.0.0:9229 /home/site/wwwroot/index.js
+# 2. Set up port forwarding
+# 3. Connect Chrome to chrome://inspect</code></pre>
+
+      <h3>Análise de Logs</h3>
+      <pre><code># View recent application logs
+tail -100 /home/LogFiles/Application/*.log
+
+# Search for errors
+grep -i "error\|exception" /home/LogFiles/Application/*.log
+
+# Watch logs in real-time
+tail -f /home/LogFiles/Application/*.log</code></pre>
+    </section>
+
+    <!-- V8 Profiling -->
+    <section id="v8-profiling" class="card">
+      <h2>🔬 Perfilamento V8</h2>
+      <p>V8 é o motor JavaScript que alimenta Node.js. Inclui ferramentas de perfilamento integradas que ajudam a identificar gargalos de desempenho, vazamentos de memória e caminhos de código intensivos CPU.</p>
+
+      <h3>O que é Perfilamento V8?</h3>
+      <p>O perfilamento V8 captura informações detalhadas sobre o comportamento em tempo de execução da sua aplicação:</p>
+      <ul>
+        <li><strong>CPU Perfilamento</strong> — Registros de quais funções consomem mais tempo CPU , ajudando a identificar caminhos de código quente e oportunidades de otimização</li>
+        <li><strong>Heap Snapshots</strong> — Captura o estado da memória em um momento específico, mostrando todos os objetos alocados e suas referências</li>
+        <li><strong>Linha do tempo do heap</strong> — Acompanha a alocação de memória ao longo do tempo para identificar vazamentos e coleta excessiva de lixo</li>
+      </ul>
+
+      <h3>Método 1: Perfil de Linha de Comando (--prof)</h3>
+      <p>O <code>--prof</code> Flag gera um perfil detalhado de CPU que mostra o tempo gasto em cada função.</p>
+
+      <h4>Passo 1: Execute com Perfilamento Ativado</h4>
+      <pre><code># Start your app with profiling
+node --prof app.js
+
+# Reproduce the performance issue, then stop the app (Ctrl+C)
+# This creates an isolate-*.log file in the current directory</code></pre>
+
+      <h4>Passo 2: Processe o Perfil</h4>
+      <pre><code># Convert the V8 log to human-readable format
+node --prof-process isolate-0x*.log > profile.txt</code></pre>
+
+      <h4>Passo 3: Leia os Resultados</h4>
+      <p>O perfil processado mostra uma divisão assim:</p>
+      <pre><code>[Summary]:
+   ticks  total  nonlib   name
+   5234   75.2%   78.1%  JavaScript
+   1023   14.7%   15.3%  C++
+    445    6.4%    6.6%  GC
+    258    3.7%          Shared libraries
+
+[JavaScript]:
+   ticks  total  nonlib   name
+   3102   44.6%   46.3%  pbkdf2Sync
+    892   12.8%   13.3%  JSON.parse
+    ...</code></pre>
+      <p>Procure funções com alta contagem de ticks — essas são suas CPU hotspots.</p>
+
+      <h3>Método 2: Chrome DevTools (--inspect)</h3>
+      <p>Para perfilamento interativo com interface visual, use o inspetor DevTools do Chrome.</p>
+
+      <h4>Passo 1: Comece com o Inspetor</h4>
+      <pre><code># Local development
+node --inspect app.js
+
+# Allow remote connections (e.g., from Azure)
+node --inspect=0.0.0.0:9229 app.js</code></pre>
+
+      <h4>Passo 2: Conecte o Chrome DevTools</h4>
+      <ol>
+        <li>Abra o Chrome e navegue até <code>chrome://inspect</code></li>
+        <li>Clique em "Configurar..." e adiciona <code>localhost:9229</code> (ou seu host remoto)</li>
+        <li>Seu processo Node.js aparece em "Alvo Remoto"—clique em "inspecionar"</li>
+      </ol>
+
+      <h4>Passo 3: Capture um Perfil CPU</h4>
+      <ol>
+        <li>Vá para o <strong>Perfilador</strong> aba (ou aba Performance)</li>
+        <li>Click <strong>Comece</strong></li>
+        <li>Reproduzir o problema de desempenho</li>
+        <li>Click <strong>Pare</strong></li>
+        <li>Analise o gráfico de chamas — barras largas indicam funções lentas</li>
+      </ol>
+
+      <h4>Passo 4: Tire uma foto de heap</h4>
+      <ol>
+        <li>Vá para o <strong>Memória</strong> Tab</li>
+        <li>Selecione "Heap snapshot" e clique <strong>Tire uma foto</strong></li>
+        <li>Explore a visualização "Resumo" para ver a contagem e tamanhos dos objetos</li>
+        <li>Compare múltiplos snapshots para identificar vazamentos de memória</li>
+      </ol>
+
+      <h3>Método 3: Snapshots Programáticos de Heap</h3>
+      <p>Gere snapshots de heap a partir do seu código ou via sinais:</p>
+      <pre><code>// In your application code
+const v8 = require('v8');
+const fs = require('fs');
+
+function takeHeapSnapshot() {
+  const filename = `heap-${Date.now()}.heapsnapshot`;
+  const stream = fs.createWriteStream(filename);
+  v8.writeHeapSnapshot(filename);
+  console.log(`Heap snapshot written to ${filename}`);
+}
+
+// Trigger on SIGUSR2 signal
+process.on('SIGUSR2', takeHeapSnapshot);</code></pre>
+      <p>Depois, acione com: <code>kill -USR2 &lt;pid&gt;</code></p>
+
+      <h3>Leitura de Snapshots de Heap</h3>
+      <p>Aberto <code>.heapsnapshot</code> arquivos no Chrome DevTools:</p>
+      <ol>
+        <li>Abra o Chrome DevTools (F12)</li>
+        <li>Vá para <strong>Memória</strong> Tab</li>
+        <li>Click <strong>Carga</strong> e selecione seu <code>.heapsnapshot</code> arquivo</li>
+      </ol>
+      <p>Principais pontos de vista para analisar:</p>
+      <ul>
+        <li><strong>Resumo</strong> — Objetos agrupados por nome do construtor. Procure contagens inesperadamente grandes.</li>
+        <li><strong>Comparação</strong> — Diferencia dois instantâneos para ver o que foi alocado entre eles.</li>
+        <li><strong>Contenção</strong> — Mostra a hierarquia de objetos (o que está contendo referências a quê).</li>
+        <li><strong>Criados</strong> — Para qualquer objeto, mostra POR QUE ele ainda está na memória (a cadeia de referência para GC raízes).</li>
+      </ul>
+
+      <h3>Azure- Considerações Específicas</h3>
+      <ul>
+        <li><strong>Kudu SSH</strong> — Executar comandos de perfilamento diretamente via <code>yourapp.scm.azurewebsites.net</code></li>
+        <li><strong>Reencaminhamento de Portas</strong> — Para remotos <code>--inspect</code>, você precisará configurar o encaminhamento de portas via CLI Azure ou VS Code</li>
+        <li><strong>Download de arquivo</strong> — Use o navegador de arquivos de Kudu ou <code>az webapp log download</code> para recuperar arquivos de perfil</li>
+        <li><strong>Impacto na Produção</strong> — A perfilagem adiciona custos operacionais; Uso em encenação ou captura brevemente em produção</li>
+      </ul>
+
+      <div class="alert-box info">
+        <strong>💡 Referência Rápida</strong>
+        <ul>
+          <li><strong>CPU devagar?</strong> → Uso <code>--prof</code> ou aba Profiler para encontrar funções quentes</li>
+          <li><strong>Memória crescendo?</strong> → Tire snapshots de heap e compare ao longo do tempo</li>
+          <li><strong>Loop de evento bloqueado?</strong> → CPU perfil durante o bloco mostra o que está rodando</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Application Insights -->
+    <section id="app-insights" class="card">
+      <h2>📊 Application Insights Consultas</h2>
+      <p>Consultas úteis no KQL para diagnosticar Node.js problemas:</p>
+
+      <h3>Pedidos Lentos</h3>
+      <pre><code>requests
+| where timestamp > ago(1h)
+| where duration > 5000
+| summarize count() by bin(timestamp, 5m), name
+| render timechart</code></pre>
+
+      <h3>Pedidos Fracassados</h3>
+      <pre><code>requests
+| where timestamp > ago(1h)
+| where success == false
+| summarize count() by resultCode, name
+| order by count_ desc</code></pre>
+
+      <h3>Distribuição de exceções</h3>
+      <pre><code>exceptions
+| where timestamp > ago(24h)
+| summarize count() by type, outerMessage
+| order by count_ desc</code></pre>
+
+      <h3>Latência de Dependência</h3>
+      <pre><code>dependencies
+| where timestamp > ago(1h)
+| summarize avg(duration), percentile(duration, 95) by name
+| order by avg_duration desc</code></pre>
+
+      <h3>Métrica de Loop de Eventos Personalizada (se instrumentada)</h3>
+      <pre><code>customMetrics
+| where name == "EventLoopLag"
+| summarize avg(value), max(value) by bin(timestamp, 1m)
+| render timechart</code></pre>
+    </section>
+
+  </main>
+  </div><!-- /doc-main -->
+
+  <!-- Right Sidebar: On This Page -->
+  <aside class="doc-toc">
+    <div class="doc-toc-sticky">
+      <div class="doc-toc-card">
+        <div class="doc-toc-title">NESTA PÁGINA</div>
+        <ul>
+          <li class="doc-toc-item"><a href="#understanding-metrics"><span class="toc-icon">📊</span> Entendendo Métricas</a></li>
+          <li class="doc-toc-item"><a href="#diagnostic-scenarios"><span class="toc-icon">🔍</span> Cenários Diagnósticos</a></li>
+          <li class="doc-toc-item"><a href="#simulation-ids"><span class="toc-icon">🔗</span> Correlação do ID da Simulação</a></li>
+        </ul>
+        <div class="doc-toc-divider"></div>
+        <div class="doc-toc-section-label">FERRAMENTAS</div>
+        <ul>
+          <li class="doc-toc-item"><a href="#azure-tools"><span class="toc-icon">🛠️</span>Azure Ferramentas</a></li>
+          <li class="doc-toc-item"><a href="#diagnostic-workflow"><span class="toc-icon">🔄</span> Fluxo de Trabalho de Diagnóstico</a></li>
+          <li class="doc-toc-item"><a href="#kudu-console"><span class="toc-icon">🖥️</span> Kudu Console</a></li>
+          <li class="doc-toc-item"><a href="#v8-profiling"><span class="toc-icon">🔬</span> Perfilamento V8</a></li>
+        </ul>
+        <div class="doc-toc-divider"></div>
+        <div class="doc-toc-section-label">MONITORAMENTO</div>
+        <ul>
+          <li class="doc-toc-item"><a href="#app-insights"><span class="toc-icon">📈</span>Application Insights</a></li>
+        </ul>
+      </div>
+    </div>
+  </aside>
+  </div><!-- /doc-layout -->
+
+  <footer>
+    <p>Performance Problem Simulator — Ferramenta Educacional para Diagnóstico Azure App Service</p>
+    <p id="footer-credits"></p>
+    <p id="build-info">Build: Carregando...</p>
+  </footer>
+  <script>
+    // Load environment info for SKU badge
+    fetch('/api/health/environment')
+      .then(r => r.json())
+      .then(env => {
+        const badge = document.getElementById('sku-badge');
+        if (badge) badge.textContent = 'SKU: ' + env.sku;
+      })
+      .catch(() => {});
+
+    // Load footer info (credits and build time)
+    fetch('/api/health/footer')
+      .then(r => r.json())
+      .then(data => {
+        const footerCredits = document.getElementById('footer-credits');
+        if (footerCredits) {
+          if (data.footer) {
+            footerCredits.innerHTML = data.footer;
+          } else {
+            footerCredits.style.display = 'none';
+          }
+        }
+        const buildInfo = document.getElementById('build-info');
+        if (buildInfo) buildInfo.textContent = 'Build: ' + data.buildTime;
+      })
+      .catch(() => {});
+
+    // Sidebar drawer toggle
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const sidebarDrawer = document.getElementById('sidebar-drawer');
+    const sidebarClose = document.getElementById('sidebar-close');
+
+    function openSidebar() {
+      hamburgerBtn.classList.remove('attention');
+      hamburgerBtn.classList.add('active');
+      sidebarOverlay.classList.add('active');
+      sidebarDrawer.classList.add('active');
+    }
+
+    function closeSidebar() {
+      hamburgerBtn.classList.remove('active');
+      sidebarOverlay.classList.remove('active');
+      sidebarDrawer.classList.remove('active');
+    }
+
+    hamburgerBtn.addEventListener('click', openSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar);
+    sidebarClose.addEventListener('click', closeSidebar);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeSidebar();
+    });
+
+    // Load GitHub link configuration
+    fetch('/api/health/github')
+      .then(r => r.json())
+      .then(data => {
+        const githubLink = document.getElementById('github-nav-item');
+        if (githubLink && data.url) {
+          githubLink.href = data.url;
+          githubLink.classList.remove('hidden');
+        }
+      })
+      .catch(() => {});
+
+    // Sync build info to sidebar when it updates
+    const buildInfoEl = document.getElementById('build-info');
+    const sidebarBuildInfo = document.getElementById('sidebar-build-info');
+    const observer = new MutationObserver(() => {
+      sidebarBuildInfo.textContent = buildInfoEl.textContent;
+    });
+    observer.observe(buildInfoEl, { childList: true, characterData: true, subtree: true });
+
+    // Scroll-spy: highlight active section in right sidebar
+    (function() {
+      const links = document.querySelectorAll('.doc-toc-item a');
+      const sections = [];
+      links.forEach(link => {
+        const id = link.getAttribute('href').slice(1);
+        const el = document.getElementById(id);
+        if (el) sections.push({ id, el, link });
+      });
+      function updateActive() {
+        let current = sections[0];
+        for (const s of sections) {
+          if (s.el.getBoundingClientRect().top <= 100) current = s;
+        }
+        links.forEach(l => l.classList.remove('active'));
+        if (current) current.link.classList.add('active');
+      }
+      window.addEventListener('scroll', updateActive, { passive: true });
+      updateActive();
+    })();
+  </script>
+</body>
+</html>

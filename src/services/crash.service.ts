@@ -67,6 +67,8 @@ class CrashServiceClass {
     EventLogService.error('SIMULATION_STARTED', 'Crash simulation initiated: FailFast (SIGABRT)', {
       simulationType: 'CRASH_FAILFAST',
       details: { method: 'process.abort()' },
+      messageKey: 'srv.crash.initiated',
+      messageParams: { type: 'FailFast (SIGABRT)' },
     });
 
     // Use setImmediate to ensure the log is written before crashing
@@ -85,13 +87,20 @@ class CrashServiceClass {
     EventLogService.error('SIMULATION_STARTED', 'Crash simulation initiated: stack overflow', {
       simulationType: 'CRASH_STACKOVERFLOW',
       details: { method: 'infinite recursion' },
+      messageKey: 'srv.crash.initiated',
+      messageParams: { type: 'Stack Overflow' },
     });
 
     // Warn that this crash type requires manual restart on Azure
     EventLogService.warn(
       'CRASH_WARNING',
       'Stack Overflow crashes may not auto-recover on Azure App Service. Manual restart from Azure Portal may be required.',
-      { simulationType: 'CRASH_STACKOVERFLOW', details: { recoveryHint: 'Azure Portal > App Service > Restart' } }
+      {
+        simulationType: 'CRASH_STACKOVERFLOW',
+        details: { recoveryHint: 'Azure Portal > App Service > Restart' },
+        messageKey: 'srv.crash.warning',
+        messageParams: { type: 'Stack Overflow' },
+      }
     );
 
     // Use setImmediate to ensure the log is written before crashing
@@ -110,6 +119,8 @@ class CrashServiceClass {
     EventLogService.error('SIMULATION_STARTED', 'Crash simulation initiated: unhandled exception', {
       simulationType: 'CRASH_EXCEPTION',
       details: { method: 'unhandled exception' },
+      messageKey: 'srv.crash.initiated',
+      messageParams: { type: 'Unhandled Exception' },
     });
 
     // Use setImmediate to ensure the log is written before crashing
@@ -128,13 +139,20 @@ class CrashServiceClass {
     EventLogService.error('SIMULATION_STARTED', 'Crash simulation initiated: memory exhaustion', {
       simulationType: 'CRASH_MEMORY',
       details: { method: 'memory exhaustion (OOM)' },
+      messageKey: 'srv.crash.initiated',
+      messageParams: { type: 'Out of Memory' },
     });
 
     // Warn that this crash type requires manual restart on Azure
     EventLogService.warn(
       'CRASH_WARNING',
       'Out of Memory (OOM) crashes may not auto-recover on Azure App Service. Manual restart from Azure Portal may be required.',
-      { simulationType: 'CRASH_MEMORY', details: { recoveryHint: 'Azure Portal > App Service > Restart' } }
+      {
+        simulationType: 'CRASH_MEMORY',
+        details: { recoveryHint: 'Azure Portal > App Service > Restart' },
+        messageKey: 'srv.crash.warning',
+        messageParams: { type: 'Out of Memory' },
+      }
     );
 
     // Rapidly allocate memory until OOM

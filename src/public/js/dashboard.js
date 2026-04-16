@@ -103,7 +103,7 @@ function onMetricsUpdate(metrics) {
     if (lastProcessId !== null && lastProcessId !== metrics.process.pid) {
       addEventToLog({
         level: 'danger',
-        message: `APPLICATION RESTARTED! Process ID changed from ${lastProcessId} to ${metrics.process.pid}. This may indicate an unexpected crash (OOM, StackOverflow, etc.)`
+        message: typeof i18n === 'function' ? i18n('log.crash.restarted', { oldPid: lastProcessId, newPid: metrics.process.pid }) : `APPLICATION RESTARTED! Process ID changed from ${lastProcessId} to ${metrics.process.pid}. This may indicate an unexpected crash (OOM, StackOverflow, etc.)`
       });
       // Clear active simulations since app restarted
       activeSimulations.cpu.clear();
@@ -150,6 +150,10 @@ function onMetricsUpdate(metrics) {
  * Called when a new event is received via WebSocket.
  */
 function onEventUpdate(event) {
+  // Use translated messageKey if available from server
+  if (event.messageKey && typeof i18n === 'function') {
+    event.message = i18n(event.messageKey, event.messageParams || {});
+  }
   addEventToLog(event);
 }
 
@@ -192,7 +196,7 @@ function onIdleStatusUpdate(status) {
     if (typeof stopLatencyProbes === 'function') {
       stopLatencyProbes();
     }
-    statusEl.textContent = 'Idle';
+    statusEl.textContent = typeof i18n === 'function' ? i18n('status.idle') : 'Idle';
     statusEl.className = 'status-idle';
     // Intentionally close WebSocket to prevent reconnect-induced status flicker
     if (typeof closeWebSocketForIdle === 'function') {
@@ -201,7 +205,7 @@ function onIdleStatusUpdate(status) {
   } else {
     console.log('[Dashboard] Setting status to Connected');
     // Restore to connected state when no longer idle
-    statusEl.textContent = 'Connected';
+    statusEl.textContent = typeof i18n === 'function' ? i18n('status.connected') : 'Connected';
     statusEl.className = 'status-connected';
   }
 }
@@ -218,8 +222,8 @@ function onSlowRequestStateUpdate(data) {
 
   if (data.active) {
     statusEl.innerHTML = `
-      <div class="slow-status-message">Latency probes reduced during Slow Request testing to ensure clean Node.js Profiler diagnostics.</div>
-      <div class="slow-status-progress">Running: ${data.completed || 0}/${data.total || 0} completed, ${data.activeCount || 0} active</div>
+      <div class="slow-status-message">${typeof i18n === 'function' ? i18n('latency.suspended') : 'Latency probes reduced during Slow Request testing to ensure clean Node.js Profiler diagnostics.'}</div>
+      <div class="slow-status-progress">${typeof i18n === 'function' ? i18n('sim.slow.progressRunning', { completed: data.completed || 0, total: data.total || 0, active: data.activeCount || 0 }) : `Running: ${data.completed || 0}/${data.total || 0} completed, ${data.activeCount || 0} active`}</div>
     `;
     statusEl.className = 'slow-status active';
   } else if (!slowRequestRunning) {
@@ -475,11 +479,7 @@ async function loadEventLog() {
   // Messages are listed oldest-first; renderEventLog() sorts newest-first.
   const baseTime = Date.now();
   
-  // 1. Liability disclaimers (oldest — appear at bottom of log)
-  addEventToLog({ timestamp: new Date(baseTime).toISOString(), level: 'warning', message: '⚖️ Deploy only in isolated, non-production environments. Licensed under MIT License.' }, true);
-  addEventToLog({ timestamp: new Date(baseTime + 1).toISOString(), level: 'warning', message: '⚖️ This software is provided "AS IS" without warranty. The author shall not be liable for any damages arising from use or misuse.' }, true);
-  
-  // 2. Dashboard config info
+  // Fetch config and initialize i18n BEFORE generating log messages
   let probeRate = 200;
   let idleTimeout = 20;
   try {
@@ -487,10 +487,20 @@ async function loadEventLog() {
     const configData = await configResponse.json();
     probeRate = configData.latencyProbeIntervalMs || 200;
     idleTimeout = configData.idleTimeoutMinutes || 20;
+    // Initialize i18n with the configured language
+    if (typeof I18N !== 'undefined' && configData.uiLanguage) {
+      await I18N.init(configData.uiLanguage);
+    }
   } catch (error) {
     console.log('[Dashboard] Could not load config values for event log');
   }
-  addEventToLog({ timestamp: new Date(baseTime + 2).toISOString(), level: 'info', message: `Dashboard initialized (probe rate: ${probeRate}ms, idle timeout: ${idleTimeout}m)` }, true);
+  
+  // 1. Liability disclaimers (oldest — appear at bottom of log)
+  addEventToLog({ timestamp: new Date(baseTime).toISOString(), level: 'warning', message: i18n('log.warning.license') }, true);
+  addEventToLog({ timestamp: new Date(baseTime + 1).toISOString(), level: 'warning', message: i18n('log.warning.disclaimer') }, true);
+  
+  // 2. Dashboard config info
+  addEventToLog({ timestamp: new Date(baseTime + 2).toISOString(), level: 'info', message: i18n('log.system.initialized', { probeRate, idleTimeout }) }, true);
   
   // 3. Environment info
   try {
@@ -498,14 +508,13 @@ async function loadEventLog() {
     const env = await response.json();
     let envMessage;
     if (env.isAzure) {
-      // computerName comes from COMPUTERNAME (Windows) or HOSTNAME (Linux) env var
       if (env.computerName) {
-        envMessage = `Application is currently running on ${env.sku} SKU on worker name ${env.computerName}`;
+        envMessage = i18n('log.system.runningSku', { sku: env.sku, worker: env.computerName });
       } else {
-        envMessage = `Application is currently running on ${env.sku} SKU`;
+        envMessage = i18n('log.system.runningSkuOnly', { sku: env.sku });
       }
     } else {
-      envMessage = 'Application is currently running on Local';
+      envMessage = i18n('log.system.runningLocal');
     }
     addEventToLog({ timestamp: new Date(baseTime + 3).toISOString(), level: 'info', message: envMessage }, true);
   } catch (error) {
@@ -513,11 +522,11 @@ async function loadEventLog() {
   }
   
   // 4. Connected message
-  addEventToLog({ timestamp: new Date(baseTime + 4).toISOString(), level: 'success', message: 'Connected to metrics hub' }, true);
+  addEventToLog({ timestamp: new Date(baseTime + 4).toISOString(), level: 'success', message: i18n('log.connection.connected') }, true);
   
   // 5. Wake from idle message (newest — appears at top of log)
   if (window._wokeFromIdle) {
-    addEventToLog({ timestamp: new Date(baseTime + 5).toISOString(), level: 'info', message: 'App waking up from idle state. There may be gaps in diagnostics and logs.' }, true);
+    addEventToLog({ timestamp: new Date(baseTime + 5).toISOString(), level: 'info', message: i18n('log.idle.wakingUp') }, true);
     window._wokeFromIdle = false;
   }
   
@@ -591,7 +600,7 @@ function renderActiveSimulationsList() {
   const memSims = Array.from(activeSimulations.memory.values());
   
   if (cpuSims.length === 0 && memSims.length === 0) {
-    container.innerHTML = '<p class="no-simulations">No active simulations</p>';
+    container.innerHTML = `<p class="no-simulations">${typeof i18n === 'function' ? i18n('activeSims.none') : 'No active simulations'}</p>`;
     return;
   }
 
@@ -775,7 +784,7 @@ async function blockEventLoop(durationSeconds, chunkMs) {
   
   // Clear previous impact results
   if (impactEl) {
-    impactEl.innerHTML = '<div class="impact-result">⏳ Starting event loop block...</div>';
+    impactEl.innerHTML = `<div class="impact-result">⏳ ${i18n('log.thread.starting')}</div>`;
   }
   
   // Record pre-block state
@@ -852,7 +861,7 @@ async function blockEventLoop(durationSeconds, chunkMs) {
       level: 'error',
       simulationType: 'EVENT_LOOP_BLOCKING',
       event: 'SIMULATION_FAILED',
-      message: `Event loop block failed: ${errorMessage}`,
+      message: i18n('log.thread.failed', { error: errorMessage }),
     });
     
     if (impactEl) {
@@ -907,7 +916,7 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
     timestamp: new Date().toISOString(),
     level: 'info',
     simulationType: 'SLOW_REQUEST',
-    message: `Starting Slow Request simulation: ${maxRequests} requests × ${delaySeconds}s delay @ ${intervalSeconds}s intervals (${patternDesc})`
+    message: i18n('log.slow.starting', { max: maxRequests, duration: delaySeconds, interval: intervalSeconds, pattern: patternDesc })
   });
   
   let sentRequests = 0;
@@ -920,8 +929,8 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
   const updateStatus = () => {
     if (statusEl) {
       statusEl.innerHTML = `
-        <div class="slow-status-message">Latency probes reduced during Slow Request testing to ensure clean Node.js Profiler diagnostics.</div>
-        <div class="slow-status-progress">Running: ${completedRequests}/${maxRequests} completed, ${activeRequests} active</div>
+        <div class="slow-status-message">${i18n('latency.suspended')}</div>
+        <div class="slow-status-progress">${i18n('sim.slow.progressRunning', { completed: completedRequests, total: maxRequests, active: activeRequests })}</div>
       `;
       statusEl.className = 'slow-status active';
     }
@@ -941,7 +950,7 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
       timestamp: new Date().toISOString(),
       level: 'info',
       simulationType: 'SLOW_REQUEST',
-      message: `Request ${requestNum}/${maxRequests} started (${delaySeconds}s delay, ${patternDesc})`
+      message: i18n('log.slow.requestStarted', { num: requestNum, max: maxRequests, duration: delaySeconds, pattern: patternDesc })
     });
     
     updateStatus();
@@ -966,7 +975,7 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
           timestamp: new Date().toISOString(),
           level: 'info',
           simulationType: 'SLOW_REQUEST',
-          message: `Request ${requestNum}/${maxRequests} completed: ${(latency / 1000).toFixed(1)}s actual latency`
+          message: i18n('log.slow.requestCompleted', { num: requestNum, max: maxRequests, latency: (latency / 1000).toFixed(1) })
         });
         
         updateStatus();
@@ -979,7 +988,7 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
             timestamp: new Date().toISOString(),
             level: 'error',
             simulationType: 'SLOW_REQUEST',
-            message: `Request ${requestNum}/${maxRequests} failed: ${error.message}`
+            message: i18n('log.slow.requestFailed', { num: requestNum, max: maxRequests, error: error.message })
           });
         }
         updateStatus();
@@ -1038,7 +1047,7 @@ async function sendSlowRequests(delaySeconds, intervalSeconds, maxRequests, bloc
       timestamp: new Date().toISOString(),
       level: 'info',
       simulationType: 'SLOW_REQUEST',
-      message: `Slow Request simulation complete: ${completedRequests}/${maxRequests} requests, avg latency ${avgLatency}s`
+      message: i18n('log.slow.completed', { completed: completedRequests, max: maxRequests, avgLatency: avgLatency })
     });
   }
 }
@@ -1071,13 +1080,13 @@ function stopSlowRequests() {
       timestamp: new Date().toISOString(),
       level: 'warning',
       simulationType: 'SLOW_REQUEST',
-      message: `Slow Request simulation stopped by user`
+      message: i18n('log.slow.stopped')
     });
     
     // Update status
     const statusEl = document.getElementById('slow-status');
     if (statusEl) {
-      statusEl.innerHTML = 'Stopped by user';
+      statusEl.innerHTML = i18n('log.slow.stopped');
       statusEl.className = 'slow-status';
     }
   }
@@ -1096,7 +1105,7 @@ async function triggerFailedRequests(requestCount) {
       level: 'info',
       simulationType: 'FAILED_REQUEST',
       event: 'SIMULATION_STARTED',
-      message: `Starting failed request simulation: generating ${requestCount} HTTP 5xx errors...`
+      message: i18n('log.failed.generating', { count: requestCount })
     });
 
     const response = await fetch('/api/simulations/failed', {
@@ -1113,7 +1122,7 @@ async function triggerFailedRequests(requestCount) {
         level: 'error',
         simulationType: 'FAILED_REQUEST',
         event: 'SIMULATION_FAILED',
-        message: `Failed request simulation error: ${data.message || 'Unknown error'}`
+        message: i18n('log.failed.failedToStart', { error: data.message || 'Unknown error' })
       });
       return;
     }
@@ -1126,7 +1135,7 @@ async function triggerFailedRequests(requestCount) {
       level: 'error',
       simulationType: 'FAILED_REQUEST',
       event: 'SIMULATION_FAILED',
-      message: `Failed request simulation error: ${error.message}`
+      message: i18n('log.failed.requestFailed', { error: error.message })
     });
   }
 }
@@ -1156,10 +1165,11 @@ async function triggerCrash(crashType) {
   
   const description = crashDescriptions[crashType] || crashType;
   
-  let confirmMessage = `This will TERMINATE the server via ${description}!\n\nAre you sure?`;
-  
+  let confirmMessage;
   if (requiresAzureRestart.includes(crashType)) {
-    confirmMessage = `This will TERMINATE the server via ${description}!\n\n⚠️ WARNING: On Azure App Service, this crash type may not auto-recover.\nManual restart from Azure Portal may be required.\n\nAre you sure?`;
+    confirmMessage = i18n('log.crash.confirmWithWarning', { type: description });
+  } else {
+    confirmMessage = i18n('log.crash.confirm', { type: description });
   }
   
   if (!confirm(confirmMessage)) {
@@ -1171,7 +1181,7 @@ async function triggerCrash(crashType) {
     addEventToLog({
       level: 'error',
       simulationType: 'CRASH_' + crashType.toUpperCase(),
-      message: `CRASH: ${description} - Connection will be lost!`
+      message: i18n('log.crash.triggering', { type: description })
     });
     
     await fetch(crashEndpoints[crashType], { method: 'POST' });
@@ -1377,7 +1387,7 @@ async function loadBuildInfo() {
     
     const buildInfo = document.getElementById('build-info');
     if (buildInfo) {
-      buildInfo.textContent = `Build: ${data.buildTime}`;
+      buildInfo.textContent = `${typeof i18n === 'function' ? i18n('footer.build') : 'Build:'} ${data.buildTime}`;
     }
   } catch (error) {
     console.log('[Dashboard] Could not load footer info');

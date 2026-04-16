@@ -107,6 +107,8 @@ class MemoryPressureServiceClass {
       simulationId: simulation.id,
       simulationType: 'MEMORY_PRESSURE',
       details: { sizeMb },
+      messageKey: 'srv.memory.allocating',
+      messageParams: { size: sizeMb },
     });
 
     // Allocate asynchronously in batches to avoid blocking the event loop
@@ -143,6 +145,8 @@ class MemoryPressureServiceClass {
           simulationId: simulation.id,
           simulationType: 'MEMORY_PRESSURE',
           details: { sizeMb, objects: totalObjects },
+          messageKey: 'srv.memory.allocated',
+          messageParams: { size: sizeMb },
         });
       }
     };
@@ -211,6 +215,8 @@ class MemoryPressureServiceClass {
       simulationId: id,
       simulationType: 'MEMORY_PRESSURE',
       details: { sizeMb, wasAllocated, hadSimulation: !!simulation },
+      messageKey: 'srv.memory.released',
+      messageParams: { size: sizeMb },
     });
 
     return { simulation, sizeMb, wasAllocated };

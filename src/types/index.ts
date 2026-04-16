@@ -447,6 +447,10 @@ export interface EventLogEntry {
   message: string;
   /** Additional structured data */
   details: Record<string, unknown> | null;
+  /** i18n translation key for the message (used by frontend to display translated text) */
+  messageKey?: string;
+  /** i18n placeholder parameters for the messageKey */
+  messageParams?: Record<string, unknown>;
 }
 
 // =============================================================================
@@ -479,6 +483,14 @@ export interface AppConfig {
   healthProbeRateMs: number;
   /** Idle timeout in minutes (default: 20) */
   idleTimeoutMinutes: number;
+  /** UI display language (ISO 639-1 code, default: 'en') */
+  uiLanguage: string;
+  /** Azure Translator API key */
+  translatorApiKey: string;
+  /** Azure Translator endpoint URL */
+  translatorEndpoint: string;
+  /** Azure Translator region */
+  translatorRegion: string;
 }
 
 // =============================================================================

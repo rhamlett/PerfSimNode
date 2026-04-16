@@ -137,6 +137,7 @@ class IdleTimeoutServiceClass {
       console.log(`[IdleTimeout] Waking up from idle${source ? ` (${source})` : ''}`);
       EventLogService.info('SERVER_STARTED', 'App waking up from idle state. There may be gaps in diagnostics and logs.', {
         details: { source },
+        messageKey: 'log.idle.wakingUp',
       });
       this.notifyStateChange(false);
     }
@@ -215,6 +216,7 @@ class IdleTimeoutServiceClass {
       console.log('[IdleTimeout] Health probes suspended. Load the dashboard to resume.');
       EventLogService.warn('SERVER_STARTED', 'Application going idle, no health probes being sent. There will be gaps in diagnostics and logs.', {
         details: { idleTimeoutMinutes: idleMinutes },
+        messageKey: 'log.idle.goingIdle',
       });
       this.notifyStateChange(true);
     } else {

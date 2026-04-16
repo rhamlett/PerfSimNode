@@ -1,0 +1,719 @@
+<!-- source_hash:e0472006d968d047 lang:es generated:2026-04-16T18:26:08.499Z -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure Guía de despliegue - Simulador de problemas de rendimiento</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="page-deployment">
+  <header>
+    <button id="hamburger-btn" class="hamburger-btn attention" aria-label="Open navigation menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <svg class="header-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 2L29 9.5V24.5L16 32L3 24.5V9.5L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="currentColor">JS</text>
+    </svg>
+    <h1>Azure Guía de despliegue</h1>
+    <span id="sku-badge" class="sku-badge">SKU: Local</span>
+    <nav>
+      <a href="/" class="btn-panel-toggle">🎮 Salpicadero</a>
+    </nav>
+  </header>
+
+  <!-- Sidebar Drawer Navigation -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+  <aside id="sidebar-drawer" class="sidebar-drawer">
+    <div class="sidebar-header">
+      <svg class="sidebar-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 2L29 9.5V24.5L16 32L3 24.5V9.5L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/>
+        <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="currentColor">JS</text>
+      </svg>
+      <h2>PerfSimNode</h2>
+      <button id="sidebar-close" class="sidebar-close" aria-label="Close navigation">×</button>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Aplicación</div>
+      <a href="/" class="sidebar-nav-item">
+        <span class="nav-icon">🎮</span>
+        <span class="nav-label">Salpicadero<span class="nav-desc">Métricas y controles en tiempo real</span></span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">Documentación</div>
+      <a href="/docs.html" class="sidebar-nav-item">
+        <span class="nav-icon">📚</span>
+        <span class="nav-label">Documentación<span class="nav-desc">API Referencia y guías</span></span>
+      </a>
+      <a href="/azure-diagnostics.html" class="sidebar-nav-item">
+        <span class="nav-icon">☁️</span>
+        <span class="nav-label">Azure Diagnóstico<span class="nav-desc">Diagnosticar problemas en App Service</span></span>
+      </a>
+      <a href="/azure-load-testing.html" class="sidebar-nav-item">
+        <span class="nav-icon">📈</span>
+        <span class="nav-label">Azure Pruebas de carga<span class="nav-desc">Endpoint y parámetros de la prueba de carga</span></span>
+      </a>
+      <a href="/azure-deployment.html" class="sidebar-nav-item active">
+        <span class="nav-icon">🚀</span>
+        <span class="nav-label">Desplegar a Azure<span class="nav-desc">GitHub Acciones + configuración OIDC</span></span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">Externo</div>
+      <a id="github-nav-item" href="#" target="_blank" rel="noopener" class="sidebar-nav-item hidden">
+        <span class="nav-icon">🐙</span>
+        <span class="nav-label">GitHub Repositorio<span class="nav-desc">Código fuente y problemas</span></span>
+      </a>
+      <a href="/swagger" target="_blank" rel="noopener" class="sidebar-nav-item">
+        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="128" cy="128" r="128" fill="#85ea2d"/><path d="M128 40c-48.6 0-88 39.4-88 88s39.4 88 88 88 88-39.4 88-88-39.4-88-88-88zm-8 132h-16v-16h16v16zm0-32h-16V76h16v64zm32 32h-16v-16h16v16zm0-32h-16V76h16v64z" fill="#173647"/></svg></span>
+        <span class="nav-label">Swagger<span class="nav-desc">Soporte de SMARTBEAR</span></span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="sidebar-build-info">Construcción: Cargando...</div>
+    </div>
+  </aside>
+
+  <div class="doc-layout">
+    <div class="doc-main">
+      <main class="deploy-container">
+        <div class="deploy-header">
+          <h1>🚀 Azure Guía de despliegue</h1>
+          <p>Despliega Performance Problem Simulator para Azure App Service usando GitHub Acciones con autenticación OIDC</p>
+        </div>
+
+        <section id="overview" class="card">
+          <h2>Resumen</h2>
+          <p>Esta guía te guía para desplegar el Performance Problem Simulator para Azure App Service usando GitHub Acciones con autenticación OpenID Connect (OIDC). OIDC elimina la necesidad de almacenar credenciales como secretos.</p>
+
+          <h3>Requisitos previos</h3>
+          <ul>
+            <li>Azure suscripción con permisos para crear recursos</li>
+            <li>Azure permisos AD/Entra ID para crear registros de aplicaciones</li>
+            <li>GitHub cuenta</li>
+            <li>Azure CLIs instalados (opcional, para el método CLI)</li>
+          </ul>
+
+          <h3>Lo que vas a crear</h3>
+          <table>
+            <tr><th>Recurso</th><th>Propósito</th></tr>
+            <tr><td>Azure App Service</td><td>Aloja la aplicación Performance Problem Simulator</td></tr>
+            <tr><td>Azure Registro en la aplicación AD</td><td>Identidad para GitHub Acciones OIDC</td></tr>
+            <tr><td>Credencial Federada</td><td>Enlaces GitHub repositorio a Azure AD</td></tr>
+            <tr><td>Asignación de roles</td><td>Concede permisos de despliegue</td></tr>
+          </table>
+        </section>
+
+        <section id="app-service" class="card">
+          <h2><span class="step-number">1</span> Crea Azure App Service</h2>
+
+          <h3>Opción A: Azure Portal</h3>
+          <ol>
+            <li><strong>Navegar a los Servicios de Aplicaciones</strong>
+              <ul>
+                <li>Ir a <a href="https://portal.azure.com" target="_blank" rel="noopener">Azure Portal</a></li>
+                <li>Busca "App Services" y selecciónalo</li>
+                <li>Clic <strong>+ Create</strong></li>
+              </ul>
+            </li>
+            <li><strong>Configurar lo básico</strong>
+              <table>
+                <tr><th>Ambientación</th><th>Valor</th></tr>
+                <tr><td>Suscripción</td><td>Tu suscripción</td></tr>
+                <tr><td>Grupo de Recursos</td><td>Crear nuevos o usar ya existentes</td></tr>
+                <tr><td>Nombre</td><td><code>your-app-name</code> (debe ser única a nivel global)</td></tr>
+                <tr><td>Publicar</td><td>Código</td></tr>
+                <tr><td>Pila de tiempo de ejecución</td><td>Selecciona el tiempo de ejecución de tu aplicación</td></tr>
+                <tr><td>Sistema operativo</td><td>Windows o Linux (según corresponda a tu entorno de ejecución)</td></tr>
+                <tr><td>Región</td><td>Tu región preferida</td></tr>
+              </table>
+            </li>
+            <li><strong>Configurar App Service plan</strong>
+              <table>
+                <tr><th>Ambientación</th><th>Recomendación</th></tr>
+                <tr><td>SKU</td><td><strong>B1 básico</strong> o superior</td></tr>
+              </table>
+              <div class="warning-box">
+                <p><strong>⚠️ Importante:</strong> La categoría Free (F1) no soporta WebSockets, que son necesarios para actualizaciones en tiempo real de SignalR paneles.</p>
+              </div>
+            </li>
+            <li><strong>Revisar y crear</strong> - Haz clic para crear el recurso</li>
+          </ol>
+
+          <h3>Opción B: Azure CLI</h3>
+          <pre><code># Login to Azure
+az login
+
+# Set variables
+RESOURCE_GROUP="your-resource-group"
+APP_NAME="your-app-name"
+LOCATION="eastus"
+APP_SERVICE_PLAN="your-app-plan"
+RUNTIME="your-runtime"  # e.g., "dotnet:8", "node:20-lts", "python:3.11"
+
+# Create resource group
+az group create --name $RESOURCE_GROUP --location $LOCATION
+
+# Create App Service Plan (B1 for WebSocket support)
+az appservice plan create \
+  --name $APP_SERVICE_PLAN \
+  --resource-group $RESOURCE_GROUP \
+  --location $LOCATION \
+  --sku B1
+
+# Create Web App with your runtime
+az webapp create \
+  --name $APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --plan $APP_SERVICE_PLAN \
+  --runtime $RUNTIME</code></pre>
+
+          <h3>Habilitar WebSockets</h3>
+          <p>Tras la creación, activa WebSockets para SignalR comunicación en tiempo real:</p>
+          <ol>
+            <li>Ve a tu App Service → <strong>Configuración</strong> → <strong>Configuraciones generales</strong></li>
+            <li>Set <strong>Sockets web</strong> a <strong>On</strong></li>
+            <li>Clic <strong>Salvar</strong></li>
+          </ol>
+          <p>O a través de CLI:</p>
+          <pre><code>az webapp config set \
+  --name $APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --web-sockets-enabled true</code></pre>
+        </section>
+
+        <section id="app-registration" class="card">
+          <h2><span class="step-number">2</span> Crear Azure Registro de la App de AD</h2>
+          <p>GitHub Acciones utiliza OpenID Connect (OIDC) para autenticarse con Azure sin almacenar credenciales.</p>
+
+          <h3>Crear el registro de la app</h3>
+          <ol>
+            <li><strong>Navegar a Registros de Aplicaciones</strong>
+              <ul>
+                <li>Ir a <a href="https://portal.azure.com" target="_blank" rel="noopener">Azure Portal</a></li>
+                <li>Busca "Registros de aplicaciones" y selecciona</li>
+                <li>Clic <strong>+ Nueva matrícula</strong></li>
+              </ul>
+            </li>
+            <li><strong>Configurar registro</strong>
+              <table>
+                <tr><th>Ambientación</th><th>Valor</th></tr>
+                <tr><td>Nombre</td><td><code>github-your-app-deploy</code> (nombre descriptivo para tu identidad de despliegue)</td></tr>
+                <tr><td>Tipos de cuentas soportados</td><td>Cuentas en este directorio organizativo solo</td></tr>
+                <tr><td>URI de redirección</td><td>Deja vacío</td></tr>
+              </table>
+            </li>
+            <li><strong>Haz clic en Registrarse</strong></li>
+          </ol>
+
+          <h3>Anota las identificaciones</h3>
+          <p>De la <strong>Resumen</strong> página, copia estos valores (los necesitarás para GitHub secretos):</p>
+          <table class="secrets-table">
+            <tr><th>Valor</th><th>GitHub Nombre secreto</th></tr>
+            <tr><td>ID de aplicación (cliente)</td><td><code>AZURE_CLIENT_ID</code></td></tr>
+            <tr><td>ID de directorio (inquilino)</td><td><code>AZURE_TENANT_ID</code></td></tr>
+          </table>
+
+          <h3>Obtén ID de suscripción</h3>
+          <ol>
+            <li>Ir a <strong>Suscripciones</strong> en el Azure Portal</li>
+            <li>Selecciona tu suscripción</li>
+            <li>Copiar el <strong>ID de suscripción</strong> → Esto es <code>AZURE_SUBSCRIPTION_ID</code></li>
+          </ol>
+        </section>
+
+        <section id="federated-credentials" class="card">
+          <h2><span class="step-number">3</span> Configurar credenciales federadas</h2>
+          <p>Las credenciales federadas permiten que GitHub Acciones se autentiquen sin almacenar secretos.</p>
+
+          <ol>
+            <li><strong>Accede a tu Registro de la Aplicación</strong>
+              <ul>
+                <li>Ir a <strong>Certificados y secretos</strong></li>
+                <li>Seleccionar <strong>Credenciales federadas</strong> pestaña</li>
+                <li>Clic <strong>+ Añadir credencial</strong></li>
+              </ul>
+            </li>
+            <li><strong>Configurar la credencial</strong>
+              <table>
+                <tr><th>Ambientación</th><th>Valor</th></tr>
+                <tr><td>Escenario de credenciales federadas</td><td><strong>GitHub Acciones que despliegan Azure recursos</strong></td></tr>
+                <tr><td>Organización</td><td>Tu GitHub nombre de usuario u organización</td></tr>
+                <tr><td>Repositorio</td><td>Nombre de tu repositorio</td></tr>
+                <tr><td>Tipo de entidad</td><td><strong>Rama</strong></td></tr>
+                <tr><td>GitHub nombre de la rama</td><td><code>main</code></td></tr>
+                <tr><td>Nombre</td><td><code>github-main-branch</code></td></tr>
+              </table>
+            </li>
+            <li><strong>Haz clic en Añadir</strong></li>
+          </ol>
+
+          <div class="info-box">
+            <p><strong>💡 Nota:</strong> Si también quieres desplegar desde pull requests u otras ramas, añade credenciales federadas adicionales con el tipo de entidad correspondiente.</p>
+          </div>
+        </section>
+
+        <section id="permissions" class="card">
+          <h2><span class="step-number">4</span>Conceder permisos Azure</h2>
+          <p>El Registro de la App necesita permiso para desplegarse en tu App Service.</p>
+
+          <h3>Asignar rol de colaborador</h3>
+          <ol>
+            <li><strong>Navega hacia tu App Service</strong>
+              <ul>
+                <li>Ir a <strong>Control de acceso (IAM)</strong></li>
+                <li>Clic <strong>+ Añadir</strong> → <strong>Añadir asignación de roles</strong></li>
+              </ul>
+            </li>
+            <li><strong>Configurar asignación de roles</strong>
+              <table>
+                <tr><th>Ambientación</th><th>Valor</th></tr>
+                <tr><td>Función</td><td><strong>Colaborador</strong></td></tr>
+                <tr><td>Asignar acceso a</td><td>Usuario, grupo o principal de servicio</td></tr>
+                <tr><td>Miembros</td><td>Busca tu nombre de registro de la app</td></tr>
+              </table>
+            </li>
+            <li><strong>Haz clic en Revisar + asignar</strong></li>
+          </ol>
+        </section>
+
+        <section id="github-secrets" class="card">
+          <h2><span class="step-number">5</span> Configurar GitHub Secretos</h2>
+
+          <h3>Clonar el repositorio</h3>
+          <ol>
+            <li><strong>Clonar el repositorio</strong>
+              <ul>
+                <li>Ve al repositorio Performance Problem Simulator para tu pila</li>
+                <li>Clic <strong>Código</strong> y clonar para crear tu propia copia</li>
+              </ul>
+            </li>
+          </ol>
+
+          <h3>Añadir GitHub Secretos</h3>
+          <ol>
+            <li><strong>Navega a Configuración del repositorio</strong>
+              <ul>
+                <li>Ve a tu repositorio en GitHub</li>
+                <li>Clic <strong>Escenarios</strong> → <strong>Secretos y variables</strong> → <strong>Acciones</strong></li>
+                <li>Clic <strong>Nuevo secreto de repositorio</strong></li>
+              </ul>
+            </li>
+            <li><strong>Añadir los siguientes secretos</strong>
+              <table class="secrets-table">
+                <tr><th>Nombre secreto</th><th>Valor</th><th>Descripción</th></tr>
+                <tr><td>AZURE_CLIENT_ID</td><td><code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></td><td>ID de cliente de registro de aplicaciones</td></tr>
+                <tr><td>AZURE_TENANT_ID</td><td><code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></td><td>Azure Directorio/ID de inquilino de AD</td></tr>
+                <tr><td>AZURE_SUBSCRIPTION_ID</td><td><code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></td><td>Azure ID de suscripción</td></tr>
+              </table>
+            </li>
+          </ol>
+
+          <div class="info-box">
+            <p><strong>💡 No se necesita secreto del cliente:</strong>OIDC credenciales federadas eliminan la necesidad de almacenar un secreto del cliente. Las tres identificaciones anteriores son suficientes.</p>
+          </div>
+
+          <h3>Actualizar el flujo de trabajo (si es necesario)</h3>
+          <p>Actualización <code>.github/workflows/deploy.yml</code> Con tu nombre App Service y versión en tiempo de ejecución:</p>
+          <pre><code>env:
+  AZURE_WEBAPP_NAME: your-app-service-name  # Your App Service name
+  # Add any runtime-specific version variables as needed</code></pre>
+        </section>
+
+        <section id="deploy" class="card">
+          <h2><span class="step-number">6</span> Despliegue</h2>
+
+          <h3>Despliegue automático</h3>
+          <p>El despliegue se activa automáticamente cuando presionas en el <code>main</code> Sucursal:</p>
+          <pre><code>git add .
+git commit -m "Your changes"
+git push origin main</code></pre>
+
+          <h3>Despliegue manual</h3>
+          <ol>
+            <li>Ve a tu repositorio en GitHub</li>
+            <li>Clic <strong>Acciones</strong> pestaña</li>
+            <li>Seleccionar <strong>Desplegarse a Azure App Service</strong></li>
+            <li>Clic <strong>Ejecutar flujo de trabajo</strong> → <strong>Ejecutar flujo de trabajo</strong></li>
+          </ol>
+
+          <h3>Verificar despliegue</h3>
+          <ol>
+            <li><strong>Abrir la URL de la aplicación</strong>: <code>https://&lt;your-app-name&gt;.azurewebsites.net</code></li>
+            <li><strong>Panel de control de Verify</strong>: Las métricas en tiempo real deberían actualizarse mediante SignalR, el estado debería mostrar "Conectado"</li>
+            <li><strong>Endpoint de salud de la prueba</strong>:              <pre><code>curl https://&lt;your-app-name&gt;.azurewebsites.net/api/health</code></pre>
+            </li>
+          </ol>
+        </section>
+
+        <section id="optional-config" class="card">
+          <h2>Configuración opcional</h2>
+          <p>Puedes personalizar el comportamiento de la aplicación usando Azure App Service variables de entorno.</p>
+
+          <h3>Tasa de Prueba de Salud</h3>
+          <p>Controla con qué frecuencia el servidor envía sondas de salud para medir la latencia de las solicitudes. Todas las sondas se enrutan a través del frontend Azure para capturar latencias realistas de extremo a extremo.</p>
+
+          <h4>Variable de entorno</h4>
+          <table class="env-table">
+            <thead>
+              <tr>
+                <th>Nombre de la variable</th>
+                <th>Descripción</th>
+                <th>Default</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>HEALTH_PROBE_RATE</code></td>
+                <td>Intervalo de sonda en milisegundos. Mínimo 100ms.</td>
+                <td><code>200</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>Configuración mediante Azure CLI</h4>
+          <pre><code># Slow down probes if CLR profiler shows overlapping requests
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings HEALTH_PROBE_RATE=400</code></pre>
+
+          <h3>Tiempo de espera en reposo</h3>
+          <p>Cuando la aplicación está inactiva (sin conexiones al panel ni solicitudes de pruebas de carga), las sondas de salud se suspenden automáticamente para reducir el tráfico de red innecesario al frontend de Azurey a la telemetría Application Insights .</p>
+
+          <h4>Variable de entorno</h4>
+          <table class="env-table">
+            <thead>
+              <tr>
+                <th>Nombre de la variable</th>
+                <th>Descripción</th>
+                <th>Default</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>IDLE_TIMEOUT_MINUTES</code></td>
+                <td>Minutos de inactividad antes de suspender las sondas de salud. La actividad se reanuda automáticamente cuando se abre el panel de control o se recibe cualquier solicitud.</td>
+                <td><code>20</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>Configuración mediante Azure CLI</h4>
+          <pre><code># Extend idle timeout to 30 minutes
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings IDLE_TIMEOUT_MINUTES=30</code></pre>
+
+          <h3>Pie de página personalizado</h3>
+          <p>Establece un mensaje personalizado en el pie de página que aparezca en todas las páginas. El pie de página soporta HTML, lo que permite incluir enlaces.</p>
+
+          <h4>Variable de entorno</h4>
+          <table class="env-table">
+            <thead>
+              <tr>
+                <th>Nombre de la variable</th>
+                <th>Descripción</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>PAGE_FOOTER</code></td>
+                <td>Contenido HTML para la segunda línea del pie de página. Si no está activado, solo se muestra la descripción de la app y la información de la build.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>Valor de ejemplo</h4>
+          <pre><code>Created by &lt;a href="https://yoursite.com"&gt;Your Team&lt;/a&gt; for training purposes</code></pre>
+
+          <h4>Configuración mediante Azure CLI</h4>
+          <pre><code># Set the footer via Azure CLI
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings 'PAGE_FOOTER=Created by &lt;a href="https://yoursite.com"&gt;Your Team&lt;/a&gt; for training purposes'</code></pre>
+
+          <h4>Ambientación a través de Azure Portal</h4>
+          <ol>
+            <li>Navega hasta tu App Service en el Portal Azure</li>
+            <li>Ir a <strong>Escenarios</strong> → <strong>Variables de entorno</strong></li>
+            <li>Clic <strong>+ Añadir</strong></li>
+            <li>Nombre del conjunto: <code>PAGE_FOOTER</code></li>
+            <li>Valor fijado: Contenido del pie de página HTML</li>
+            <li>Clic <strong>Solicita</strong>, entonces <strong>Confirmar</strong></li>
+          </ol>
+
+          <h3>GitHub Enlace al Repositorio</h3>
+          <p>Opcionalmente, muestra un enlace GitHub Repositorio en el menú de navegación de la barra lateral. El enlace está oculto por defecto. Cuando se proporcionan ambas variables de entorno, el enlace aparecerá en el menú y apuntará a <code>https://github.com/{GITHUB_USER_NAME}/{GITHUB_REPO_NAME}</code>.</p>
+
+          <h4>Variables ambientales</h4>
+          <table class="env-table">
+            <thead>
+              <tr>
+                <th>Nombre de la variable</th>
+                <th>Descripción</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>GITHUB_USER_NAME</code></td>
+                <td>GitHub nombre de usuario o de la organización. Es necesario mostrar el enlace.</td>
+              </tr>
+              <tr>
+                <td><code>GITHUB_REPO_NAME</code></td>
+                <td>GitHub nombre del repositorio. Es necesario mostrar el enlace.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>Configuración mediante Azure CLI</h4>
+          <pre><code># Set the GitHub link via Azure CLI
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings GITHUB_USER_NAME=your-username GITHUB_REPO_NAME=your-repo-name</code></pre>
+
+          <h4>Ambientación a través de Azure Portal</h4>
+          <ol>
+            <li>Navega hasta tu App Service en el Portal Azure</li>
+            <li>Ir a <strong>Escenarios</strong> → <strong>Variables de entorno</strong></li>
+            <li>Clic <strong>+ Añadir</strong> y nombre del conjunto: <code>GITHUB_USER_NAME</code>, Valor: tu nombre de usuario u organización GitHub</li>
+            <li>Clic <strong>+ Añadir</strong> y nombre del conjunto: <code>GITHUB_REPO_NAME</code>, Valor: nombre de tu repositorio</li>
+            <li>Clic <strong>Solicita</strong>, entonces <strong>Confirmar</strong></li>
+          </ol>
+        </section>
+
+        <section id="troubleshooting" class="card">
+          <h2>Resolución de problemas</h2>
+
+          <h3>SignalR falla la conexión</h3>
+          <p><strong>Síntomas:</strong> El panel muestra "Desconectado", los gráficos no se actualizan en tiempo real</p>
+          <p><strong>Soluciones:</strong></p>
+          <ul>
+            <li>Asegúrese de que los WebSockets estén habilitados en App Service Configuración</li>
+            <li>Actualizar de nivel Gratuito a Básico o superior</li>
+            <li>Comprueba si la afinidad ARR está activada (Ajustes → Configuración → Configuración General)</li>
+          </ul>
+
+          <h3>OIDC Falla la autenticación</h3>
+          <p><strong>Síntomas:</strong>GitHub Acciones fallan en el paso "Iniciar sesión en Azure"</p>
+          <p><strong>Comprobar:</strong></p>
+          <ul>
+            <li>Verifica que los tres secretos estén correctamente configurados</li>
+            <li>Confirma que el tema de la credencial federada coincide con tu repositorio/rama: <code>repo:USERNAME/REPO:ref:refs/heads/main</code></li>
+            <li>Asegúrate de que el registro de aplicaciones tenga un papel de Colaborador en la App Service</li>
+          </ul>
+
+          <h3>La aplicación se bloquea al arrancar</h3>
+          <p><strong>Síntomas:</strong> La app muestra "Error de solicitud" o no responde</p>
+          <p><strong>Comprobar:</strong></p>
+          <ul>
+            <li>Ver flujo de registro en Azure Portal (App Service → Flujo de registro)</li>
+            <li>Activar el registro de aplicaciones en App Service → App Service Registros</li>
+            <li>Verifica que la versión en tiempo de ejecución coincida con los requisitos de tu aplicación</li>
+            <li>Comprobar si faltan variables de configuración o de entorno</li>
+          </ul>
+
+          <h3>Ver registros</h3>
+          <pre><code># Stream live logs
+az webapp log tail --name $APP_NAME --resource-group $RESOURCE_GROUP
+
+# View deployment logs
+az webapp log deployment show --name $APP_NAME --resource-group $RESOURCE_GROUP</code></pre>
+        </section>
+
+        <section id="quick-reference" class="card">
+          <h2>Referencia rápida - Línea de CLI</h2>
+          <p>Script de configuración completo (variables de personalización en la parte superior):</p>
+          <pre><code># Full setup (customize variables at top)
+RESOURCE_GROUP="your-resource-group"
+APP_NAME="your-app-name"
+LOCATION="eastus"
+RUNTIME="your-runtime"  # e.g., "dotnet:8", "node:20-lts", "python:3.11"
+GITHUB_REPO="YOUR_USERNAME/YOUR_REPO"
+
+# Create resources
+az group create -n $RESOURCE_GROUP -l $LOCATION
+az appservice plan create -n "${APP_NAME}-plan" -g $RESOURCE_GROUP -l $LOCATION --sku B1
+az webapp create -n $APP_NAME -g $RESOURCE_GROUP -p "${APP_NAME}-plan" --runtime $RUNTIME
+az webapp config set -n $APP_NAME -g $RESOURCE_GROUP --web-sockets-enabled true
+
+# Create App Registration and get IDs
+APP_ID=$(az ad app create --display-name "github-${APP_NAME}-deploy" --query appId -o tsv)
+az ad sp create --id $APP_ID
+TENANT_ID=$(az account show --query tenantId -o tsv)
+SUB_ID=$(az account show --query id -o tsv)
+
+# Create federated credential
+az ad app federated-credential create --id $APP_ID --parameters "{
+  \"name\": \"github-main-branch\",
+  \"issuer\": \"https://token.actions.githubusercontent.com\",
+  \"subject\": \"repo:${GITHUB_REPO}:ref:refs/heads/main\",
+  \"audiences\": [\"api://AzureADTokenExchange\"]
+}"
+
+# Assign permissions
+APP_SERVICE_ID=$(az webapp show -n $APP_NAME -g $RESOURCE_GROUP --query id -o tsv)
+az role assignment create --assignee $APP_ID --role Contributor --scope $APP_SERVICE_ID
+
+# Output secrets for GitHub
+echo "AZURE_CLIENT_ID=$APP_ID"
+echo "AZURE_TENANT_ID=$TENANT_ID"
+echo "AZURE_SUBSCRIPTION_ID=$SUB_ID"</code></pre>
+        </section>
+      </main>
+    </div><!-- /.doc-main -->
+
+    <!-- Right Sidebar Table of Contents -->
+    <aside class="doc-toc">
+      <div class="doc-toc-sticky">
+        <nav class="doc-toc-card">
+          <div class="doc-toc-title">En esta página</div>
+          <ul>
+            <li class="doc-toc-item">
+              <a href="#overview"><span class="toc-icon">📋</span>Resumen</a>
+            </li>
+            <li class="doc-toc-divider" aria-hidden="true"></li>
+            <li class="doc-toc-section-label" aria-hidden="true">Pasos de preparación</li>
+            <li class="doc-toc-item">
+              <a href="#app-service"><span class="toc-icon">1️⃣</span>Crea App Service</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#app-registration"><span class="toc-icon">2️⃣</span>Registro de la Aplicación</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#federated-credentials"><span class="toc-icon">3️⃣</span>Federated Creds</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#permissions"><span class="toc-icon">4️⃣</span>Permisos</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#github-secrets"><span class="toc-icon">5️⃣</span>GitHub Secretos</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#deploy"><span class="toc-icon">6️⃣</span>Despliegue</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#optional-config"><span class="toc-icon">⚙️</span>Configuración opcional</a>
+            </li>
+            <li class="doc-toc-divider" aria-hidden="true"></li>
+            <li class="doc-toc-section-label" aria-hidden="true">Referencia</li>
+            <li class="doc-toc-item">
+              <a href="#troubleshooting"><span class="toc-icon">🔧</span>Resolución de problemas</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#quick-reference"><span class="toc-icon">📝</span>Referencia rápida</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </aside>
+  </div><!-- /.doc-layout -->
+
+  <footer>
+    <p>Performance Problem Simulator — Herramienta educativa para Azure App Service Diagnósticos</p>
+    <p id="footer-credits"></p>
+    <p id="build-info">Construcción: Cargando...</p>
+  </footer>
+
+  <script>
+    // Load environment info for SKU badge
+    fetch('/api/health/environment')
+      .then(r => r.json())
+      .then(env => {
+        const badge = document.getElementById('sku-badge');
+        if (badge) badge.textContent = 'SKU: ' + env.sku;
+      })
+      .catch(() => {});
+
+    // Load footer info (credits and build time)
+    fetch('/api/health/footer')
+      .then(r => r.json())
+      .then(data => {
+        const footerCredits = document.getElementById('footer-credits');
+        if (footerCredits) {
+          if (data.footer) {
+            footerCredits.innerHTML = data.footer;
+          } else {
+            footerCredits.style.display = 'none';
+          }
+        }
+        const buildInfo = document.getElementById('build-info');
+        if (buildInfo) buildInfo.textContent = 'Build: ' + data.buildTime;
+      })
+      .catch(() => {});
+
+    // Sidebar drawer toggle
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const sidebarDrawer = document.getElementById('sidebar-drawer');
+    const sidebarClose = document.getElementById('sidebar-close');
+
+    function openSidebar() {
+      hamburgerBtn.classList.remove('attention');
+      hamburgerBtn.classList.add('active');
+      sidebarOverlay.classList.add('active');
+      sidebarDrawer.classList.add('active');
+    }
+
+    function closeSidebar() {
+      hamburgerBtn.classList.remove('active');
+      sidebarOverlay.classList.remove('active');
+      sidebarDrawer.classList.remove('active');
+    }
+
+    hamburgerBtn.addEventListener('click', openSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar);
+    sidebarClose.addEventListener('click', closeSidebar);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeSidebar();
+    });
+
+    // Load GitHub link configuration
+    fetch('/api/health/github')
+      .then(r => r.json())
+      .then(data => {
+        const githubLink = document.getElementById('github-nav-item');
+        if (githubLink && data.url) {
+          githubLink.href = data.url;
+          githubLink.classList.remove('hidden');
+        }
+      })
+      .catch(() => {});
+
+    // Sync build info to sidebar when it updates
+    const buildInfoEl = document.getElementById('build-info');
+    const sidebarBuildInfo = document.getElementById('sidebar-build-info');
+    const observer = new MutationObserver(() => {
+      sidebarBuildInfo.textContent = buildInfoEl.textContent;
+    });
+    observer.observe(buildInfoEl, { childList: true, characterData: true, subtree: true });
+
+    // Scroll-spy: highlight active section in right sidebar
+    (function() {
+      const tocLinks = document.querySelectorAll('.doc-toc-item a');
+      const sections = document.querySelectorAll('.card');
+
+      function updateActiveTocLink() {
+        const scrollPos = window.scrollY + 120;
+
+        sections.forEach(section => {
+          const sectionTop = section.offsetTop;
+          const sectionHeight = section.offsetHeight;
+          const sectionId = section.getAttribute('id');
+
+          if (sectionId && scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+            tocLinks.forEach(link => {
+              link.classList.remove('active');
+              if (link.getAttribute('href') === '#' + sectionId) {
+                link.classList.add('active');
+              }
+            });
+          }
+        });
+      }
+
+      window.addEventListener('scroll', updateActiveTocLink);
+      updateActiveTocLink(); // Initial call
+    })();
+  </script>
+</body>
+</html>

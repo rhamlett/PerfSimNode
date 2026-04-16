@@ -21,6 +21,10 @@
  *   - EVENT_LOG_MAX_ENTRIES         → Ring buffer size for event log
  *   - IDLE_TIMEOUT_MINUTES          → Idle timeout in minutes before suspending health probes (default: 20)
  *   - HEALTH_PROBE_RATE             → Health probe interval in ms (default: 200, min: 100)
+ *   - UI_LANGUAGE                   → UI display language (ISO 639-1 code, default: 'en')
+ *   - TRANSLATOR_API_KEY            → Azure Cognitive Services Translator API key
+ *   - TRANSLATOR_ENDPOINT           → Azure Translator endpoint URL
+ *   - TRANSLATOR_REGION             → Azure Translator resource region
  *
  * PORTING NOTES:
  *   - Java Spring: Use application.properties/yml with @Value or @ConfigurationProperties.
@@ -77,6 +81,18 @@ export const config: AppConfig = {
 
   /** Idle timeout in minutes (default: 20, min: 1, max: 1440) */
   idleTimeoutMinutes: Math.min(1440, Math.max(1, parseIntEnv('IDLE_TIMEOUT_MINUTES', 20))),
+
+  /** UI display language (ISO 639-1 code, default: 'en') */
+  uiLanguage: (process.env.UI_LANGUAGE || 'en').toLowerCase(),
+
+  /** Azure Cognitive Services Translator API key */
+  translatorApiKey: process.env.TRANSLATOR_API_KEY || '',
+
+  /** Azure Translator endpoint URL */
+  translatorEndpoint: process.env.TRANSLATOR_ENDPOINT || 'https://api.cognitive.microsofttranslator.com',
+
+  /** Azure Translator region */
+  translatorRegion: process.env.TRANSLATOR_REGION || 'eastus',
 };
 
 /**

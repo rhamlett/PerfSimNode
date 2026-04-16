@@ -59,6 +59,7 @@ import { slowRouter } from './controllers/slow.controller';
 import { failedRouter } from './controllers/failed-request.controller';
 import { crashRouter } from './controllers/crash.controller';
 import { loadtestRouter } from './controllers/loadtest.controller';
+import { translatedHtmlMiddleware } from './middleware/translated-html';
 
 /**
  * Creates and configures the Express application.
@@ -77,6 +78,9 @@ export function createApp(): Application {
 
   // Request logging
   app.use(requestLogger);
+
+  // Serve translated HTML documents (must be BEFORE express.static)
+  app.use(translatedHtmlMiddleware);
 
   // Serve static files from public directory
   app.use(express.static(path.join(__dirname, 'public')));

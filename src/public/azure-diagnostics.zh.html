@@ -1,0 +1,1204 @@
+<!-- source_hash:b2c65e83d45de6b2 lang:zh generated:2026-04-16T18:56:34.128Z -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>性能问题模拟器 - 节点24</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    /* Doc Layout - Main + TOC Sidebar */
+    .doc-layout {
+      display: flex;
+      gap: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .doc-main {
+      flex: 1;
+      min-width: 0;
+    }
+    .diag-container {
+      max-width: 900px;
+      display: block;
+      margin: 0;
+      padding: 0;
+    }
+    .doc-toc {
+      width: 280px;
+      flex-shrink: 0;
+    }
+    .doc-toc-sticky {
+      position: sticky;
+      top: 80px;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+    }
+    .doc-toc-card {
+      background: var(--color-card);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      padding: 1.25rem;
+    }
+    .doc-toc-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--color-bg);
+    }
+    .doc-toc ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .doc-toc-item {
+      margin-bottom: 0.25rem;
+    }
+    .doc-toc-item a {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      color: var(--color-text-muted);
+      font-size: 0.875rem;
+      transition: all var(--transition-fast);
+      border-left: 2px solid transparent;
+    }
+    .doc-toc-item a:hover {
+      background: rgba(57, 95, 57, 0.08);
+      color: var(--color-primary);
+      border-left-color: var(--color-primary);
+    }
+    .doc-toc-item a.active {
+      background: rgba(57, 95, 57, 0.12);
+      color: var(--color-primary);
+      font-weight: 500;
+      border-left-color: var(--color-primary);
+    }
+    .toc-icon {
+      font-size: 1rem;
+      width: 1.25rem;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .doc-toc-divider {
+      height: 1px;
+      background: var(--color-bg);
+      margin: 0.75rem 0;
+    }
+    .doc-toc-section-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      padding: 0.5rem 0.75rem 0.25rem;
+      opacity: 0.7;
+    }
+
+    /* Page Content Styles */
+    .diag-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .diag-header h1 {
+      color: var(--color-primary);
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+    }
+    .diag-header p {
+      color: var(--color-text-muted);
+      font-size: 1.1rem;
+    }
+    .card {
+      background: var(--color-card);
+      border-radius: var(--radius-md);
+      padding: 1.5rem 2rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      scroll-margin-top: 80px;
+    }
+    .card h2 {
+      color: var(--color-primary);
+      border-bottom: 2px solid var(--color-bg);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .card h3 {
+      color: var(--color-text);
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .card h4 {
+      color: var(--color-text-muted);
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .card p, .card li {
+      line-height: 1.6;
+      color: var(--color-text-muted);
+    }
+    .metric-explanation {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .metric-box {
+      border-left: 4px solid var(--color-primary);
+      background: var(--color-bg);
+      padding: 1rem;
+      border-radius: 0 8px 8px 0;
+    }
+    .metric-box.cpu { border-color: #ff8c00; }
+    .metric-box.memory { border-color: #0078d4; }
+    .metric-box.eventloop { border-color: #8764b8; }
+    .metric-box.latency { border-color: #107c10; }
+    .metric-box h4 {
+      margin: 0 0 0.5rem 0;
+      color: var(--color-text);
+    }
+    .metric-box p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--color-text-muted);
+    }
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin: 1rem 0;
+    }
+    .scenario-card {
+      border: 1px solid var(--color-bg);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .scenario-card .header {
+      padding: 1rem;
+      font-weight: 600;
+      color: white;
+    }
+    .scenario-card .header.cpu { background: linear-gradient(135deg, #d83b01, #ff8c00); }
+    .scenario-card .header.memory { background: linear-gradient(135deg, #0078d4, #00bcf2); }
+    .scenario-card .header.eventloop { background: linear-gradient(135deg, #5c2d91, #8764b8); }
+    .scenario-card .header.slow { background: linear-gradient(135deg, #ff8c00, #ffb900); }
+    .scenario-card .header.crash { background: linear-gradient(135deg, #a4262c, #d83b01); }
+    .scenario-card .body {
+      padding: 1rem;
+    }
+    .scenario-card .body h4 {
+      margin: 0.75rem 0 0.25rem;
+      font-size: 0.9rem;
+    }
+    .scenario-card .body ul {
+      margin: 0;
+      padding-left: 1.25rem;
+      font-size: 0.85rem;
+    }
+    .scenario-card .body li {
+      margin-bottom: 0.25rem;
+    }
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .tool-card {
+      background: var(--color-bg);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .tool-card h4 {
+      margin: 0 0 0.5rem;
+      color: var(--color-primary);
+    }
+    .tool-card p {
+      margin: 0 0 0.5rem;
+      font-size: 0.85rem;
+    }
+    .tool-card code {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+    }
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    .comparison-table th, .comparison-table td {
+      border: 1px solid var(--color-bg);
+      padding: 0.75rem;
+      text-align: left;
+    }
+    .comparison-table th {
+      background: var(--color-bg);
+      font-weight: 600;
+    }
+    .comparison-table tr:nth-child(even) {
+      background: rgba(0,0,0,0.02);
+    }
+    .alert-box {
+      padding: 1rem 1.25rem;
+      border-radius: 6px;
+      margin: 1rem 0;
+    }
+    .alert-box.info {
+      background: rgba(0, 120, 212, 0.1);
+      border-left: 4px solid var(--color-cpu);
+    }
+    .alert-box.warning {
+      background: rgba(255, 185, 0, 0.15);
+      border-left: 4px solid var(--color-warning);
+    }
+    .alert-box.success {
+      background: rgba(29, 111, 29, 0.1);
+      border-left: 4px solid var(--color-success);
+    }
+    .alert-box.caution {
+      background: rgba(255, 185, 0, 0.1);
+      border-left: 4px solid var(--color-danger);
+      margin-top: 20px;
+    }
+    .alert-box strong {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    .alert-box h4 {
+      margin-top: 0;
+    }
+    .alert-box p:last-child {
+      margin-bottom: 0;
+    }
+    .alert-box p + p {
+      margin-top: 10px;
+    }
+    .alert-box ol,
+    .alert-box ul {
+      margin: 0.5rem 0 0;
+      padding-left: 1.25rem;
+    }
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem;
+      border-radius: var(--radius-md);
+      overflow-x: auto;
+      font-size: 0.85rem;
+      margin: 1rem 0;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+    }
+    code {
+      background: var(--color-bg);
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      color: var(--color-danger);
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+    .flowchart {
+      background: var(--color-bg);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+      text-align: center;
+    }
+    .flowchart .step {
+      display: inline-block;
+      padding: 0.75rem 1rem;
+      background: var(--color-card);
+      border: 2px solid var(--color-primary);
+      border-radius: 6px;
+      margin: 0.25rem;
+    }
+    .flowchart .arrow {
+      display: inline-block;
+      color: var(--color-primary);
+      font-weight: bold;
+      margin: 0 0.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .doc-layout {
+        flex-direction: column;
+      }
+      .doc-toc {
+        width: 100%;
+        order: -1;
+      }
+      .doc-toc-sticky {
+        position: relative;
+        top: 0;
+        max-height: none;
+      }
+      .doc-toc ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .doc-toc-item {
+        margin-bottom: 0;
+      }
+      .doc-toc-item a {
+        padding: 0.375rem 0.625rem;
+        border-left: none;
+        border-radius: var(--radius-md);
+        background: var(--color-bg);
+      }
+      .doc-toc-divider,
+      .doc-toc-section-label {
+        display: none;
+      }
+    }
+    @media (max-width: 768px) {
+      .doc-layout {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body class="page-diagnostics">
+  <header>
+    <button id="hamburger-btn" class="hamburger-btn attention" aria-label="Open navigation menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <svg class="header-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 2L29 9.5V24.5L16 32L3 24.5V9.5L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="currentColor">JS</text>
+    </svg>
+    <h1>Azure 诊断指南</h1>
+    <span id="sku-badge" class="sku-badge">SKU：本地</span>
+    <nav>
+      <a href="/" class="btn-panel-toggle">🎮 仪表盘</a>
+    </nav>
+  </header>
+
+  <!-- Sidebar Drawer Navigation -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+  <aside id="sidebar-drawer" class="sidebar-drawer">
+    <div class="sidebar-header">
+      <svg class="sidebar-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 2L29 9.5V24.5L16 32L3 24.5V9.5L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/>
+        <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="currentColor">JS</text>
+      </svg>
+      <h2>PerfSimNode</h2>
+      <button id="sidebar-close" class="sidebar-close" aria-label="Close navigation">×</button>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">应用</div>
+      <a href="/" class="sidebar-nav-item">
+        <span class="nav-icon">🎮</span>
+        <span class="nav-label">仪表盘<span class="nav-desc">实时指标与控制</span></span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">文献资料</div>
+      <a href="/docs.html" class="sidebar-nav-item">
+        <span class="nav-icon">📚</span>
+        <span class="nav-label">文献资料<span class="nav-desc">API 参考资料与指南</span></span>
+      </a>
+      <a href="/azure-diagnostics.html" class="sidebar-nav-item active">
+        <span class="nav-icon">☁️</span>
+        <span class="nav-label">Azure 诊断<span class="nav-desc">诊断App Service问题</span></span>
+      </a>
+      <a href="/azure-load-testing.html" class="sidebar-nav-item">
+        <span class="nav-icon">📈</span>
+        <span class="nav-label">Azure 负载测试<span class="nav-desc">载荷测试终点及参数</span></span>
+      </a>
+      <a href="/azure-deployment.html" class="sidebar-nav-item">
+        <span class="nav-icon">🚀</span>
+        <span class="nav-label">部署到 Azure<span class="nav-desc">GitHub 动作 + OIDC 设置</span></span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">外部</div>
+      <a id="github-nav-item" href="#" target="_blank" rel="noopener" class="sidebar-nav-item hidden">
+        <span class="nav-icon">🐙</span>
+        <span class="nav-label">GitHub 仓库<span class="nav-desc">源代码与问题</span></span>
+      </a>
+      <a href="/swagger" target="_blank" rel="noopener" class="sidebar-nav-item">
+        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="128" cy="128" r="128" fill="#85ea2d"/><path d="M128 40c-48.6 0-88 39.4-88 88s39.4 88 88 88 88-39.4 88-88-39.4-88-88-88zm-8 132h-16v-16h16v16zm0-32h-16V76h16v64zm32 32h-16v-16h16v16zm0-32h-16V76h16v64z" fill="#173647"/></svg></span>
+        <span class="nav-label">Swagger<span class="nav-desc">由SMARTBEAR支持。</span></span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="sidebar-build-info">建造：加载中......</div>
+    </div>
+  </aside>
+
+  <div class="doc-layout">
+  <div class="doc-main">
+  <main class="diag-container">
+    <div class="diag-header">
+      <h1>☁️ Azure 诊断指南</h1>
+      <p>如何使用 Azure 工具诊断Node.js性能问题，并理解这些指标的含义</p>
+    </div>
+
+    <!-- Understanding Metrics -->
+    <section id="understanding-metrics" class="card">
+      <h2>📈 理解仪表盘指标</h2>
+      <p>PerfSimNode仪表盘显示实时指标，帮助识别性能问题。以下是每个指标的含义：</p>
+
+      <div class="metric-explanation">
+        <div class="metric-box cpu">
+          <h4>⚡ CPU 使用率（%）</h4>
+          <p><strong>衡量内容：</strong> Node.js过程所占时间 CPU 百分比。</p>
+          <p><strong>为什么重要：</strong> 高 CPU 表示计算受限操作。在Node.js中，这通常意味着同步代码正在运行（加密、 JSON 解析大型对象、复杂计算）。</p>
+          <p><strong>正常范围：</strong> 怠速时0-30%，请求时的峰值是正常的。</p>
+          <p><strong>警示信号：</strong> 持续>70%表示存在问题。</p>
+        </div>
+
+        <div class="metric-box memory">
+          <h4>📊 内存工作集（MB）</h4>
+          <p><strong>衡量内容：</strong> Node.js进程已分配并正在积极使用的总内存。</p>
+          <p><strong>为什么重要：</strong> 内存增长但未释放，说明存在泄漏。Node.js使用V8的垃圾回收器，但参考值保持时间过长会导致清理困难。</p>
+          <p><strong>正常范围：</strong> 这取决于应用，但预热后应该会稳定下来。</p>
+          <p><strong>警示信号：</strong> 持续生长（锯齿形纹理可以）。</p>
+        </div>
+
+        <div class="metric-box eventloop">
+          <h4>🧵 事件循环延迟（MS）</h4>
+          <p><strong>衡量内容：</strong> 从调回调到实际执行之间的时间。</p>
+          <p><strong>为什么重要：</strong> <em>这是 sync-over-async 问题的关键指标！</em> 当同步代码阻断事件循环时，所有待处理的回调都必须等待——包括收到的 HTTP 请求。</p>
+          <p><strong>正常范围：</strong> &lt;10毫秒</p>
+          <p><strong>警示信号：</strong> >100毫秒会导致明显延迟;>1000毫秒意味着严重阻塞。</p>
+        </div>
+
+        <div class="metric-box latency">
+          <h4>⏱️ 请求延迟（ms）</h4>
+          <p><strong>衡量内容：</strong> 从请求收到到响应发送的时间，包括在事件循环队列中等待的时间。</p>
+          <p><strong>为什么重要：</strong> 直接衡量用户体验。高延迟但低 CPU 通常意味着阻塞或外部依赖问题。</p>
+          <p><strong>正常范围：</strong> 简单请求&lt;150ms。</p>
+          <p><strong>警示信号：</strong> >1 退化;>30多岁，危急。</p>
+        </div>
+      </div>
+
+      <div class="alert-box info">
+        <strong>💡 关键洞察：事件循环延迟</strong>Node.js 使用 <em>单线程事件循环</em>.当你看到高事件循环延迟时，说明主线程被阻塞，所有待处理回调都必须等待——这就是为什么一次阻塞操作可以同时影响所有请求。      </div>
+    </section>
+
+    <!-- Diagnostic Scenarios -->
+    <section id="diagnostic-scenarios" class="card">
+      <h2>🔍 诊断场景</h2>
+      <p>以下是诊断该模拟器产生的每种性能问题的方法：</p>
+
+      <div class="scenario-grid">
+        <div class="scenario-card">
+          <div class="header cpu">🔥 高 CPU 使用率</div>
+          <div class="body">
+            <p><strong>症状：</strong>CPU高钉顶的指标，请求仍可能正常完成（事件循环未被阻塞）。</p>
+            <h4>发生了什么</h4>
+            <ul>
+              <li>仿真通过以下方式生成子进程 <code>fork()</code></li>
+              <li>每个子节点运行 CPU密集型加密（PBKDF2）</li>
+              <li>工作与主事件循环隔离——服务器保持响应</li>
+              <li>多重 <code>node</code> 可见的过程 <code>top</code></li>
+            </ul>
+            <h4>关键见解</h4>
+            <p><em>CPU ≠事件循环阻塞的压力！</em> 子进程的高 CPU 不会阻挡服务器。注意事件循环延迟——即使 CPU很高，延迟依然很低。</p>
+            <h4>Azure 诊断工具</h4>
+            <ul>
+              <li>App Service 诊断 → <strong>CPU 钻探</strong></li>
+              <li>Application Insights → <strong>性能</strong></li>
+              <li>Kudu SSH → <code>top</code>, <code>ps aux | grep node</code></li>
+              <li><a href="#v8-profiling">V8 轮郭分析</a> → <code>--prof</code> 识别热函数</li>
+            </ul>
+            <h4>注意点</h4>
+            <ul>
+              <li>哪些过程消耗 CPU</li>
+              <li>父母/子女过程关系</li>
+              <li>事件循环延迟应保持低</li>
+              <li>V8 配置文件输出显示高刻函数</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="header memory">📊 记忆压力</div>
+          <div class="body">
+            <p><strong>症状：</strong> 记忆会增长，保持高峰，最终可能会崩溃 OOM。</p>
+            <h4>发生了什么</h4>
+            <ul>
+              <li>仿真分配缓冲区并保留引用</li>
+              <li>V8 垃圾回收器无法释放持有的内存</li>
+              <li>模拟缓存失误导致的内存泄漏</li>
+            </ul>
+            <h4>Azure 诊断工具</h4>
+            <ul>
+              <li>App Service 诊断 → <strong>记忆分析</strong></li>
+              <li>Application Insights → <strong>指标</strong></li>
+              <li>库杜→ <strong>进程探索器</strong></li>
+              <li><a href="#v8-profiling">V8 轮郭分析</a> → 通过 Chrome DevTools 进行堆快照</li>
+            </ul>
+            <h4>注意点</h4>
+            <ul>
+              <li>堆快照用于查找保留对象（使用保留者视图）</li>
+              <li>比较时间内的快照，以识别不断增长的配置</li>
+              <li>内存增长模式（泄漏与正常使用）</li>
+              <li>与特定操作的相关性</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="header eventloop">🧵 事件环路阻塞</div>
+          <div class="body">
+            <p><strong>症状：</strong> 事件环路延迟激增，所有请求队列，延迟图表显示实时持续高延迟。</p>
+            <h4>发生了什么</h4>
+            <ul>
+              <li>同步加密在主线程中以重复的分块形式运行</li>
+              <li>在区块之间，短暂的让步可以让排队的探针数据刷新</li>
+              <li>事件循环被阻塞的概率~97%——实际上是无响应的</li>
+              <li>延迟图表实时更新，显示阻挡效应</li>
+              <li><strong>与 CPU 压力的主要区别：</strong> 服务器无响应！</li>
+            </ul>
+            <h4>如何识别</h4>
+            <p><em>检查事件循环延迟！</em> 如果它等于区块持续时间，事件循环就会被阻塞。 CPU 应力显示 CPU 高但事件环延迟很低。</p>
+            <h4>Azure 诊断工具</h4>
+            <ul>
+              <li>Application Insights → <strong>性能</strong></li>
+              <li>App Service 诊断 → <strong>网页应用缓慢</strong></li>
+              <li>Azure 监控→ <strong>指标</strong> 用于请求延迟尖峰</li>
+              <li><a href="#v8-profiling">V8 轮郭分析</a> → CPU 配置文件在分区显示阻塞代码时</li>
+            </ul>
+            <h4>注意点</h4>
+            <ul>
+              <li>事件循环延迟 = 块持续时间（~200毫秒默认）</li>
+              <li>所有请求同时受影响</li>
+              <li>延迟图表显示模拟过程中持续较高的延迟</li>
+              <li>CPU 可能会高或低（取决于定型作业）</li>
+              <li>V8 配置文件识别同步功能（例如， <code>pbkdf2Sync</code>)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="header slow">🐢 慢速请求</div>
+          <div class="body">
+            <p><strong>症状：</strong> 具体端点耗时较长，但其他端点是正常的。</p>
+            <h4>发生了什么</h4>
+            <ul>
+              <li>请求处理程序的用途 <code>setTimeout()</code> 延误</li>
+              <li>非阻塞：事件循环继续处理</li>
+              <li>模拟慢速数据库、外部 API 调用</li>
+              <li><strong>与事件循环阻断的主要区别：</strong> 只有慢端受影响！</li>
+            </ul>
+            <h4>如何识别</h4>
+            <p><em>检查其他请求是否受到影响。</em> 慢请求：只有慢端点才慢。事件循环阻塞：一切都很慢。</p>
+            <h4>Azure 诊断工具</h4>
+            <ul>
+              <li>Application Insights → <strong>端到端交易</strong></li>
+              <li>Application Insights → <strong>依赖追踪</strong></li>
+              <li>按终端划分的日志分析→请求时长</li>
+            </ul>
+            <h4>注意点</h4>
+            <ul>
+              <li>具体哪个端点比较慢？</li>
+              <li>依赖时序分解</li>
+              <li>事件环路延迟保持低</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="header crash">💥 应用崩溃</div>
+          <div class="body">
+            <p><strong>症状：</strong> 应用变得无响应、重启或返回502/503错误。</p>
+            <h4>发生了什么</h4>
+            <ul>
+              <li>未处理的异常会导致进程崩溃</li>
+              <li>OOM 杀手终止了流程</li>
+              <li>App Service 可能会自动重启</li>
+            </ul>
+            <h4>Azure 诊断工具</h4>
+            <ul>
+              <li>App Service 诊断 → <strong>网页应用重启</strong></li>
+              <li>Application Insights → <strong>故障</strong></li>
+              <li>库杜→ <strong>日志文件</strong></li>
+              <li><a href="#v8-profiling">V8 轮郭分析</a> → 崩溃前的堆快照以识别原因</li>
+            </ul>
+            <h4>注意点</h4>
+            <ul>
+              <li>崩溃倾倒分析</li>
+              <li>日志中的异常栈跟踪</li>
+              <li>崩溃前的内存使用情况（堆快照比较）</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Simulation ID Correlation -->
+    <section id="simulation-ids" class="card">
+      <h2>🔗 仿真ID相关性</h2>
+      <p>每个仿真实例都被分配了唯一的仿真ID（GUID），实现仪表盘UI与 Azure 诊断之间的端到端关联。</p>
+
+      <h3>寻找仿真ID</h3>
+      <p><strong>在仪表盘中：</strong> 将鼠标悬停在事件日志中任何与仿真相关的消息（带虚线下划线）上，即可查看完整的仿真ID。</p>
+      <p><strong>Azure：</strong> 相同的仿真ID也出现在服务器端日志中，并可在以下格式中找到：</p>
+      <ul>
+        <li><strong>Application Insights</strong> - 通过仿真ID搜索跟踪和自定义事件</li>
+        <li><strong>日志分析</strong> - 使用ID作为过滤器的查询日志</li>
+        <li><strong>容器/App Service 日志</strong>- 按 标准/标准GUID 过滤</li>
+      </ul>
+
+      <h3>相关性查询</h3>
+      <p>在Log Analytics中使用这些KQL查询，将仪表盘事件与服务器遥测数据关联起来：</p>
+
+      <div class="alert-box warning">
+        <h4>⚠️ 表格名称差异</h4>
+        <p>Log Analytics 工作区使用与经典 Application Insights不同的表和列名。如果你看到诸如“'traces'名称不指向任何已知表”这样的错误，请使用下面的Log Analytics名称：</p>
+      </div>
+
+      <table class="comparison-table">
+        <thead>
+          <tr><th>经典应用洞察</th><th>日志分析</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>痕迹</td><td>AppTraces 应用</td></tr>
+          <tr><td>自定义活动</td><td>应用活动</td></tr>
+          <tr><td>请求</td><td>应用请求</td></tr>
+          <tr><td>例外情况</td><td>应用例外</td></tr>
+          <tr><td>依赖关系</td><td>应用依赖</td></tr>
+          <tr><td>信息</td><td>信息</td></tr>
+          <tr><td>时间戳</td><td>时间生成</td></tr>
+          <tr><td>自定义尺寸</td><td>性质</td></tr>
+        </tbody>
+      </table>
+
+<pre><code>// Find simulation start/end events by Simulation ID
+AppEvents
+| where Name in ("SimulationStarted", "SimulationEnded")
+| where Properties["SimulationId"] == "YOUR-SIMULATION-ID-HERE"
+| project TimeGenerated, Name, Properties
+| order by TimeGenerated asc</code></pre>
+
+<pre><code>// Find all requests during a simulation time window
+let simStart = toscalar(
+    AppEvents 
+    | where Name == "SimulationStarted" and Properties["SimulationId"] == "YOUR-SIMULATION-ID-HERE"
+    | project TimeGenerated);
+let simEnd = toscalar(
+    AppEvents 
+    | where Name == "SimulationEnded" and Properties["SimulationId"] == "YOUR-SIMULATION-ID-HERE"
+    | project TimeGenerated);
+AppRequests
+| where TimeGenerated between (simStart .. simEnd)
+| order by TimeGenerated asc</code></pre>
+
+<pre><code>// Find failed requests during a simulation
+let simId = "YOUR-SIMULATION-ID-HERE";
+let simEvents = AppEvents | where Properties["SimulationId"] == simId;
+let simStart = toscalar(simEvents | where Name == "SimulationStarted" | project TimeGenerated);
+let simEnd = toscalar(simEvents | where Name == "SimulationEnded" | project TimeGenerated);
+AppRequests
+| where TimeGenerated between (simStart .. simEnd)
+| where Success == false
+| project TimeGenerated, Name, ResultCode, DurationMs, Url
+| order by TimeGenerated asc</code></pre>
+
+      <h3>故障排除工作流程</h3>
+      <ol>
+        <li>从仪表盘开始模拟</li>
+        <li>将鼠标悬停在事件日志中的开始消息上，复制模拟ID</li>
+        <li>打开 Azure 门户→ Application Insights →日志（或日志分析）</li>
+        <li>使用仿真ID查询日志，查看所有相关的服务器端活动</li>
+        <li>将仪表盘事件与服务器指标的时间戳关联起来</li>
+      </ol>
+
+      <div class="alert-box info">
+        <strong>💡 提示</strong>
+        <p>当多个并发模拟运行或仪表盘被多个用户使用时，模拟ID有助于隔离遥测数据。</p>
+      </div>
+    </section>
+
+    <!-- Azure Tools -->
+    <section id="azure-tools" class="card">
+      <h2>🛠️ Azure 诊断工具</h2>
+      <p>诊断Node.js性能问题的关键 Azure 工具：</p>
+
+      <div class="tool-grid">
+        <div class="tool-card">
+          <h4>App Service 诊断</h4>
+          <p>Azure门户内置诊断报告。通过“诊断和解决问题”访问。</p>
+          <p><strong>最佳用途：</strong> 快速健康回顾、 CPU/记忆分析、事故调查。</p>
+        </div>
+        <div class="tool-card">
+          <h4>Application Insights</h4>
+          <p>完整的APM解决方案，支持请求追踪、依赖跟踪和自定义指标。</p>
+          <p><strong>最佳用途：</strong> 端到端追踪、性能趋势、故障分析。</p>
+        </div>
+        <div class="tool-card">
+          <h4>Kudu（SCM）</h4>
+          <p>开发者控制台 <code>yourapp.scm.azurewebsites.net</code></p>
+          <p><strong>最佳用途：</strong> 实时调试、日志访问、进程管理。</p>
+        </div>
+        <div class="tool-card">
+          <h4>日志分析</h4>
+          <p>基于查询的日志分析，采用KQL技术。</p>
+          <p><strong>最佳用途：</strong> 历史分析、自定义查询、提醒。</p>
+        </div>
+        <div class="tool-card">
+          <h4>Azure 监测指标</h4>
+          <p>平台的指标包括 CPU、内存、请求等。</p>
+          <p><strong>最佳用途：</strong> 实时监控、仪表盘、警报。</p>
+        </div>
+        <div class="tool-card">
+          <h4>崩溃倾倒分析</h4>
+          <p>事故调查时可选择自动或手动排放收集。</p>
+          <p><strong>最佳用途：</strong> 尸检分析，记忆泄漏调查。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Diagnostic Workflow -->
+    <section id="diagnostic-workflow" class="card">
+      <h2>🔄 诊断工作流程</h2>
+      <p>在调查Node.js性能问题时，请遵循以下工作流程：</p>
+
+      <div class="flowchart">
+        <span class="step">客户报告</span>
+        <span class="arrow">→</span>
+        <span class="step">检查指标</span>
+        <span class="arrow">→</span>
+        <span class="step">识别模式</span>
+        <span class="arrow">→</span>
+        <span class="step">深度探究</span>
+        <span class="arrow">→</span>
+        <span class="step">根本原因</span>
+      </div>
+
+      <h3>第一步：初步评估</h3>
+      <ol>
+        <li>查看 App Service 健康状况概览</li>
+        <li>查看Azure监视器中的 CPU、内存、请求指标</li>
+        <li>请注意问题的时间框架</li>
+      </ol>
+
+      <h3>第二步：识别模式</h3>
+      <table class="comparison-table">
+        <tr>
+          <th>如果你看到......</th>
+          <th>可能的问题</th>
+          <th>下一步</th>
+        </tr>
+        <tr>
+          <td>高 CPU，正常响应时间</td>
+          <td>CPU-bound 处理（预期或错误处理）</td>
+          <td>CPU 通过 Kudu 进行画像分析</td>
+        </tr>
+        <tr>
+          <td>CPU高，反应缓慢</td>
+          <td>CPU 饥饿影响请求</td>
+          <td>识别热代码路径</td>
+        </tr>
+        <tr>
+          <td>正常 CPU，慢，所有反应</td>
+          <td>事件循环阻断（sync-over-async）</td>
+          <td>检查事件循环指标，代码审查</td>
+        </tr>
+        <tr>
+          <td>正常 CPU，但有些回复很慢</td>
+          <td>外部依赖延迟</td>
+          <td>Application Insights 依赖视图</td>
+        </tr>
+        <tr>
+          <td>记忆随时间增长</td>
+          <td>内存泄漏</td>
+          <td>堆快照分析</td>
+        </tr>
+        <tr>
+          <td>突然重启，502个错误</td>
+          <td>崩溃（例外或 OOM）</td>
+          <td>崩溃转储，错误日志</td>
+        </tr>
+      </table>
+
+      <h3>步骤3：按问题深入探索工具</h3>
+      <div class="alert-box success">
+        <strong>🔥 高 CPU</strong>
+        <ol>
+          <li>Kudu Process Explorer → Identify process</li>
+          <li>App Service 诊断→ CPU 深入分析</li>
+          <li>简介 <code>node --prof</code> 或 <code>--inspect</code></li>
+        </ol>
+      </div>
+      <div class="alert-box success">
+        <strong>🧵 事件环路阻塞</strong>
+        <ol>
+          <li>检查 Application Insights 是否有相关的慢速请求</li>
+          <li>在代码中寻找同步操作（如 fs.readFileSync 等）。</li>
+          <li>添加监控 <code>perf_hooks.monitorEventLoopDelay()</code></li>
+        </ol>
+      </div>
+      <div class="alert-box success">
+        <strong>📊 内存泄漏</strong>
+        <ol>
+          <li>通过Kudu或远程调试进行堆快照</li>
+          <li>比较时间上的快照</li>
+          <li>注意物体数量增加</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Kudu Console -->
+    <section id="kudu-console" class="card">
+      <h2>🖥️ Kudu控制台命令</h2>
+      <p>连接到Kudu（SCM）控制台时的有用命令：</p>
+
+      <h3>工艺信息</h3>
+      <pre><code># List Node.js processes
+ps aux | grep node
+
+# Show memory usage
+free -m
+
+# CPU and memory in real-time
+top -p $(pgrep -f node)</code></pre>
+
+      <h3>画像分析</h3>
+      <pre><code># Generate CPU profile (run this, reproduce issue, stop with Ctrl+C)
+# Profile saved as isolate-*.log
+node --prof /home/site/wwwroot/index.js
+
+# Process the profile
+node --prof-process isolate-*.log > profile.txt</code></pre>
+
+      <h3>堆快照</h3>
+      <pre><code># Find Node.js PID
+pgrep -f node
+
+# Send signal to generate heap snapshot
+kill -USR2 &lt;pid&gt;
+
+# Or connect with Chrome DevTools
+# 1. In Kudu, run: node --inspect=0.0.0.0:9229 /home/site/wwwroot/index.js
+# 2. Set up port forwarding
+# 3. Connect Chrome to chrome://inspect</code></pre>
+
+      <h3>对数分析</h3>
+      <pre><code># View recent application logs
+tail -100 /home/LogFiles/Application/*.log
+
+# Search for errors
+grep -i "error\|exception" /home/LogFiles/Application/*.log
+
+# Watch logs in real-time
+tail -f /home/LogFiles/Application/*.log</code></pre>
+    </section>
+
+    <!-- V8 Profiling -->
+    <section id="v8-profiling" class="card">
+      <h2>🔬 V8 轮郭分析</h2>
+      <p>V8 是驱动 Node.js 的 JavaScript 引擎。它内置了分析工具，帮助识别性能瓶颈、内存泄漏以及 CPU密集的代码路径。</p>
+
+      <h3>什么是V8画像？</h3>
+      <p>V8 配置分析捕捉了关于你应用运行时行为的详细信息：</p>
+      <ul>
+        <li><strong>CPU 画像</strong> — 记录哪些函数消耗最多 CPU 时间，有助于识别热代码路径和优化机会</li>
+        <li><strong>堆快照</strong> — 捕捉某一时间点的内存状态，显示所有分配的对象及其引用</li>
+        <li><strong>堆时间线</strong> — 跟踪内存分配以识别泄漏和过度垃圾回收</li>
+      </ul>
+
+      <h3>方法1：命令行分析（--prof）</h3>
+      <p>该 <code>--prof</code> flag 生成详细的 CPU 配置文件，显示每个函数所花费的时间。</p>
+
+      <h4>步骤1：启用画像运行</h4>
+      <pre><code># Start your app with profiling
+node --prof app.js
+
+# Reproduce the performance issue, then stop the app (Ctrl+C)
+# This creates an isolate-*.log file in the current directory</code></pre>
+
+      <h4>步骤2：处理个人资料</h4>
+      <pre><code># Convert the V8 log to human-readable format
+node --prof-process isolate-0x*.log > profile.txt</code></pre>
+
+      <h4>第三步：阅读结果</h4>
+      <p>处理后的配置文件显示如下明细：</p>
+      <pre><code>[Summary]:
+   ticks  total  nonlib   name
+   5234   75.2%   78.1%  JavaScript
+   1023   14.7%   15.3%  C++
+    445    6.4%    6.6%  GC
+    258    3.7%          Shared libraries
+
+[JavaScript]:
+   ticks  total  nonlib   name
+   3102   44.6%   46.3%  pbkdf2Sync
+    892   12.8%   13.3%  JSON.parse
+    ...</code></pre>
+      <p>寻找刻数高的函数——这些是你 CPU 的热点。</p>
+
+      <h3>方法二：Chrome DevTools （--检查）</h3>
+      <p>对于带有可视化界面的交互式分析，可以使用Chrome DevTools检查器。</p>
+
+      <h4>第一步：从检查员开始</h4>
+      <pre><code># Local development
+node --inspect app.js
+
+# Allow remote connections (e.g., from Azure)
+node --inspect=0.0.0.0:9229 app.js</code></pre>
+
+      <h4>步骤2：连接Chrome DevTools</h4>
+      <ol>
+        <li>打开Chrome，导航到 <code>chrome://inspect</code></li>
+        <li>点击“配置......”并加 <code>localhost:9229</code> （或者你的远程主机）</li>
+        <li>你的Node.js过程会出现在“远程目标”下——点击“检查”</li>
+      </ol>
+
+      <h4>第三步：创建 CPU 档案</h4>
+      <ol>
+        <li>去 <strong>画像师</strong> 标签页（或性能标签页）</li>
+        <li>咔哒 <strong>开始</strong></li>
+        <li>重现性能问题</li>
+        <li>咔哒 <strong>停下</strong></li>
+        <li>分析火焰图——宽条表示慢速</li>
+      </ol>
+
+      <h4>步骤4：拍摄堆快照</h4>
+      <ol>
+        <li>去 <strong>记忆</strong> 标签页</li>
+        <li>选择“堆快照”并点击 <strong>拍张快照</strong></li>
+        <li>请浏览“摘要”视图，查看对象数量和大小</li>
+        <li>比较多个快照以识别内存泄漏</li>
+      </ol>
+
+      <h3>方法3：程序化堆快照</h3>
+      <p>从代码内部或信号生成堆快照：</p>
+      <pre><code>// In your application code
+const v8 = require('v8');
+const fs = require('fs');
+
+function takeHeapSnapshot() {
+  const filename = `heap-${Date.now()}.heapsnapshot`;
+  const stream = fs.createWriteStream(filename);
+  v8.writeHeapSnapshot(filename);
+  console.log(`Heap snapshot written to ${filename}`);
+}
+
+// Trigger on SIGUSR2 signal
+process.on('SIGUSR2', takeHeapSnapshot);</code></pre>
+      <p>然后触发： <code>kill -USR2 &lt;pid&gt;</code></p>
+
+      <h3>读取堆快照</h3>
+      <p>开门 <code>.heapsnapshot</code> Chrome DevTools 中的文件：</p>
+      <ol>
+        <li>Open Chrome DevTools（F12）</li>
+        <li>前往 <strong>记忆</strong> 标签页</li>
+        <li>咔哒 <strong>负载</strong> 并选择你的 <code>.heapsnapshot</code> 文件</li>
+      </ol>
+      <p>分析重点观点：</p>
+      <ul>
+        <li><strong>摘要</strong> — 按构造体名称分组的对象。注意意外的数量。</li>
+        <li><strong>比较</strong> —— 比较两个快照以查看它们之间分配了多少。</li>
+        <li><strong>遏制</strong> —— 显示对象层级（哪些物体持有对哪些的引用）。</li>
+        <li><strong>侍从</strong> ——对于任何对象，显示为什么它仍然存在内存（指向 GC 根的参考链）。</li>
+      </ul>
+
+      <h3>Azure- 具体考虑</h3>
+      <ul>
+        <li><strong>库杜SSH</strong> —— 直接通过以下方式执行分析命令 <code>yourapp.scm.azurewebsites.net</code></li>
+        <li><strong>端口转发</strong> —— 远程 <code>--inspect</code>你需要通过CLI或VS Code配置端口转发 Azure</li>
+        <li><strong>文件下载</strong> —— 使用 Kudu 的文件浏览器 或 <code>az webapp log download</code> 检索配置文件文件</li>
+        <li><strong>制作影响</strong> — 画像会增加开销;在制作中短暂用于分级或捕获</li>
+      </ul>
+
+      <div class="alert-box info">
+        <strong>💡 快速参考</strong>
+        <ul>
+          <li><strong>CPU 慢？</strong> →用途 <code>--prof</code> 或用Profiler标签查找热函数</li>
+          <li><strong>记忆力增长？</strong> → 拍摄堆快照并随时间进行比较</li>
+          <li><strong>事件循环被阻断了吗？</strong> → CPU 块期间的配置文件显示正在运行的内容</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Application Insights -->
+    <section id="app-insights" class="card">
+      <h2>📊 Application Insights 查询</h2>
+      <p>用于诊断Node.js问题的实用KQL查询：</p>
+
+      <h3>慢速请求</h3>
+      <pre><code>requests
+| where timestamp > ago(1h)
+| where duration > 5000
+| summarize count() by bin(timestamp, 5m), name
+| render timechart</code></pre>
+
+      <h3>未完成的请求</h3>
+      <pre><code>requests
+| where timestamp > ago(1h)
+| where success == false
+| summarize count() by resultCode, name
+| order by count_ desc</code></pre>
+
+      <h3>例外分解</h3>
+      <pre><code>exceptions
+| where timestamp > ago(24h)
+| summarize count() by type, outerMessage
+| order by count_ desc</code></pre>
+
+      <h3>依赖延迟</h3>
+      <pre><code>dependencies
+| where timestamp > ago(1h)
+| summarize avg(duration), percentile(duration, 95) by name
+| order by avg_duration desc</code></pre>
+
+      <h3>自定义事件环路度量（如果带了仪器）</h3>
+      <pre><code>customMetrics
+| where name == "EventLoopLag"
+| summarize avg(value), max(value) by bin(timestamp, 1m)
+| render timechart</code></pre>
+    </section>
+
+  </main>
+  </div><!-- /doc-main -->
+
+  <!-- Right Sidebar: On This Page -->
+  <aside class="doc-toc">
+    <div class="doc-toc-sticky">
+      <div class="doc-toc-card">
+        <div class="doc-toc-title">在本页</div>
+        <ul>
+          <li class="doc-toc-item"><a href="#understanding-metrics"><span class="toc-icon">📊</span> 理解指标</a></li>
+          <li class="doc-toc-item"><a href="#diagnostic-scenarios"><span class="toc-icon">🔍</span> 诊断场景</a></li>
+          <li class="doc-toc-item"><a href="#simulation-ids"><span class="toc-icon">🔗</span> 仿真ID相关性</a></li>
+        </ul>
+        <div class="doc-toc-divider"></div>
+        <div class="doc-toc-section-label">工具</div>
+        <ul>
+          <li class="doc-toc-item"><a href="#azure-tools"><span class="toc-icon">🛠️</span>Azure 工具</a></li>
+          <li class="doc-toc-item"><a href="#diagnostic-workflow"><span class="toc-icon">🔄</span> 诊断工作流程</a></li>
+          <li class="doc-toc-item"><a href="#kudu-console"><span class="toc-icon">🖥️</span> Kudu控制台</a></li>
+          <li class="doc-toc-item"><a href="#v8-profiling"><span class="toc-icon">🔬</span> V8 轮郭分析</a></li>
+        </ul>
+        <div class="doc-toc-divider"></div>
+        <div class="doc-toc-section-label">监测</div>
+        <ul>
+          <li class="doc-toc-item"><a href="#app-insights"><span class="toc-icon">📈</span>Application Insights</a></li>
+        </ul>
+      </div>
+    </div>
+  </aside>
+  </div><!-- /doc-layout -->
+
+  <footer>
+    <p>性能问题模拟器—— Azure App Service 诊断的教育工具</p>
+    <p id="footer-credits"></p>
+    <p id="build-info">建造：加载中......</p>
+  </footer>
+  <script>
+    // Load environment info for SKU badge
+    fetch('/api/health/environment')
+      .then(r => r.json())
+      .then(env => {
+        const badge = document.getElementById('sku-badge');
+        if (badge) badge.textContent = 'SKU: ' + env.sku;
+      })
+      .catch(() => {});
+
+    // Load footer info (credits and build time)
+    fetch('/api/health/footer')
+      .then(r => r.json())
+      .then(data => {
+        const footerCredits = document.getElementById('footer-credits');
+        if (footerCredits) {
+          if (data.footer) {
+            footerCredits.innerHTML = data.footer;
+          } else {
+            footerCredits.style.display = 'none';
+          }
+        }
+        const buildInfo = document.getElementById('build-info');
+        if (buildInfo) buildInfo.textContent = 'Build: ' + data.buildTime;
+      })
+      .catch(() => {});
+
+    // Sidebar drawer toggle
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const sidebarDrawer = document.getElementById('sidebar-drawer');
+    const sidebarClose = document.getElementById('sidebar-close');
+
+    function openSidebar() {
+      hamburgerBtn.classList.remove('attention');
+      hamburgerBtn.classList.add('active');
+      sidebarOverlay.classList.add('active');
+      sidebarDrawer.classList.add('active');
+    }
+
+    function closeSidebar() {
+      hamburgerBtn.classList.remove('active');
+      sidebarOverlay.classList.remove('active');
+      sidebarDrawer.classList.remove('active');
+    }
+
+    hamburgerBtn.addEventListener('click', openSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar);
+    sidebarClose.addEventListener('click', closeSidebar);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeSidebar();
+    });
+
+    // Load GitHub link configuration
+    fetch('/api/health/github')
+      .then(r => r.json())
+      .then(data => {
+        const githubLink = document.getElementById('github-nav-item');
+        if (githubLink && data.url) {
+          githubLink.href = data.url;
+          githubLink.classList.remove('hidden');
+        }
+      })
+      .catch(() => {});
+
+    // Sync build info to sidebar when it updates
+    const buildInfoEl = document.getElementById('build-info');
+    const sidebarBuildInfo = document.getElementById('sidebar-build-info');
+    const observer = new MutationObserver(() => {
+      sidebarBuildInfo.textContent = buildInfoEl.textContent;
+    });
+    observer.observe(buildInfoEl, { childList: true, characterData: true, subtree: true });
+
+    // Scroll-spy: highlight active section in right sidebar
+    (function() {
+      const links = document.querySelectorAll('.doc-toc-item a');
+      const sections = [];
+      links.forEach(link => {
+        const id = link.getAttribute('href').slice(1);
+        const el = document.getElementById(id);
+        if (el) sections.push({ id, el, link });
+      });
+      function updateActive() {
+        let current = sections[0];
+        for (const s of sections) {
+          if (s.el.getBoundingClientRect().top <= 100) current = s;
+        }
+        links.forEach(l => l.classList.remove('active'));
+        if (current) current.link.classList.add('active');
+      }
+      window.addEventListener('scroll', updateActive, { passive: true });
+      updateActive();
+    })();
+  </script>
+</body>
+</html>

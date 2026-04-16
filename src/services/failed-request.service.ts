@@ -96,6 +96,8 @@ class FailedRequestServiceClass {
       simulationId: simulation.id,
       simulationType: 'FAILED_REQUEST',
       details: { requestCount },
+      messageKey: 'srv.failed.started',
+      messageParams: { count: requestCount },
     });
 
     // Track results
@@ -127,6 +129,8 @@ class FailedRequestServiceClass {
             errorType,
             latencyMs: result.latencyMs,
           },
+          messageKey: 'srv.failed.error',
+          messageParams: { requestNum: successfulFailures, statusCode: result.statusCode, errorType },
         });
       }
     }
@@ -143,6 +147,8 @@ class FailedRequestServiceClass {
         successfulFailures,
         uniqueErrorTypes: [...new Set(errors)].length,
       },
+      messageKey: 'srv.failed.completed',
+      messageParams: { failed: successfulFailures, total: requestCount },
     });
 
     return simulation;

@@ -1,0 +1,926 @@
+<!-- source_hash:f48efc8013048747 lang:zh generated:2026-04-16T18:56:49.133Z -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure 负载测试指南 - 性能问题模拟器</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    /* Doc Layout - Main + TOC Sidebar */
+    .doc-layout {
+      display: flex;
+      gap: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .doc-main {
+      flex: 1;
+      min-width: 0;
+    }
+    .loadtest-container {
+      max-width: 900px;
+      display: block;
+      margin: 0;
+      padding: 0;
+    }
+    .doc-toc {
+      width: 280px;
+      flex-shrink: 0;
+    }
+    .doc-toc-sticky {
+      position: sticky;
+      top: 80px;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+    }
+    .doc-toc-card {
+      background: var(--color-card);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      padding: 1.25rem;
+    }
+    .doc-toc-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--color-bg);
+    }
+    .doc-toc ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .doc-toc-item {
+      margin-bottom: 0.25rem;
+    }
+    .doc-toc-item a {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      color: var(--color-text-muted);
+      font-size: 0.875rem;
+      transition: all var(--transition-fast);
+      border-left: 2px solid transparent;
+    }
+    .doc-toc-item a:hover {
+      background: rgba(57, 95, 57, 0.08);
+      color: var(--color-primary);
+      border-left-color: var(--color-primary);
+    }
+    .doc-toc-item a.active {
+      background: rgba(57, 95, 57, 0.12);
+      color: var(--color-primary);
+      font-weight: 500;
+      border-left-color: var(--color-primary);
+    }
+    .toc-icon {
+      font-size: 1rem;
+      width: 1.25rem;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .doc-toc-divider {
+      height: 1px;
+      background: var(--color-bg);
+      margin: 0.75rem 0;
+    }
+    .doc-toc-section-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      padding: 0.5rem 0.75rem 0.25rem;
+      opacity: 0.7;
+    }
+
+    /* Page Content Styles */
+    .loadtest-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .loadtest-header h1 {
+      color: var(--color-primary);
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+    }
+    .loadtest-header p {
+      color: var(--color-text-muted);
+      font-size: 1.1rem;
+    }
+    .card {
+      background: var(--color-card);
+      border-radius: var(--radius-md);
+      padding: 1.5rem 2rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      scroll-margin-top: 80px;
+    }
+    .card h2 {
+      color: var(--color-primary);
+      border-bottom: 2px solid var(--color-bg);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .card h3 {
+      color: var(--color-text);
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .card h4 {
+      color: var(--color-text-muted);
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .card p, .card li {
+      line-height: 1.6;
+      color: var(--color-text-muted);
+    }
+    .card ul, .card ol {
+      margin: 0.5rem 0 1rem 1.5rem;
+    }
+    .card li {
+      margin-bottom: 0.25rem;
+    }
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      margin: 1rem 0;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+    }
+    code {
+      background: rgba(0,0,0,0.05);
+      padding: 0.2rem 0.4rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.9em;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      color: var(--color-danger);
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid var(--color-bg);
+      padding: 0.75rem;
+      text-align: left;
+    }
+    th {
+      background: var(--color-bg);
+      font-weight: 600;
+      color: var(--color-text);
+    }
+    .info-box {
+      background: rgba(0, 120, 212, 0.1);
+      border-left: 4px solid var(--color-cpu);
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    }
+    .info-box p {
+      margin: 0;
+      color: var(--color-text);
+    }
+    .warning-box {
+      background: linear-gradient(135deg, rgba(255, 185, 0, 0.15) 0%, rgba(209, 52, 56, 0.1) 100%);
+      border-left: 4px solid var(--color-warning);
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    }
+    .warning-box p {
+      margin: 0;
+      color: var(--color-text);
+    }
+    .step-number {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      background: var(--color-primary);
+      color: white;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 28px;
+      font-weight: bold;
+      margin-right: 0.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .doc-layout {
+        flex-direction: column;
+      }
+      .doc-toc {
+        width: 100%;
+        order: -1;
+      }
+      .doc-toc-sticky {
+        position: relative;
+        top: 0;
+        max-height: none;
+      }
+      .doc-toc ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .doc-toc-item {
+        margin-bottom: 0;
+      }
+      .doc-toc-item a {
+        padding: 0.375rem 0.625rem;
+        border-left: none;
+        border-radius: var(--radius-md);
+        background: var(--color-bg);
+      }
+      .doc-toc-divider,
+      .doc-toc-section-label {
+        display: none;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .doc-layout {
+        padding: 1rem;
+      }
+      table {
+        font-size: 0.8rem;
+      }
+      th, td {
+        padding: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body class="page-docs">
+  <header>
+    <button id="hamburger-btn" class="hamburger-btn" aria-label="Open navigation menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <svg class="header-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 2L29 9.5V24.5L16 32L3 24.5V9.5L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="currentColor">JS</text>
+    </svg>
+    <h1>性能问题模拟器 - 节点24</h1>
+    <span id="sku-badge" class="sku-badge">SKU：本地</span>
+    <nav>
+      <a href="/" class="btn-panel-toggle">🏠 仪表盘</a>
+    </nav>
+  </header>
+
+  <!-- Sidebar Drawer Navigation -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+  <aside id="sidebar-drawer" class="sidebar-drawer">
+    <div class="sidebar-header">
+      <svg class="sidebar-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 2L29 9.5V24.5L16 32L3 24.5V9.5L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/>
+        <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="currentColor">JS</text>
+      </svg>
+      <h2>PerfSimNode</h2>
+      <button id="sidebar-close" class="sidebar-close" aria-label="Close navigation">×</button>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">应用</div>
+      <a href="/" class="sidebar-nav-item">
+        <span class="nav-icon">🎮</span>
+        <span class="nav-label">仪表盘<span class="nav-desc">实时指标与控制</span></span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">文献资料</div>
+      <a href="/docs.html" class="sidebar-nav-item">
+        <span class="nav-icon">📚</span>
+        <span class="nav-label">文献资料<span class="nav-desc">API 参考资料与指南</span></span>
+      </a>
+      <a href="/azure-diagnostics.html" class="sidebar-nav-item">
+        <span class="nav-icon">☁️</span>
+        <span class="nav-label">Azure 诊断<span class="nav-desc">诊断App Service问题</span></span>
+      </a>
+      <a href="/azure-load-testing.html" class="sidebar-nav-item active">
+        <span class="nav-icon">📈</span>
+        <span class="nav-label">Azure 负载测试<span class="nav-desc">载荷测试终点及参数</span></span>
+      </a>
+      <a href="/azure-deployment.html" class="sidebar-nav-item">
+        <span class="nav-icon">🚀</span>
+        <span class="nav-label">部署到 Azure<span class="nav-desc">GitHub 动作 + OIDC 设置</span></span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">外部</div>
+      <a id="github-nav-item" href="#" target="_blank" rel="noopener" class="sidebar-nav-item hidden">
+        <span class="nav-icon">🐙</span>
+        <span class="nav-label">GitHub 仓库<span class="nav-desc">源代码与问题</span></span>
+      </a>
+      <a href="/swagger" target="_blank" rel="noopener" class="sidebar-nav-item">
+        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="128" cy="128" r="128" fill="#85ea2d"/><path d="M128 40c-48.6 0-88 39.4-88 88s39.4 88 88 88 88-39.4 88-88-39.4-88-88-88zm-8 132h-16v-16h16v16zm0-32h-16V76h16v64zm32 32h-16v-16h16v16zm0-32h-16V76h16v64z" fill="#173647"/></svg></span>
+        <span class="nav-label">Swagger<span class="nav-desc">由SMARTBEAR支持。</span></span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="sidebar-build-info">建造：加载中......</div>
+    </div>
+  </aside>
+
+  <div class="doc-layout">
+    <div class="doc-main">
+      <main class="loadtest-container">
+        <div class="loadtest-header">
+          <h1>📈 Azure 负载测试指南</h1>
+          <p>为 Azure 负载测试集成设计的负载测试端点</p>
+        </div>
+
+        <!-- Overview Section -->
+        <section id="overview" class="card">
+          <h2>🔬 概述</h2>
+          <p>性能问题模拟器包含专用的负载测试终端
+            设计用于 Azure 载荷测试。该端点模拟真实感
+            应用行为在负载下会优雅地下降。          </p>
+          <p>该 <code>/api/loadtest</code> 端点设计目的是：</p>
+          <ul>
+            <li>执行持续的 CPU 功（以可配置强度交错自旋环路）</li>
+            <li>在整个请求期间保留内存缓冲区（在V8堆和原生缓冲区之间分配以获得真实压力）</li>
+            <li>随着并发请求增加（软限制模式），性能下降</li>
+            <li>当并发请求超过可配置阈值时，随机抛出异常</li>
+            <li>最终在极高负载下触发 Azure230秒的超时</li>
+          </ul>
+        </section>
+
+        <!-- Setting Up Azure Load Testing -->
+        <section id="setup" class="card">
+          <h2>⚙️ 设置 Azure 负载测试</h2>
+          <ol>
+            <li>在 Azure 门户中，创建一个 Azure 负载测试资源</li>
+            <li>创建一个新测试，并使用以下选项之一配置目标URL：</li>
+          </ol>
+
+          <h3>GET 查询参数</h3>
+          <p>直接使用目标网址——无需 JMeter 脚本：</p>
+          <pre><code># With defaults
+https://your-app.azurewebsites.net/api/loadtest
+
+# Custom parameters
+https://your-app.azurewebsites.net/api/loadtest?workIterations=2000&bufferSizeKb=50000
+
+# Event loop only (no CPU work)
+https://your-app.azurewebsites.net/api/loadtest?workIterations=0&bufferSizeKb=100</code></pre>
+
+          <ol start="3">
+            <li>配置负载模式（增加、稳态、下降）</li>
+            <li>设置 Azure 监控集成以关联指标</li>
+          </ol>
+        </section>
+
+        <!-- Query Parameters Reference -->
+        <section id="parameters" class="card">
+          <h2>📋 查询参数参考</h2>
+          <p>每个参数独立控制特定资源：</p>
+          <table>
+            <thead>
+              <tr>
+                <th>参数</th>
+                <th>默认</th>
+                <th>目标资源</th>
+                <th>描述</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>workIterations</code></td>
+                <td>700</td>
+                <td>CPU</td>
+                <td>每个工作周期的旋转循环迭代 CPU 。每周期 ms = 工作迭代次数/10。默认每个周期旋转700→70毫秒。</td>
+              </tr>
+              <tr>
+                <td><code>bufferSizeKb</code></td>
+                <td>10000</td>
+                <td>记忆</td>
+                <td>内存以KB为单位，整个请求持续时间内保持（默认为10 MB）。在V8堆和原生缓冲区之间各占一半。</td>
+              </tr>
+              <tr>
+                <td><code>baselineDelayMs</code></td>
+                <td>1000</td>
+                <td>事件循环</td>
+                <td>最小请求时长（毫秒）。 CPU 工作和睡眠交替进行。</td>
+              </tr>
+              <tr>
+                <td><code>softLimit</code></td>
+                <td>20</td>
+                <td>并发</td>
+                <td>降级开始前需同时请求。较低=降解更快。</td>
+              </tr>
+              <tr>
+                <td><code>degradationFactor</code></td>
+                <td>1000</td>
+                <td>并发</td>
+                <td>每个请求在softLimit上额外延迟（毫秒）。</td>
+              </tr>
+              <tr>
+                <td><code>errorAboveConcurrent</code></td>
+                <td>20</td>
+                <td>混沌</td>
+                <td>错误注入的并发请求阈值。当并发请求超过该值时，可能会抛出错误。默认和softLimit一样。设置为0以禁用。</td>
+              </tr>
+              <tr>
+                <td><code>errorPercent</code></td>
+                <td>20</td>
+                <td>混沌</td>
+                <td>当 errorAboveConcurrent 阈值超过时抛出随机异常的概率（0-100）。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Understanding the Soft Limit -->
+        <section id="soft-limit" class="card">
+          <h2>📊 理解软极限</h2>
+          <p>软极限形成一个退化曲线，响应时间随
+            并发请求超过阈值。降解公式为：          </p>
+          <pre><code>additionalDelay = max(0, concurrent - softLimit) × degradationFactor</code></pre>
+
+          <div class="info-box">
+            <p><strong>注：</strong> 实际响应时间会根据你当前的 Azure App Service 等级而异
+            负荷，以及其他因素。利用 Azure 负载测试来建立基线性能
+            针对你具体的环境。默认参数是为 Premium0V3 工作者调校的。
+            其他的 SKU 或工种尺寸都需要单独调校。</p>
+          </div>
+
+          <h3>降解模式示例</h3>
+          <p>默认设置下 （<code>softLimit=20</code>, <code>degradationFactor=1000</code>):</p>
+          <table>
+            <thead>
+              <tr>
+                <th>并行请求</th>
+                <th>额外延迟</th>
+                <th>预期响应时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>10</td>
+                <td>0毫秒</td>
+                <td>~1000毫秒（仅基线）</td>
+              </tr>
+              <tr>
+                <td>20</td>
+                <td>0毫秒</td>
+                <td>~1000毫秒（软限制）</td>
+              </tr>
+              <tr>
+                <td>30</td>
+                <td>10,000毫秒</td>
+                <td>~11</td>
+              </tr>
+              <tr>
+                <td>50</td>
+                <td>30,000毫秒</td>
+                <td>~31秒</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Tuning Parameters for Different Scenarios -->
+        <section id="scenarios" class="card">
+          <h2>🎛️ 不同场景的调优参数</h2>
+          <p>各种测试场景的完整参数示例：</p>
+
+          <div class="warning-box">
+            <p><strong>注：</strong> 实际响应时间会根据你当前的 Azure App Service 等级而异
+            负荷，以及其他因素。利用 Azure 负载测试来建立基线性能
+            针对你具体的环境。这些示例场景及默认情况如下
+            对于Premium0V3的工作人员来说。其他的 SKU 或工种尺寸都需要单独调校。</p>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>剧情</th>
+                <th>工作迭代</th>
+                <th>缓冲尺寸Kb</th>
+                <th>基线DelayMs</th>
+                <th>softLimit（软极限）</th>
+                <th>降解因子</th>
+                <th>目的</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>仅事件循环</td>
+                <td>0</td>
+                <td>10000</td>
+                <td>1000</td>
+                <td>20</td>
+                <td>1000</td>
+                <td>事件循环耗尽，CPU最小</td>
+              </tr>
+              <tr>
+                <td>CPU 密集课程</td>
+                <td>35000</td>
+                <td>10000</td>
+                <td>0</td>
+                <td>400</td>
+                <td>50</td>
+                <td>高 CPU，阻挡极少</td>
+              </tr>
+              <tr>
+                <td>记忆压力</td>
+                <td>70</td>
+                <td>500000</td>
+                <td>200</td>
+                <td>80</td>
+                <td>250</td>
+                <td>高内存分配（500MB/请求）</td>
+              </tr>
+              <tr>
+                <td>平衡（默认）</td>
+                <td>700</td>
+                <td>10000</td>
+                <td>1000</td>
+                <td>20</td>
+                <td>1000</td>
+                <td>资源均衡消耗</td>
+              </tr>
+              <tr>
+                <td>高并发</td>
+                <td>350</td>
+                <td>50000</td>
+                <td>400</td>
+                <td>200</td>
+                <td>100</td>
+                <td>高负载下的渐进式劣化</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>每种场景的示例网址</h3>
+          <pre><code># Event loop only
+/api/loadtest?workIterations=0&bufferSizeKb=10000&baselineDelayMs=1000&softLimit=20&degradationFactor=1000
+
+# CPU intensive
+/api/loadtest?workIterations=35000&bufferSizeKb=10000&baselineDelayMs=0&softLimit=400&degradationFactor=50
+
+# Memory pressure
+/api/loadtest?workIterations=70&bufferSizeKb=500000&baselineDelayMs=200&softLimit=80&degradationFactor=250
+
+# Balanced (default - just use without parameters)
+/api/loadtest
+
+# High concurrency
+/api/loadtest?workIterations=350&bufferSizeKb=50000&baselineDelayMs=400&softLimit=200&degradationFactor=100</code></pre>
+        </section>
+
+        <!-- Error Injection -->
+        <section id="error-injection" class="card">
+          <h2>💥 错误注入</h2>
+          <p>负载测试端点可以注入随机异常以模拟真实情况
+            应用程序失败。这由两个参数控制：          </p>
+          <ul>
+            <li><code>errorAboveConcurrent</code> （默认：20）- 错误开始前请求并发阈值（与softLimit相同）</li>
+            <li><code>errorPercent</code> （默认：20）- 达到阈值后出现错误的概率</li>
+          </ul>
+
+          <div class="info-box">
+            <p><strong>💡 基于并发的错误注入：</strong> 错误注入默认启用，并触发
+            当并发请求超过时 <code>errorAboveConcurrent</code> （默认：20，与 <code>softLimit</code>).
+            这意味着当系统在负载下开始退化时，错误自然开始发生。
+            赛场 <code>errorAboveConcurrent=0</code> 完全禁用错误注入。</p>
+          </div>
+
+          <h3>例外类型</h3>
+          <p>从一系列真实的JavaScript/Node.js异常中随机选择：</p>
+          <table>
+            <thead>
+              <tr>
+                <th>例外类型</th>
+                <th>示例消息</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>Error</code></td>
+                <td>InvalidOperationError：由于当前状态，操作无效</td>
+              </tr>
+              <tr>
+                <td><code>TypeError</code></td>
+                <td>无法读取空的属性</td>
+              </tr>
+              <tr>
+                <td><code>ReferenceError</code></td>
+                <td>对象引用未设置为对象的实例</td>
+              </tr>
+              <tr>
+                <td><code>RangeError</code></td>
+                <td>索引超出了数组范围</td>
+              </tr>
+              <tr>
+                <td><code>Error</code></td>
+                <td>超时错误：操作已超时</td>
+              </tr>
+              <tr>
+                <td><code>Error</code></td>
+                <td>IOException：无法读取传输连接的数据</td>
+              </tr>
+              <tr>
+                <td><code>Error</code></td>
+                <td>内存不足错误：内存不足以继续执行</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>混沌测试示例</h3>
+          <pre><code># Errors when concurrent requests exceed 10 (50% chance each)
+/api/loadtest?errorAboveConcurrent=10&errorPercent=50
+
+# Errors when concurrent requests exceed 25 (rare, 5% chance)
+/api/loadtest?errorAboveConcurrent=25&errorPercent=5
+
+# Disable random errors (enabled by default at softLimit)
+/api/loadtest?errorAboveConcurrent=0</code></pre>
+        </section>
+
+        <!-- Diagnosing Load Test Results -->
+        <section id="diagnosing" class="card">
+          <h2>🔍 负荷测试结果诊断</h2>
+
+          <h3>1. Application Insights 积分</h3>
+          <ul>
+            <li>前往 Application Insights >表演</li>
+            <li>按操作名称进行筛选 <code>GET /api/loadtest</code></li>
+            <li>观察响应时间百分位数（第50页，第95页，第99页）</li>
+            <li>启用错误注入时检查失败率</li>
+          </ul>
+
+          <h3>2. Azure 监测指标</h3>
+          <ul>
+            <li><strong>请求</strong> - 总请求数和速率</li>
+            <li><strong>响应时间</strong> - 平均和百分位延迟</li>
+            <li><strong>HTTP 服务器错误</strong> - 随机异常导致的5xx错误</li>
+            <li><strong>CPU 百分比</strong> - 应随负载增加</li>
+            <li><strong>记忆工作集</strong> - 应随bufferSizeKb增加</li>
+          </ul>
+
+          <h3>3. 负载测试统计端点</h3>
+          <p>测试期间查询统计端点：</p>
+          <pre><code>GET /api/loadtest/stats
+
+{
+  "currentConcurrentRequests": 127,
+  "totalRequestsProcessed": 45230,
+  "totalExceptionsThrown": 23,
+  "averageResponseTimeMs": 847.5
+}</code></pre>
+        </section>
+
+        <!-- Response Format -->
+        <section id="response" class="card">
+          <h2>📤 响应格式</h2>
+          <p>每次成功请求返回：</p>
+          <pre><code>{
+  "elapsedMs": 1247,
+  "queueTimeMs": 15,
+  "workTimeMs": 1232,
+  "concurrentRequestsAtStart": 42,
+  "degradationDelayAppliedMs": 8500,
+  "workIterationsCompleted": 700,
+  "memoryAllocatedBytes": 10240000,
+  "workCompleted": true,
+  "message": "Load test completed in 1247ms"
+}</code></pre>
+
+          <h3>响应场</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>场地</th>
+                <th>描述</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>elapsedMs</code></td>
+                <td>总请求时长（以毫秒计）（包括队列时间）</td>
+              </tr>
+              <tr>
+                <td><code>queueTimeMs</code></td>
+                <td>在事件循环队列中等待工作开始的时间</td>
+              </tr>
+              <tr>
+                <td><code>workTimeMs</code></td>
+                <td>实际工作时间（elapsedMs - queueTimeMs）</td>
+              </tr>
+              <tr>
+                <td><code>concurrentRequestsAtStart</code></td>
+                <td>请求开始时并发请求数量</td>
+              </tr>
+              <tr>
+                <td><code>degradationDelayAppliedMs</code></td>
+                <td>因超额而追加延迟</td>
+              </tr>
+              <tr>
+                <td><code>workIterationsCompleted</code></td>
+                <td>完成的 CPU 工作周期数量</td>
+              </tr>
+              <tr>
+                <td><code>memoryAllocatedBytes</code></td>
+                <td>为本次请求分配的内存缓冲区大小</td>
+              </tr>
+              <tr>
+                <td><code>workCompleted</code></td>
+                <td>所有工作是否成功完成</td>
+              </tr>
+              <tr>
+                <td><code>message</code></td>
+                <td>人类可读的完成信息</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Best Practices -->
+        <section id="best-practices" class="card">
+          <h2>✅ 最佳实践</h2>
+
+          <h3>DO：</h3>
+          <ul>
+            <li>✅ 从默认参数开始建立基线</li>
+            <li>✅ 在负载测试中监控 Azure 指标</li>
+            <li>✅ 用 /api/loadtest/stats 端点来跟踪并发</li>
+            <li>✅ 逐渐增加负载以找到断裂点</li>
+            <li>✅ 将载荷测试结果与Application Insights相关</li>
+            <li>✅ 用真实的负载模式测试（加量、稳态、减速）</li>
+          </ul>
+
+          <h3>不要这样做：</h3>
+          <ul>
+            <li>❌ 从极端参数开始</li>
+            <li>❌ 使用大缓冲区大小Kb时忽略内存度量</li>
+            <li>❌ 如果你想看到真实的失败，可以禁用错误注入（errorAboveConcurrent=0）</li>
+            <li>❌ 假设一个 SKU 的结果适用于另一个</li>
+          </ul>
+        </section>
+
+        <!-- Related Resources -->
+        <section id="resources" class="card">
+          <h2>📚 相关资源</h2>
+          <ul>
+            <li><a href="https://docs.microsoft.com/en-us/azure/load-testing/" target="_blank" rel="noopener">Azure 负载测试文档</a></li>
+            <li><a href="https://docs.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview" target="_blank" rel="noopener">Application Insights 概述</a></li>
+            <li><a href="https://docs.microsoft.com/en-us/azure/app-service/troubleshoot-performance-issues" target="_blank" rel="noopener">排查Azure App Service性能问题</a></li>
+            <li><a href="/azure-diagnostics.html">Azure 诊断指南</a> - 诊断性能问题</li>
+            <li><a href="/swagger" target="_blank" rel="noopener">API 文献资料</a> - 完整 API 参考（Swagger）</li>
+          </ul>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- Table of Contents -->
+    <aside class="doc-toc">
+      <div class="doc-toc-sticky">
+        <div class="doc-toc-card">
+          <div class="doc-toc-title">本页内容</div>
+          <ul>
+            <li class="doc-toc-item"><a href="#overview"><span class="toc-icon">🔬</span> 概述</a></li>
+            <li class="doc-toc-item"><a href="#setup"><span class="toc-icon">⚙️</span> 设置</a></li>
+            <li class="doc-toc-item"><a href="#parameters"><span class="toc-icon">📋</span> 参数</a></li>
+            <li class="doc-toc-item"><a href="#soft-limit"><span class="toc-icon">📊</span> 软限制</a></li>
+            <li class="doc-toc-item"><a href="#scenarios"><span class="toc-icon">🎛️</span> 场景</a></li>
+            <li class="doc-toc-item"><a href="#error-injection"><span class="toc-icon">💥</span> 错误注入</a></li>
+            <li class="doc-toc-item"><a href="#diagnosing"><span class="toc-icon">🔍</span> 诊断</a></li>
+            <li class="doc-toc-item"><a href="#response"><span class="toc-icon">📤</span> 反响</a></li>
+            <li class="doc-toc-item"><a href="#best-practices"><span class="toc-icon">✅</span> 最佳实践</a></li>
+            <li class="doc-toc-item"><a href="#resources"><span class="toc-icon">📚</span> 资源</a></li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <p>性能问题模拟器—— Azure App Service 诊断的教育工具</p>
+    <p id="footer-credits"></p>
+    <p id="build-info">建造：加载中......</p>
+  </footer>
+
+  <script>
+    // Hamburger menu functionality
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+    const sidebarDrawer = document.getElementById('sidebar-drawer');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const sidebarClose = document.getElementById('sidebar-close');
+
+    function openSidebar() {
+      sidebarDrawer.classList.add('active');
+      sidebarOverlay.classList.add('active');
+      hamburgerBtn.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      hamburgerBtn.classList.remove('attention');
+    }
+
+    function closeSidebar() {
+      sidebarDrawer.classList.remove('active');
+      sidebarOverlay.classList.remove('active');
+      hamburgerBtn.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    hamburgerBtn.addEventListener('click', openSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar);
+    sidebarClose.addEventListener('click', closeSidebar);
+
+    // TOC active state tracking
+    const tocLinks = document.querySelectorAll('.doc-toc-item a');
+    const sections = document.querySelectorAll('section[id]');
+
+    function updateActiveTocLink() {
+      let currentSection = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        if (window.scrollY >= sectionTop - 100) {
+          currentSection = section.id;
+        }
+      });
+      tocLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + currentSection) {
+          link.classList.add('active');
+        }
+      });
+    }
+
+    window.addEventListener('scroll', updateActiveTocLink);
+    updateActiveTocLink();
+
+    // Fetch build info and SKU
+    async function fetchBuildInfo() {
+      try {
+        const response = await fetch('/api/health/build');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.buildTime) {
+            document.getElementById('build-info').textContent = 'Build: ' + data.buildTime;
+            document.getElementById('sidebar-build-info').textContent = 'Build: ' + data.buildTime;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch build info', e);
+      }
+    }
+
+    // Load environment info for SKU badge
+    async function fetchEnvironment() {
+      try {
+        const response = await fetch('/api/health/environment');
+        if (response.ok) {
+          const env = await response.json();
+          const badge = document.getElementById('sku-badge');
+          if (badge && env.sku) badge.textContent = 'SKU: ' + env.sku;
+        }
+      } catch (e) {
+        console.error('Failed to fetch environment info', e);
+      }
+    }
+
+    // Fetch GitHub URL
+    async function fetchGitHubUrl() {
+      try {
+        const response = await fetch('/api/health/github');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.url) {
+            const githubNavItem = document.getElementById('github-nav-item');
+            githubNavItem.href = data.url;
+            githubNavItem.classList.remove('hidden');
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch GitHub URL', e);
+      }
+    }
+
+    fetchBuildInfo();
+    fetchEnvironment();
+    fetchGitHubUrl();
+  </script>
+</body>
+</html>

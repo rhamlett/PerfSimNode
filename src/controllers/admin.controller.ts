@@ -125,6 +125,7 @@ adminRouter.get('/admin/config', (_req: Request, res: Response) => {
     latencyProbeIntervalMs: config.healthProbeRateMs,
     metricsIntervalMs: config.metricsIntervalMs,
     idleTimeoutMinutes: config.idleTimeoutMinutes,
+    uiLanguage: config.uiLanguage,
   });
 });
 
@@ -151,6 +152,8 @@ adminRouter.get('/admin/events', (req: Request, res: Response) => {
       simulationId: event.simulationId,
       simulationType: event.simulationType,
       details: event.details,
+      messageKey: event.messageKey,
+      messageParams: event.messageParams,
     })),
     count: events.length,
     total: EventLogService.getCount(),

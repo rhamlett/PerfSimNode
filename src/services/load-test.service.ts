@@ -682,6 +682,14 @@ class LoadTestServiceClass {
             errorPercent: parseFloat(errorPercent),
             measurementSource: 'sidecar',
           },
+          messageKey: 'srv.loadtest.stats',
+          messageParams: {
+            requests: requestsCompleted,
+            avgMs: statsData.avgResponseTimeMs,
+            maxMs: statsData.maxResponseTimeMs,
+            rps: statsData.requestsPerSecond,
+            errorRate: errorPercent,
+          },
         }
       );
     }

@@ -91,6 +91,8 @@ class CpuStressServiceClass {
       simulationId: simulation.id,
       simulationType: 'CPU_STRESS',
       details: { intensity, durationSeconds },
+      messageKey: 'srv.cpu.started',
+      messageParams: { intensity, threads: Math.max(1, Math.round((INTENSITY_MAP[intensity] / 100) * cpus().length)), duration: durationSeconds },
     });
 
     // Start the CPU burn processes
@@ -116,6 +118,7 @@ class CpuStressServiceClass {
       EventLogService.info('SIMULATION_STOPPED', 'CPU stress simulation stopped by user', {
         simulationId: id,
         simulationType: 'CPU_STRESS',
+        messageKey: 'srv.cpu.stopped',
       });
     }
 
@@ -206,6 +209,7 @@ class CpuStressServiceClass {
         EventLogService.info('SIMULATION_COMPLETED', 'CPU stress simulation completed', {
           simulationId,
           simulationType: 'CPU_STRESS',
+          messageKey: 'srv.cpu.completed',
         });
       }
     }, durationSeconds * 1000);

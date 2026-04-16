@@ -1,0 +1,719 @@
+<!-- source_hash:e0472006d968d047 lang:zh generated:2026-04-16T18:57:06.331Z -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure 部署指南 - 性能问题模拟器</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="page-deployment">
+  <header>
+    <button id="hamburger-btn" class="hamburger-btn attention" aria-label="Open navigation menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <svg class="header-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 2L29 9.5V24.5L16 32L3 24.5V9.5L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="currentColor">JS</text>
+    </svg>
+    <h1>Azure 部署指南</h1>
+    <span id="sku-badge" class="sku-badge">SKU：本地</span>
+    <nav>
+      <a href="/" class="btn-panel-toggle">🎮 仪表盘</a>
+    </nav>
+  </header>
+
+  <!-- Sidebar Drawer Navigation -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+  <aside id="sidebar-drawer" class="sidebar-drawer">
+    <div class="sidebar-header">
+      <svg class="sidebar-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 2L29 9.5V24.5L16 32L3 24.5V9.5L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/>
+        <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="currentColor">JS</text>
+      </svg>
+      <h2>PerfSimNode</h2>
+      <button id="sidebar-close" class="sidebar-close" aria-label="Close navigation">×</button>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">应用</div>
+      <a href="/" class="sidebar-nav-item">
+        <span class="nav-icon">🎮</span>
+        <span class="nav-label">仪表盘<span class="nav-desc">实时指标与控制</span></span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">文献资料</div>
+      <a href="/docs.html" class="sidebar-nav-item">
+        <span class="nav-icon">📚</span>
+        <span class="nav-label">文献资料<span class="nav-desc">API 参考资料与指南</span></span>
+      </a>
+      <a href="/azure-diagnostics.html" class="sidebar-nav-item">
+        <span class="nav-icon">☁️</span>
+        <span class="nav-label">Azure 诊断<span class="nav-desc">诊断App Service问题</span></span>
+      </a>
+      <a href="/azure-load-testing.html" class="sidebar-nav-item">
+        <span class="nav-icon">📈</span>
+        <span class="nav-label">Azure 负载测试<span class="nav-desc">载荷测试终点及参数</span></span>
+      </a>
+      <a href="/azure-deployment.html" class="sidebar-nav-item active">
+        <span class="nav-icon">🚀</span>
+        <span class="nav-label">部署到 Azure<span class="nav-desc">GitHub 动作 + OIDC 设置</span></span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label">外部</div>
+      <a id="github-nav-item" href="#" target="_blank" rel="noopener" class="sidebar-nav-item hidden">
+        <span class="nav-icon">🐙</span>
+        <span class="nav-label">GitHub 仓库<span class="nav-desc">源代码与问题</span></span>
+      </a>
+      <a href="/swagger" target="_blank" rel="noopener" class="sidebar-nav-item">
+        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="128" cy="128" r="128" fill="#85ea2d"/><path d="M128 40c-48.6 0-88 39.4-88 88s39.4 88 88 88 88-39.4 88-88-39.4-88-88-88zm-8 132h-16v-16h16v16zm0-32h-16V76h16v64zm32 32h-16v-16h16v16zm0-32h-16V76h16v64z" fill="#173647"/></svg></span>
+        <span class="nav-label">Swagger<span class="nav-desc">由SMARTBEAR支持。</span></span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="sidebar-build-info">建造：加载中......</div>
+    </div>
+  </aside>
+
+  <div class="doc-layout">
+    <div class="doc-main">
+      <main class="deploy-container">
+        <div class="deploy-header">
+          <h1>🚀 Azure 部署指南</h1>
+          <p>部署性能问题模拟器以使用带有OIDC认证的GitHub动作Azure App Service</p>
+        </div>
+
+        <section id="overview" class="card">
+          <h2>概述</h2>
+          <p>本指南将带您了解如何使用GitHub Actions with OpenID Connect（OIDC）认证部署性能问题模拟器以Azure App Service。OIDC消除了将凭证作为秘密存储的需求。</p>
+
+          <h3>前提条件</h3>
+          <ul>
+            <li>Azure 订阅，允许创建资源</li>
+            <li>Azure AD/Entra ID 创建应用注册权限</li>
+            <li>GitHub 账号</li>
+            <li>Azure CLI安装（可选，适用于CLI方法）</li>
+          </ul>
+
+          <h3>你将创造的东西</h3>
+          <table>
+            <tr><th>资源</th><th>目的</th></tr>
+            <tr><td>Azure App Service</td><td>托管性能问题模拟器应用程序</td></tr>
+            <tr><td>Azure AD 应用注册</td><td>GitHub动作的身份OIDC</td></tr>
+            <tr><td>联邦证书</td><td>GitHub仓库链接至Azure AD</td></tr>
+            <tr><td>角色分配</td><td>授予部署权限</td></tr>
+          </table>
+        </section>
+
+        <section id="app-service" class="card">
+          <h2><span class="step-number">1</span> 创造 Azure App Service</h2>
+
+          <h3>选项A： Azure 门户</h3>
+          <ol>
+            <li><strong>导航至应用服务</strong>
+              <ul>
+                <li>前往 <a href="https://portal.azure.com" target="_blank" rel="noopener">Azure 门户</a></li>
+                <li>搜索“App Services”并选择它</li>
+                <li>咔哒 <strong>+ 创作</strong></li>
+              </ul>
+            </li>
+            <li><strong>配置基础</strong>
+              <table>
+                <tr><th>背景设定</th><th>价值</th></tr>
+                <tr><td>订阅</td><td>您的订阅</td></tr>
+                <tr><td>资源组</td><td>创建新内容或使用现有内容</td></tr>
+                <tr><td>名称</td><td><code>your-app-name</code> （必须是全局唯一的）</td></tr>
+                <tr><td>发布</td><td>代码</td></tr>
+                <tr><td>运行时栈</td><td>选择你的应用程序运行时间</td></tr>
+                <tr><td>操作系统</td><td>Windows或Linux（根据你的运行时情况）</td></tr>
+                <tr><td>地区</td><td>你偏好的地区</td></tr>
+              </table>
+            </li>
+            <li><strong>配置 App Service 计划</strong>
+              <table>
+                <tr><th>背景设定</th><th>推荐</th></tr>
+                <tr><td>SKU</td><td><strong>基础B1</strong> 或更高</td></tr>
+              </table>
+              <div class="warning-box">
+                <p><strong>⚠️ 重要提示：</strong> 免费（F1）层不支持WebSockets，而WebSockets是实时 SignalR 仪表盘更新所必需的。</p>
+              </div>
+            </li>
+            <li><strong>审核与创作</strong> - 点击创建资源</li>
+          </ol>
+
+          <h3>选项B：使用命令行Azure</h3>
+          <pre><code># Login to Azure
+az login
+
+# Set variables
+RESOURCE_GROUP="your-resource-group"
+APP_NAME="your-app-name"
+LOCATION="eastus"
+APP_SERVICE_PLAN="your-app-plan"
+RUNTIME="your-runtime"  # e.g., "dotnet:8", "node:20-lts", "python:3.11"
+
+# Create resource group
+az group create --name $RESOURCE_GROUP --location $LOCATION
+
+# Create App Service Plan (B1 for WebSocket support)
+az appservice plan create \
+  --name $APP_SERVICE_PLAN \
+  --resource-group $RESOURCE_GROUP \
+  --location $LOCATION \
+  --sku B1
+
+# Create Web App with your runtime
+az webapp create \
+  --name $APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --plan $APP_SERVICE_PLAN \
+  --runtime $RUNTIME</code></pre>
+
+          <h3>启用WebSockets</h3>
+          <p>创建后，启用 WebSockets 以实现 SignalR 实时通信：</p>
+          <ol>
+            <li>去你的 App Service → <strong>配置</strong> → <strong>一般设定</strong></li>
+            <li>赛场 <strong>网页套接字</strong> 到 <strong>关于</strong></li>
+            <li>咔哒 <strong>保存</strong></li>
+          </ol>
+          <p>或者通过CLI：</p>
+          <pre><code>az webapp config set \
+  --name $APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --web-sockets-enabled true</code></pre>
+        </section>
+
+        <section id="app-registration" class="card">
+          <h2><span class="step-number">2</span> 创建 Azure AD 应用注册</h2>
+          <p>GitHub Actions 使用 OpenID Connect（OIDC）与 Azure 进行身份验证，无需存储凭据。</p>
+
+          <h3>创建应用注册</h3>
+          <ol>
+            <li><strong>导航至应用注册</strong>
+              <ul>
+                <li>前往 <a href="https://portal.azure.com" target="_blank" rel="noopener">Azure 门户</a></li>
+                <li>搜索“应用注册”并选择它</li>
+                <li>咔哒 <strong>+ 新注册</strong></li>
+              </ul>
+            </li>
+            <li><strong>配置注册</strong>
+              <table>
+                <tr><th>背景设定</th><th>价值</th></tr>
+                <tr><td>名称</td><td><code>github-your-app-deploy</code> （你部署身份的描述性名称）</td></tr>
+                <tr><td>支持的账户类型</td><td>仅限本组织目录中的账户</td></tr>
+                <tr><td>重定向URI</td><td>空着</td></tr>
+              </table>
+            </li>
+            <li><strong>点击注册</strong></li>
+          </ol>
+
+          <h3>记录身份证</h3>
+          <p>来自 <strong>概述</strong> 页面，复制这些值（你需要它们来做 GitHub 秘密）：</p>
+          <table class="secrets-table">
+            <tr><th>价值</th><th>GitHub 秘密名字</th></tr>
+            <tr><td>应用（客户端）ID</td><td><code>AZURE_CLIENT_ID</code></td></tr>
+            <tr><td>目录（租户）ID</td><td><code>AZURE_TENANT_ID</code></td></tr>
+          </table>
+
+          <h3>获取订阅ID</h3>
+          <ol>
+            <li>前往 <strong>订阅</strong> 在 Azure 门户中</li>
+            <li>选择您的订阅</li>
+            <li>复制 <strong>订阅ID</strong> → 这是 <code>AZURE_SUBSCRIPTION_ID</code></li>
+          </ol>
+        </section>
+
+        <section id="federated-credentials" class="card">
+          <h2><span class="step-number">3</span> 配置联合凭据</h2>
+          <p>联合凭据允许 GitHub Actions 在不存储秘密的情况下进行认证。</p>
+
+          <ol>
+            <li><strong>进入您的应用注册页面</strong>
+              <ul>
+                <li>前往 <strong>证书与秘密</strong></li>
+                <li>精选 <strong>联邦资历</strong> 标签页</li>
+                <li>咔哒 <strong>+ 添加凭证</strong></li>
+              </ul>
+            </li>
+            <li><strong>配置凭证</strong>
+              <table>
+                <tr><th>背景设定</th><th>价值</th></tr>
+                <tr><td>联合凭证情景</td><td><strong>GitHub 部署 Azure 资源的行动</strong></td></tr>
+                <tr><td>组织结构</td><td>你的 GitHub 用户名或组织</td></tr>
+                <tr><td>存储库</td><td>你的仓库名称</td></tr>
+                <tr><td>实体类型</td><td><strong>分支</strong></td></tr>
+                <tr><td>GitHub 分支名称</td><td><code>main</code></td></tr>
+                <tr><td>名称</td><td><code>github-main-branch</code></td></tr>
+              </table>
+            </li>
+            <li><strong>点击添加</strong></li>
+          </ol>
+
+          <div class="info-box">
+            <p><strong>💡 注：</strong> 如果你也想从拉取请求或其他分支部署，可以添加带有相应实体类型的联邦凭证。</p>
+          </div>
+        </section>
+
+        <section id="permissions" class="card">
+          <h2><span class="step-number">4</span> 授予 Azure 权限</h2>
+          <p>应用注册需要权限才能部署到你的 App Service。</p>
+
+          <h3>分配贡献者角色</h3>
+          <ol>
+            <li><strong>导航到你的 App Service</strong>
+              <ul>
+                <li>前往 <strong>访问控制（IAM）</strong></li>
+                <li>咔哒 <strong>+ 加法</strong> → <strong>添加角色分配</strong></li>
+              </ul>
+            </li>
+            <li><strong>配置角色分配</strong>
+              <table>
+                <tr><th>背景设定</th><th>价值</th></tr>
+                <tr><td>职责</td><td><strong>撰稿人</strong></td></tr>
+                <tr><td>分配访问权限</td><td>用户、组或服务主体</td></tr>
+                <tr><td>成员</td><td>搜索您的应用注册名称</td></tr>
+              </table>
+            </li>
+            <li><strong>点击审核 + 分配</strong></li>
+          </ol>
+        </section>
+
+        <section id="github-secrets" class="card">
+          <h2><span class="step-number">5</span> 配置 GitHub 秘密</h2>
+
+          <h3>克隆仓库</h3>
+          <ol>
+            <li><strong>克隆仓库</strong>
+              <ul>
+                <li>访问你的技术栈的性能问题模拟器仓库</li>
+                <li>咔哒 <strong>代码</strong> 然后克隆以创建自己的副本</li>
+              </ul>
+            </li>
+          </ol>
+
+          <h3>添加 GitHub 秘密</h3>
+          <ol>
+            <li><strong>导航到仓库设置</strong>
+              <ul>
+                <li>访问你的仓库 GitHub</li>
+                <li>咔哒 <strong>背景设定</strong> → <strong>秘密与变量</strong> → <strong>行动</strong></li>
+                <li>咔哒 <strong>新仓库秘密</strong></li>
+              </ul>
+            </li>
+            <li><strong>添加以下秘密</strong>
+              <table class="secrets-table">
+                <tr><th>秘密名字</th><th>价值</th><th>描述</th></tr>
+                <tr><td>AZURE_CLIENT_ID</td><td><code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></td><td>应用注册客户端ID</td></tr>
+                <tr><td>AZURE_TENANT_ID</td><td><code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></td><td>Azure AD 目录/租户 ID</td></tr>
+                <tr><td>AZURE_SUBSCRIPTION_ID</td><td><code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></td><td>Azure 订阅ID</td></tr>
+              </table>
+            </li>
+          </ol>
+
+          <div class="info-box">
+            <p><strong>💡 无需客户秘密：</strong>OIDC联合凭证消除了存储客户端秘密的需求。上述三个身份证就足够了。</p>
+          </div>
+
+          <h3>更新工作流程（如有需要）</h3>
+          <p>更新 <code>.github/workflows/deploy.yml</code> 附上你的 App Service 名称和运行时版本：</p>
+          <pre><code>env:
+  AZURE_WEBAPP_NAME: your-app-service-name  # Your App Service name
+  # Add any runtime-specific version variables as needed</code></pre>
+        </section>
+
+        <section id="deploy" class="card">
+          <h2><span class="step-number">6</span> 部署</h2>
+
+          <h3>自动部署</h3>
+          <p>部署会自动触发，当你推入 <code>main</code> 分支：</p>
+          <pre><code>git add .
+git commit -m "Your changes"
+git push origin main</code></pre>
+
+          <h3>手动部署</h3>
+          <ol>
+            <li>访问你的仓库 GitHub</li>
+            <li>咔哒 <strong>行动</strong> 标签页</li>
+            <li>精选 <strong>部署到 Azure App Service</strong></li>
+            <li>咔哒 <strong>运行工作流程</strong> → <strong>运行工作流程</strong></li>
+          </ol>
+
+          <h3>验证部署</h3>
+          <ol>
+            <li><strong>打开应用网址</strong>: <code>https://&lt;your-app-name&gt;.azurewebsites.net</code></li>
+            <li><strong>Verify Dashboard</strong>：实时指标应通过 SignalR更新，状态应显示“已连接”</li>
+            <li><strong>测试健康终点</strong>:              <pre><code>curl https://&lt;your-app-name&gt;.azurewebsites.net/api/health</code></pre>
+            </li>
+          </ol>
+        </section>
+
+        <section id="optional-config" class="card">
+          <h2>可选配置</h2>
+          <p>你可以用 Azure App Service 环境变量自定义应用行为。</p>
+
+          <h3>健康探针率</h3>
+          <p>控制服务器发送健康探针的频率以测量请求延迟。所有探针都经过 Azure 前端，以捕捉真实的端到端延迟。</p>
+
+          <h4>环境变量</h4>
+          <table class="env-table">
+            <thead>
+              <tr>
+                <th>变量名称</th>
+                <th>描述</th>
+                <th>默认</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>HEALTH_PROBE_RATE</code></td>
+                <td>探测间隔以毫秒计。至少100毫秒。</td>
+                <td><code>200</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>通过 Azure CLI设置</h4>
+          <pre><code># Slow down probes if CLR profiler shows overlapping requests
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings HEALTH_PROBE_RATE=400</code></pre>
+
+          <h3>闲置暂停</h3>
+          <p>当应用程序处于空闲状态（无仪表盘连接或负载测试请求）时，健康探针会自动暂停，以减少不必要的网络流量 Azure前端和 Application Insights 遥测数据。</p>
+
+          <h4>环境变量</h4>
+          <table class="env-table">
+            <thead>
+              <tr>
+                <th>变量名称</th>
+                <th>描述</th>
+                <th>默认</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>IDLE_TIMEOUT_MINUTES</code></td>
+                <td>暂停健康探针前的几分钟不活动。当仪表盘打开或收到任何请求时，活动会自动恢复。</td>
+                <td><code>20</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>通过 Azure CLI设置</h4>
+          <pre><code># Extend idle timeout to 30 minutes
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings IDLE_TIMEOUT_MINUTES=30</code></pre>
+
+          <h3>自定义页面页脚</h3>
+          <p>设置一个自定义页脚消息，显示在所有页面上。页脚支持 HTML，允许你包含链接。</p>
+
+          <h4>环境变量</h4>
+          <table class="env-table">
+            <thead>
+              <tr>
+                <th>变量名称</th>
+                <th>描述</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>PAGE_FOOTER</code></td>
+                <td>页脚第二行的HTML内容。如果没有设置，只显示应用描述和构建信息。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>示例价值</h4>
+          <pre><code>Created by &lt;a href="https://yoursite.com"&gt;Your Team&lt;/a&gt; for training purposes</code></pre>
+
+          <h4>通过 Azure CLI设置</h4>
+          <pre><code># Set the footer via Azure CLI
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings 'PAGE_FOOTER=Created by &lt;a href="https://yoursite.com"&gt;Your Team&lt;/a&gt; for training purposes'</code></pre>
+
+          <h4>通过 Azure 门户设定</h4>
+          <ol>
+            <li>在Azure门户中导航到你的App Service</li>
+            <li>前往 <strong>背景设定</strong> → <strong>环境变量</strong></li>
+            <li>咔哒 <strong>+ 加法</strong></li>
+            <li>套装名称： <code>PAGE_FOOTER</code></li>
+            <li>设置值：你的HTML页脚内容</li>
+            <li>咔哒 <strong>申请</strong>，则 <strong>确认</strong></li>
+          </ol>
+
+          <h3>GitHub 仓库链接</h3>
+          <p>可选地在侧边栏导航菜单中显示 GitHub 仓库链接。链接默认是隐藏的。当这两个环境变量都提供时，链接会出现在菜单中并指向 <code>https://github.com/{GITHUB_USER_NAME}/{GITHUB_REPO_NAME}</code>.</p>
+
+          <h4>环境变量</h4>
+          <table class="env-table">
+            <thead>
+              <tr>
+                <th>变量名称</th>
+                <th>描述</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>GITHUB_USER_NAME</code></td>
+                <td>GitHub 用户名或组织名称。必须展示链接。</td>
+              </tr>
+              <tr>
+                <td><code>GITHUB_REPO_NAME</code></td>
+                <td>GitHub 仓库名称。必须展示链接。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>通过 Azure CLI设置</h4>
+          <pre><code># Set the GitHub link via Azure CLI
+az webapp config appsettings set --name $APP_NAME --resource-group $RESOURCE_GROUP \
+  --settings GITHUB_USER_NAME=your-username GITHUB_REPO_NAME=your-repo-name</code></pre>
+
+          <h4>通过 Azure 门户设定</h4>
+          <ol>
+            <li>在Azure门户中导航到你的App Service</li>
+            <li>前往 <strong>背景设定</strong> → <strong>环境变量</strong></li>
+            <li>咔哒 <strong>+ 加法</strong> 并集合 名称： <code>GITHUB_USER_NAME</code>， Value：您的 GitHub 用户名或组织</li>
+            <li>咔哒 <strong>+ 加法</strong> 并集合 名称： <code>GITHUB_REPO_NAME</code>， Value：你的仓库名称</li>
+            <li>咔哒 <strong>申请</strong>，则 <strong>确认</strong></li>
+          </ol>
+        </section>
+
+        <section id="troubleshooting" class="card">
+          <h2>故障排除</h2>
+
+          <h3>SignalR 连接失败</h3>
+          <p><strong>症状：</strong> 仪表盘显示“断开连接”，图表不会实时更新</p>
+          <p><strong>解决方案：</strong></p>
+          <ul>
+            <li>确保 App Service 配置中启用了WebSockets</li>
+            <li>从免费等级升级到基础级或更高等级</li>
+            <li>检查ARR亲和力是否被启用（设置→配置→通用设置）</li>
+          </ul>
+
+          <h3>OIDC 认证失败</h3>
+          <p><strong>症状：</strong>GitHub 操作在“登录到Azure”步骤失败</p>
+          <p><strong>检查：</strong></p>
+          <ul>
+            <li>确认三个秘密都设置正确</li>
+            <li>确认联邦凭证主题与你的仓库/分支机构匹配： <code>repo:USERNAME/REPO:ref:refs/heads/main</code></li>
+            <li>确保应用注册在App Service中扮演贡献者角色</li>
+          </ul>
+
+          <h3>启动时应用崩溃</h3>
+          <p><strong>症状：</strong> 应用显示“应用错误”或没有响应</p>
+          <p><strong>检查：</strong></p>
+          <ul>
+            <li>在 Azure 门户中查看日志流（App Service →日志流）</li>
+            <li>在 App Service → App Service 日志中启用应用日志</li>
+            <li>验证运行时版本是否符合你的应用需求</li>
+            <li>检查缺少配置或环境变量</li>
+          </ul>
+
+          <h3>查看日志</h3>
+          <pre><code># Stream live logs
+az webapp log tail --name $APP_NAME --resource-group $RESOURCE_GROUP
+
+# View deployment logs
+az webapp log deployment show --name $APP_NAME --resource-group $RESOURCE_GROUP</code></pre>
+        </section>
+
+        <section id="quick-reference" class="card">
+          <h2>快速参考 - CLI 一行</h2>
+          <p>完整的设置脚本（顶部可自定义变量）：</p>
+          <pre><code># Full setup (customize variables at top)
+RESOURCE_GROUP="your-resource-group"
+APP_NAME="your-app-name"
+LOCATION="eastus"
+RUNTIME="your-runtime"  # e.g., "dotnet:8", "node:20-lts", "python:3.11"
+GITHUB_REPO="YOUR_USERNAME/YOUR_REPO"
+
+# Create resources
+az group create -n $RESOURCE_GROUP -l $LOCATION
+az appservice plan create -n "${APP_NAME}-plan" -g $RESOURCE_GROUP -l $LOCATION --sku B1
+az webapp create -n $APP_NAME -g $RESOURCE_GROUP -p "${APP_NAME}-plan" --runtime $RUNTIME
+az webapp config set -n $APP_NAME -g $RESOURCE_GROUP --web-sockets-enabled true
+
+# Create App Registration and get IDs
+APP_ID=$(az ad app create --display-name "github-${APP_NAME}-deploy" --query appId -o tsv)
+az ad sp create --id $APP_ID
+TENANT_ID=$(az account show --query tenantId -o tsv)
+SUB_ID=$(az account show --query id -o tsv)
+
+# Create federated credential
+az ad app federated-credential create --id $APP_ID --parameters "{
+  \"name\": \"github-main-branch\",
+  \"issuer\": \"https://token.actions.githubusercontent.com\",
+  \"subject\": \"repo:${GITHUB_REPO}:ref:refs/heads/main\",
+  \"audiences\": [\"api://AzureADTokenExchange\"]
+}"
+
+# Assign permissions
+APP_SERVICE_ID=$(az webapp show -n $APP_NAME -g $RESOURCE_GROUP --query id -o tsv)
+az role assignment create --assignee $APP_ID --role Contributor --scope $APP_SERVICE_ID
+
+# Output secrets for GitHub
+echo "AZURE_CLIENT_ID=$APP_ID"
+echo "AZURE_TENANT_ID=$TENANT_ID"
+echo "AZURE_SUBSCRIPTION_ID=$SUB_ID"</code></pre>
+        </section>
+      </main>
+    </div><!-- /.doc-main -->
+
+    <!-- Right Sidebar Table of Contents -->
+    <aside class="doc-toc">
+      <div class="doc-toc-sticky">
+        <nav class="doc-toc-card">
+          <div class="doc-toc-title">本页内容</div>
+          <ul>
+            <li class="doc-toc-item">
+              <a href="#overview"><span class="toc-icon">📋</span>概述</a>
+            </li>
+            <li class="doc-toc-divider" aria-hidden="true"></li>
+            <li class="doc-toc-section-label" aria-hidden="true">设置步骤</li>
+            <li class="doc-toc-item">
+              <a href="#app-service"><span class="toc-icon">1️！</span>创造 App Service</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#app-registration"><span class="toc-icon">2️！</span>应用注册</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#federated-credentials"><span class="toc-icon">3️！</span>联邦信用</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#permissions"><span class="toc-icon">4️！</span>权限</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#github-secrets"><span class="toc-icon">5️！</span>GitHub 秘密</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#deploy"><span class="toc-icon">6️！</span>部署</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#optional-config"><span class="toc-icon">⚙️</span>可选配置</a>
+            </li>
+            <li class="doc-toc-divider" aria-hidden="true"></li>
+            <li class="doc-toc-section-label" aria-hidden="true">参考文献</li>
+            <li class="doc-toc-item">
+              <a href="#troubleshooting"><span class="toc-icon">🔧</span>故障排除</a>
+            </li>
+            <li class="doc-toc-item">
+              <a href="#quick-reference"><span class="toc-icon">📝</span>快速参考</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </aside>
+  </div><!-- /.doc-layout -->
+
+  <footer>
+    <p>性能问题模拟器—— Azure App Service 诊断的教育工具</p>
+    <p id="footer-credits"></p>
+    <p id="build-info">建造：加载中......</p>
+  </footer>
+
+  <script>
+    // Load environment info for SKU badge
+    fetch('/api/health/environment')
+      .then(r => r.json())
+      .then(env => {
+        const badge = document.getElementById('sku-badge');
+        if (badge) badge.textContent = 'SKU: ' + env.sku;
+      })
+      .catch(() => {});
+
+    // Load footer info (credits and build time)
+    fetch('/api/health/footer')
+      .then(r => r.json())
+      .then(data => {
+        const footerCredits = document.getElementById('footer-credits');
+        if (footerCredits) {
+          if (data.footer) {
+            footerCredits.innerHTML = data.footer;
+          } else {
+            footerCredits.style.display = 'none';
+          }
+        }
+        const buildInfo = document.getElementById('build-info');
+        if (buildInfo) buildInfo.textContent = 'Build: ' + data.buildTime;
+      })
+      .catch(() => {});
+
+    // Sidebar drawer toggle
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const sidebarDrawer = document.getElementById('sidebar-drawer');
+    const sidebarClose = document.getElementById('sidebar-close');
+
+    function openSidebar() {
+      hamburgerBtn.classList.remove('attention');
+      hamburgerBtn.classList.add('active');
+      sidebarOverlay.classList.add('active');
+      sidebarDrawer.classList.add('active');
+    }
+
+    function closeSidebar() {
+      hamburgerBtn.classList.remove('active');
+      sidebarOverlay.classList.remove('active');
+      sidebarDrawer.classList.remove('active');
+    }
+
+    hamburgerBtn.addEventListener('click', openSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar);
+    sidebarClose.addEventListener('click', closeSidebar);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeSidebar();
+    });
+
+    // Load GitHub link configuration
+    fetch('/api/health/github')
+      .then(r => r.json())
+      .then(data => {
+        const githubLink = document.getElementById('github-nav-item');
+        if (githubLink && data.url) {
+          githubLink.href = data.url;
+          githubLink.classList.remove('hidden');
+        }
+      })
+      .catch(() => {});
+
+    // Sync build info to sidebar when it updates
+    const buildInfoEl = document.getElementById('build-info');
+    const sidebarBuildInfo = document.getElementById('sidebar-build-info');
+    const observer = new MutationObserver(() => {
+      sidebarBuildInfo.textContent = buildInfoEl.textContent;
+    });
+    observer.observe(buildInfoEl, { childList: true, characterData: true, subtree: true });
+
+    // Scroll-spy: highlight active section in right sidebar
+    (function() {
+      const tocLinks = document.querySelectorAll('.doc-toc-item a');
+      const sections = document.querySelectorAll('.card');
+
+      function updateActiveTocLink() {
+        const scrollPos = window.scrollY + 120;
+
+        sections.forEach(section => {
+          const sectionTop = section.offsetTop;
+          const sectionHeight = section.offsetHeight;
+          const sectionId = section.getAttribute('id');
+
+          if (sectionId && scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+            tocLinks.forEach(link => {
+              link.classList.remove('active');
+              if (link.getAttribute('href') === '#' + sectionId) {
+                link.classList.add('active');
+              }
+            });
+          }
+        });
+      }
+
+      window.addEventListener('scroll', updateActiveTocLink);
+      updateActiveTocLink(); // Initial call
+    })();
+  </script>
+</body>
+</html>

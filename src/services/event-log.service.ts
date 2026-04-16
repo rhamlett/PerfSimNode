@@ -75,6 +75,8 @@ class EventLogServiceClass {
       simulationId?: string;
       simulationType?: SimulationType;
       details?: Record<string, unknown>;
+      messageKey?: string;
+      messageParams?: Record<string, unknown>;
     } = {}
   ): EventLogEntry {
     const entry: EventLogEntry = {
@@ -86,6 +88,8 @@ class EventLogServiceClass {
       event,
       message,
       details: options.details ?? null,
+      messageKey: options.messageKey,
+      messageParams: options.messageParams,
     };
 
     this.entries.push(entry);
@@ -123,6 +127,8 @@ class EventLogServiceClass {
       simulationId?: string;
       simulationType?: SimulationType;
       details?: Record<string, unknown>;
+      messageKey?: string;
+      messageParams?: Record<string, unknown>;
     }
   ): EventLogEntry {
     return this.log(event, message, { ...options, level: 'info' });
@@ -143,6 +149,8 @@ class EventLogServiceClass {
       simulationId?: string;
       simulationType?: SimulationType;
       details?: Record<string, unknown>;
+      messageKey?: string;
+      messageParams?: Record<string, unknown>;
     }
   ): EventLogEntry {
     return this.log(event, message, { ...options, level: 'warn' });
@@ -163,6 +171,8 @@ class EventLogServiceClass {
       simulationId?: string;
       simulationType?: SimulationType;
       details?: Record<string, unknown>;
+      messageKey?: string;
+      messageParams?: Record<string, unknown>;
     }
   ): EventLogEntry {
     return this.log(event, message, { ...options, level: 'error' });

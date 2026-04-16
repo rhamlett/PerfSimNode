@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Performance Problem Simulator - Node 24</title>
+  <title data-i18n="page.title">Performance Problem Simulator - Node 24</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/css/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -20,12 +20,12 @@
       <path d="M16 2L29 9.5V24.5L16 32L3 24.5V9.5L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/>
       <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="currentColor">JS</text>
     </svg>
-    <h1>Performance Problem Simulator - Node 24</h1>
-    <span id="sku-badge" class="sku-badge">SKU: Local</span>
+    <h1 data-i18n="header.title">Performance Problem Simulator - Node 24</h1>
+    <span id="sku-badge" class="sku-badge">SKU: Loading...</span>
     <nav>
-      <button id="toggle-panel" class="btn-panel-toggle">🎮 Simulation Controls</button>
+      <button id="toggle-panel" class="btn-panel-toggle" data-i18n="header.simControls">🎮 Simulation Controls</button>
     </nav>
-    <div id="connection-status" class="status-disconnected">Disconnected</div>
+    <div id="connection-status" class="status-disconnected" data-i18n="header.disconnected">Disconnected</div>
   </header>
 
   <!-- Sidebar Drawer Navigation -->
@@ -40,38 +40,38 @@
       <button id="sidebar-close" class="sidebar-close" aria-label="Close navigation">&times;</button>
     </div>
     <nav class="sidebar-nav">
-      <div class="sidebar-section-label">Application</div>
+      <div class="sidebar-section-label" data-i18n="nav.sectionApp">Application</div>
       <a href="/" class="sidebar-nav-item active">
         <span class="nav-icon">🎮</span>
-        <span class="nav-label">Dashboard<span class="nav-desc">Live metrics & controls</span></span>
+        <span class="nav-label"><span data-i18n="nav.dashboard">Dashboard</span><span class="nav-desc" data-i18n="nav.dashboardDesc">Live metrics & controls</span></span>
       </a>
       <div class="sidebar-divider"></div>
-      <div class="sidebar-section-label">Documentation</div>
+      <div class="sidebar-section-label" data-i18n="nav.sectionDocs">Documentation</div>
       <a href="/docs.html" class="sidebar-nav-item">
         <span class="nav-icon">📚</span>
-        <span class="nav-label">Documentation<span class="nav-desc">API reference & guides</span></span>
+        <span class="nav-label"><span data-i18n="nav.documentation">Documentation</span><span class="nav-desc" data-i18n="nav.documentationDesc">API reference & guides</span></span>
       </a>
       <a href="/azure-diagnostics.html" class="sidebar-nav-item">
         <span class="nav-icon">☁️</span>
-        <span class="nav-label">Azure Diagnostics<span class="nav-desc">Diagnose issues in App Service</span></span>
+        <span class="nav-label"><span data-i18n="nav.diagnostics">Azure Diagnostics</span><span class="nav-desc" data-i18n="nav.diagnosticsDesc">Diagnose issues in App Service</span></span>
       </a>
       <a href="/azure-load-testing.html" class="sidebar-nav-item">
         <span class="nav-icon">📈</span>
-        <span class="nav-label">Azure Load Testing<span class="nav-desc">Load test endpoint & parameters</span></span>
+        <span class="nav-label"><span data-i18n="nav.loadTesting">Azure Load Testing</span><span class="nav-desc" data-i18n="nav.loadTestingDesc">Load test endpoint & parameters</span></span>
       </a>
       <a href="/azure-deployment.html" class="sidebar-nav-item">
         <span class="nav-icon">🚀</span>
-        <span class="nav-label">Deploy to Azure<span class="nav-desc">GitHub Actions + OIDC setup</span></span>
+        <span class="nav-label"><span data-i18n="nav.deploy">Deploy to Azure</span><span class="nav-desc" data-i18n="nav.deployDesc">GitHub Actions + OIDC setup</span></span>
       </a>
       <div class="sidebar-divider"></div>
-      <div class="sidebar-section-label">External</div>
+      <div class="sidebar-section-label" data-i18n="nav.sectionExternal">External</div>
       <a id="github-nav-item" href="#" target="_blank" rel="noopener" class="sidebar-nav-item hidden">
         <span class="nav-icon">🐙</span>
-        <span class="nav-label">GitHub Repository<span class="nav-desc">Source code & issues</span></span>
+        <span class="nav-label"><span data-i18n="nav.github">GitHub Repository</span><span class="nav-desc" data-i18n="nav.githubDesc">Source code & issues</span></span>
       </a>
       <a href="/swagger" target="_blank" rel="noopener" class="sidebar-nav-item">
         <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="128" cy="128" r="128" fill="#85ea2d"/><path d="M128 40c-48.6 0-88 39.4-88 88s39.4 88 88 88 88-39.4 88-88-39.4-88-88-88zm-8 132h-16v-16h16v16zm0-32h-16V76h16v64zm32 32h-16v-16h16v16zm0-32h-16V76h16v64z" fill="#173647"/></svg></span>
-        <span class="nav-label">Swagger<span class="nav-desc">Supported by SMARTBEAR</span></span>
+        <span class="nav-label"><span>Swagger</span><span class="nav-desc">Supported by SMARTBEAR</span></span>
       </a>
     </nav>
     <div class="sidebar-footer">
@@ -88,8 +88,8 @@
             <div class="tile-content">
               <div class="tile-icon">⚡</div>
               <div class="tile-info">
-                <span class="tile-label">CPU Usage <span class="info-icon-small" title="Sampled at 250ms using os.cpus() for system-wide measurement. Fluctuations at idle are normal due to GC, probes, and container scheduling. Focus on trends during simulations.">ⓘ</span></span>
-                <div class="tile-value"><span id="cpu-value">0.0</span> <span class="tile-unit">%</span></div>
+                <span class="tile-label" data-i18n="metrics.cpu.label">CPU Usage <span class="info-icon-small" data-i18n-title="metrics.cpu.tooltip" title="Sampled at 250ms using os.cpus() for system-wide measurement. Fluctuations at idle are normal due to GC, probes, and container scheduling. Focus on trends during simulations.">ⓘ</span></span>
+                <div class="tile-value"><span id="cpu-value">0.0</span> <span class="tile-unit" data-i18n="metrics.cpu.unit">%</span></div>
               </div>
             </div>
             <div class="metric-bar"><div class="metric-bar-fill" id="cpu-bar"></div></div>
@@ -98,7 +98,7 @@
             <div class="tile-content">
               <div class="tile-icon">📊</div>
               <div class="tile-info">
-                <span class="tile-label">Memory Working Set <span class="info-icon-small" title="Host memory available to the container. On Azure App Service, this may exceed the SKU's advertised RAM due to shared VM resources.">ⓘ</span></span>
+                <span class="tile-label" data-i18n="metrics.memory.label">Memory Working Set <span class="info-icon-small" data-i18n-title="metrics.memory.tooltip" title="Host memory available to the container. On Azure App Service, this may exceed the SKU's advertised RAM due to shared VM resources.">ⓘ</span></span>
                 <div class="tile-value"><span id="memory-value">0</span> <span class="tile-unit">MB</span> <span id="memory-total" class="tile-subtext">of -- GB</span></div>
               </div>
             </div>
@@ -108,7 +108,7 @@
             <div class="tile-content">
               <div class="tile-icon">🧵</div>
               <div class="tile-info">
-                <span class="tile-label">Event Loop Lag <span class="info-icon-small" title="Time callbacks wait in the event loop queue before executing. High values indicate blocking operations preventing Node.js from processing work.">ⓘ</span></span>
+                <span class="tile-label" data-i18n="metrics.threads.label">Event Loop Lag <span class="info-icon-small" data-i18n-title="metrics.threads.tooltip" title="Time callbacks wait in the event loop queue before executing. High values indicate blocking operations preventing Node.js from processing work.">ⓘ</span></span>
                 <div class="tile-value"><span id="eventloop-value">0.0</span> <span class="tile-unit">ms</span></div>
               </div>
             </div>
@@ -118,7 +118,7 @@
             <div class="tile-content">
               <div class="tile-icon">📋</div>
               <div class="tile-info">
-                <span class="tile-label">RSS Memory <span class="info-icon-small" title="Resident Set Size: Total memory allocated to the process, including heap, stack, and shared libraries">ⓘ</span></span>
+                <span class="tile-label" data-i18n="metrics.queue.label">RSS Memory <span class="info-icon-small" data-i18n-title="metrics.queue.tooltip" title="Resident Set Size: Total memory allocated to the process, including heap, stack, and shared libraries">ⓘ</span></span>
                 <div class="tile-value"><span id="rss-value">0</span> <span class="tile-unit">MB</span></div>
               </div>
             </div>
@@ -131,7 +131,7 @@
       <section id="charts-section">
         <div class="charts-grid">
           <div class="chart-card">
-            <h3>📈 CPU & Memory Over Time</h3>
+            <h3 data-i18n="charts.cpuMemory">📈 CPU & Memory Over Time</h3>
             <div class="chart-legend">
               <span class="legend-item"><span class="legend-color cpu"></span> CPU %</span>
               <span class="legend-item"><span class="legend-color memory"></span> Memory MB</span>
@@ -139,7 +139,7 @@
             <canvas id="cpu-memory-chart"></canvas>
           </div>
           <div class="chart-card">
-            <h3>🧵 Event Loop & RSS Memory</h3>
+            <h3 data-i18n="charts.threadPool">🧵 Event Loop & RSS Memory</h3>
             <div class="chart-legend">
               <span class="legend-item"><span class="legend-color eventloop"></span> Lag (ms)</span>
               <span class="legend-item"><span class="legend-color rss"></span> RSS (MB)</span>
@@ -152,35 +152,35 @@
       <!-- Request Latency Monitor -->
       <section id="latency-section">
         <div class="latency-card">
-          <h3>⏱️ Request Latency Monitor <span id="probe-visualization" class="probe-visualization-inline" title="Probe history: Green=good (<150ms), Yellow=degraded (150ms-1s), Orange=slow (>1s), Red=failed/timeout"></span></h3>
-          <p class="latency-description">Measures actual response time to a lightweight probe endpoint. Times include server processing and queue time.</p>
+          <h3>⏱️ <span data-i18n="latency.title">Request Latency Monitor</span> <span id="probe-visualization" class="probe-visualization-inline" title="Probe history: Green=good (<150ms), Yellow=degraded (150ms-1s), Orange=slow (>1s), Red=failed/timeout"></span></h3>
+          <p class="latency-description" data-i18n="latency.desc">Measures actual response time to a lightweight probe endpoint. Times include server processing and queue time.</p>
           
           <div class="latency-stats">
             <div class="latency-stat">
-              <span class="stat-label">CURRENT</span>
+              <span class="stat-label" data-i18n="latency.current">CURRENT</span>
               <span class="stat-value" id="latency-current">0.0ms</span>
             </div>
             <div class="latency-stat">
-              <span class="stat-label">AVG (60S)</span>
+              <span class="stat-label" data-i18n="latency.avg">AVG (60S)</span>
               <span class="stat-value" id="latency-avg">0.0ms</span>
             </div>
             <div class="latency-stat">
-              <span class="stat-label">MAX (60S)</span>
+              <span class="stat-label" data-i18n="latency.max">MAX (60S)</span>
               <span class="stat-value warning" id="latency-max">0.0ms</span>
             </div>
             <div class="latency-stat">
-              <span class="stat-label">CRITICAL (>30S)</span>
+              <span class="stat-label" data-i18n="latency.critical">CRITICAL (&gt;30S)</span>
               <span class="stat-value" id="latency-critical">0</span>
             </div>
           </div>
           <div class="thresholds">
-            <span class="threshold-label">Thresholds:</span>
-            <span class="threshold good">● Good (&lt;150ms)</span>
-            <span class="threshold degraded">● Degraded (150ms-1s)</span>
-            <span class="threshold severe">● Severe (&gt;1s)</span>
-            <span class="threshold critical">● Critical (&gt;30s)</span>
+            <span class="threshold-label" data-i18n="latency.thresholds">Thresholds:</span>
+            <span class="threshold good" data-i18n="latency.good">● Good (&lt;150ms)</span>
+            <span class="threshold degraded" data-i18n="latency.degraded">● Degraded (150ms-1s)</span>
+            <span class="threshold severe" data-i18n="latency.severe">● Severe (&gt;1s)</span>
+            <span class="threshold critical" data-i18n="latency.criticalThreshold">● Critical (&gt;30s)</span>
           </div>
-          <h4>📊 Response Latency Over Time</h4>
+          <h4 data-i18n="latency.chart">📊 Response Latency Over Time</h4>
           <div class="latency-chart-container">
             <canvas id="latency-chart"></canvas>
             <div id="slow-status" class="slow-status"></div>
@@ -191,9 +191,9 @@
       <!-- Active Simulations -->
       <section id="active-section">
         <div class="active-card">
-          <h3>🏃 Active Simulations</h3>
+          <h3 data-i18n="activeSims.title">🏃 Active Simulations</h3>
           <div id="active-simulations-list">
-            <p class="no-simulations">No active simulations</p>
+            <p class="no-simulations" data-i18n="activeSims.none">No active simulations</p>
           </div>
         </div>
       </section>
@@ -202,9 +202,9 @@
       <section id="events-section">
         <div class="event-log-card">
           <div class="event-log-header">
-            <h3>📜 Event Log</h3>
+            <h3 data-i18n="eventLog.title">📜 Event Log</h3>
             <button id="copy-event-log-btn" class="copy-btn" title="Copy to clipboard">
-              <span class="copy-icon">📋</span> Copy
+              <span class="copy-icon">📋</span> <span data-i18n="eventLog.copy">Copy</span>
             </button>
           </div>
           <div id="event-log" class="event-log"></div>
@@ -215,29 +215,29 @@
     <!-- Side Panel for Simulation Controls -->
     <aside id="simulation-panel" class="side-panel">
       <div class="panel-header">
-        <h2>🎮 Simulation Controls</h2>
+        <h2 data-i18n="sim.title">🎮 Simulation Controls</h2>
         <button id="close-panel" class="close-btn">✕</button>
       </div>
       <div class="panel-content">
         <!-- CPU Stress -->
         <div class="control-section cpu-section">
-          <h3>🔥 CPU Stress <span class="info-icon" title="Uses child_process.fork() to spawn separate OS processes. Each process runs 100% on a CPU core.">ℹ️</span></h3>
-          <p class="control-description">Spawns child processes running crypto.pbkdf2Sync(). Server stays responsive - work is isolated from the event loop.</p>
+          <h3>🔥 <span data-i18n="sim.cpu.title">CPU Stress</span> <span class="info-icon" data-i18n-title="sim.cpu.tooltip" title="Uses child_process.fork() to spawn separate OS processes. Each process runs 100% on a CPU core.">ℹ️</span></h3>
+          <p class="control-description" data-i18n="sim.cpu.desc">Spawns child processes running crypto.pbkdf2Sync(). Server stays responsive - work is isolated from the event loop.</p>
           <form id="cpu-form">
             <label>
-              Duration (s):
+              <span data-i18n="sim.cpu.duration">Duration (s):</span>
               <input type="number" name="durationSeconds" value="30">
             </label>
             <label>
-              Intensity:
+              <span data-i18n="sim.cpu.intensity">Intensity:</span>
               <select name="intensity" class="wide-select">
-                <option value="moderate">Moderate</option>
-                <option value="high" selected>High</option>
+                <option value="moderate" data-i18n="sim.cpu.moderate">Moderate</option>
+                <option value="high" selected data-i18n="sim.cpu.high">High</option>
               </select>
             </label>
             <div class="btn-group">
-              <button type="submit" class="btn-trigger btn-cpu">🔥 Trigger CPU Stress</button>
-              <button type="button" class="btn-stop-red" id="cpu-stop-btn" onclick="stopAllCpuSimulations()">⬜ Stop</button>
+              <button type="submit" class="btn-trigger btn-cpu" data-i18n="sim.cpu.trigger">🔥 Trigger CPU Stress</button>
+              <button type="button" class="btn-stop-red" id="cpu-stop-btn" onclick="stopAllCpuSimulations()" data-i18n="sim.cpu.stop">⬜ Stop</button>
             </div>
           </form>
           <div id="cpu-active" class="active-simulations"></div>
@@ -245,16 +245,16 @@
 
         <!-- Memory Pressure -->
         <div class="control-section memory-section">
-          <h3>📊 Memory Pressure <span class="info-icon" title="Memory is held until released. Multiple allocations stack. Watch for GC pauses (brief event loop lag spikes).">ℹ️</span></h3>
-          <p class="control-description">Allocates Buffer blocks filled with random data. Multiple allocations stack - mimics gradual memory leak.</p>
+          <h3>📊 <span data-i18n="sim.memory.title">Memory Pressure</span> <span class="info-icon" data-i18n-title="sim.memory.tooltip" title="Memory is held until released. Multiple allocations stack. Watch for GC pauses (brief event loop lag spikes).">ℹ️</span></h3>
+          <p class="control-description" data-i18n="sim.memory.desc">Allocates Buffer blocks filled with random data. Multiple allocations stack - mimics gradual memory leak.</p>
           <form id="memory-form">
             <label>
-              Size (MB):
+              <span data-i18n="sim.memory.size">Size (MB):</span>
               <input type="number" name="sizeMb" value="512">
             </label>
             <div class="btn-group">
-              <button type="submit" class="btn-trigger btn-memory">📈 Allocate</button>
-              <button type="button" id="release-all-memory" class="btn-release">🗑️ Release</button>
+              <button type="submit" class="btn-trigger btn-memory" data-i18n="sim.memory.allocate">📈 Allocate</button>
+              <button type="button" id="release-all-memory" class="btn-release" data-i18n="sim.memory.release">🗑️ Release</button>
             </div>
           </form>
           <div id="memory-active" class="active-simulations"></div>
@@ -262,8 +262,8 @@
 
         <!-- Event Loop Blocking -->
         <div class="control-section eventloop-section">
-          <h3>🧵 Event Loop Blocking <span class="info-icon" title="Unlike CPU Stress (child processes), this runs IN the main thread. Server becomes completely unresponsive!">⚠️</span></h3>
-          <p class="control-description">Runs synchronous crypto in the main thread in repeated chunks. Between chunks, a brief yield lets probe data flush so you see latency spikes in real-time.</p>
+          <h3>🧵 <span data-i18n="sim.thread.title">Event Loop Blocking</span> <span class="info-icon" data-i18n-title="sim.thread.tooltip" title="Unlike CPU Stress (child processes), this runs IN the main thread. Server becomes completely unresponsive!">⚠️</span></h3>
+          <p class="control-description" data-i18n="sim.thread.desc">Runs synchronous crypto in the main thread in repeated chunks. Between chunks, a brief yield lets probe data flush so you see latency spikes in real-time.</p>
           <div class="eventloop-education">
             <strong>What to observe:</strong>
             <ul>
@@ -274,89 +274,90 @@
           </div>
           <form id="eventloop-form">
             <label>
-              Block Duration (s):
+              <span data-i18n="sim.thread.duration">Block Duration (s):</span>
               <input type="number" name="durationSeconds" value="5">
             </label>
             <label>
-              Chunk (ms):
+              <span data-i18n="sim.thread.chunk">Chunk (ms):</span>
               <input type="number" name="chunkMs" value="200" title="Duration of each blocking chunk. Between chunks, queued I/O flushes so the dashboard updates in real-time. Larger = more severe spikes, smaller = smoother chart.">
             </label>
-            <button type="submit" class="btn-trigger btn-eventloop">🧵 Block Event Loop</button>
+            <button type="submit" class="btn-trigger btn-eventloop" data-i18n="sim.thread.trigger">🧵 Block Event Loop</button>
           </form>
           <div id="eventloop-impact" class="eventloop-impact"></div>
         </div>
 
         <!-- Slow Requests -->
         <div class="control-section slow-section">
-          <h3>🐌 Slow Requests <span class="info-icon" title="Simulates slow responses with randomly selected blocking patterns">ℹ️</span></h3>
-          <p class="control-description">Simulates slow HTTP responses. Blocking pattern is randomly selected (setTimeout, libuv, or worker).</p>
+          <h3>🐌 <span data-i18n="sim.slow.title">Slow Requests</span> <span class="info-icon" data-i18n-title="sim.slow.tooltip" title="Simulates slow responses with randomly selected blocking patterns">ℹ️</span></h3>
+          <p class="control-description" data-i18n="sim.slow.desc">Simulates slow HTTP responses. Blocking pattern is randomly selected (setTimeout, libuv, or worker).</p>
           <div class="slow-note">
-            ⚠️ Note: Requests exceeding 30 seconds total time (queue + execution) are flagged as critical
+            ⚠️ <span data-i18n="sim.slow.timeoutWarning">Note: Requests exceeding 30 seconds total time (queue + execution) are flagged as critical</span>
           </div>
           <form id="slow-form">
             <label>
-              Request Execution Time (s) <span class="info-icon" title="Time for each request">ⓘ</span>:
+              <span data-i18n="sim.slow.execTime">Request Execution Time (s)</span> <span class="info-icon" data-i18n-title="sim.slow.execTimeHelp" title="Time for each request">ⓘ</span>:
               <input type="number" name="delaySeconds" value="10">
             </label>
             <label>
-              Interval (s):
+              <span data-i18n="sim.slow.interval">Interval (s):</span>
               <input type="number" name="intervalSeconds" value="5">
             </label>
             <label>
-              Max Requests:
+              <span data-i18n="sim.slow.maxRequests">Max Requests:</span>
               <input type="number" name="maxRequests" value="3">
             </label>
             <div class="btn-group">
-              <button type="submit" class="btn-trigger btn-slow">🐌 Start Slow Requests</button>
-              <button type="button" id="stop-slow-requests" class="btn-stop">⬛ Stop</button>
+              <button type="submit" class="btn-trigger btn-slow" data-i18n="sim.slow.start">🐌 Start Slow Requests</button>
+              <button type="button" id="stop-slow-requests" class="btn-stop" data-i18n="sim.slow.stop">⬛ Stop</button>
             </div>
           </form>
         </div>
 
         <!-- Failed Requests -->
         <div class="control-section failed-section">
-          <h3>❌ Failed Requests <span class="info-icon" title="Generates HTTP 5xx errors for testing error monitoring in Azure AppLens">ℹ️</span></h3>
-          <p class="control-description">Generates HTTP 500 errors by injecting failures into server requests. Errors appear in Azure AppLens and Application Insights.</p>
+          <h3>❌ <span data-i18n="sim.failed.title">Failed Requests</span> <span class="info-icon" data-i18n-title="sim.failed.tooltip" title="Generates HTTP 5xx errors for testing error monitoring in Azure AppLens">ℹ️</span></h3>
+          <p class="control-description" data-i18n="sim.failed.desc">Generates HTTP 500 errors by injecting failures into server requests. Errors appear in Azure AppLens and Application Insights.</p>
           <div class="failed-note">
-            ⚠️ Each request does real work before failing, making errors visible in latency monitoring
+            ⚠️ <span data-i18n="sim.failed.infoNoteText">Each request does real work before failing, making errors visible in latency monitoring</span>
           </div>
           <form id="failed-form">
             <label>
-              Number of Errors:
+              <span data-i18n="sim.failed.errorCount">Number of Errors:</span>
               <input type="number" name="requestCount" value="5">
             </label>
-            <button type="submit" class="btn-trigger btn-failed">❌ Generate Failed Requests</button>
+            <button type="submit" class="btn-trigger btn-failed" data-i18n="sim.failed.trigger">❌ Generate Failed Requests</button>
           </form>
         </div>
 
         <!-- Crash Simulation -->
         <div class="control-section crash-section">
-          <h3>💥 Application Crash <span class="info-icon" title="Process terminates immediately. Azure App Service auto-restarts. Watch for Process ID change in Event Log.">⚠️</span></h3>
-          <p class="control-description">Terminates the Node.js process. Azure auto-restarts - observe the recovery and new Process ID in Event Log.</p>
+          <h3>💥 <span data-i18n="sim.crash.title">Application Crash</span> <span class="info-icon" data-i18n-title="sim.crash.tooltip" title="Process terminates immediately. Azure App Service auto-restarts. Watch for Process ID change in Event Log.">⚠️</span></h3>
+          <p class="control-description" data-i18n="sim.crash.desc">Terminates the Node.js process. Azure auto-restarts - observe the recovery and new Process ID in Event Log.</p>
           <form id="crash-form">
             <label>
-              Crash Type:
+              <span data-i18n="sim.crash.type">Crash Type:</span>
               <select name="crashType" class="crash-select">
-                <option value="failfast">FailFast (SIGABRT)</option>
-                <option value="stackoverflow">Stack Overflow</option>
-                <option value="exception" selected>Unhandled Exception</option>
-                <option value="oom">Out of Memory</option>
+                <option value="failfast" data-i18n="sim.crash.failfast">FailFast (SIGABRT)</option>
+                <option value="stackoverflow" data-i18n="sim.crash.stackOverflow">Stack Overflow</option>
+                <option value="exception" selected data-i18n="sim.crash.unhandledException">Unhandled Exception</option>
+                <option value="oom" data-i18n="sim.crash.outOfMemory">Out of Memory</option>
               </select>
             </label>
-            <button type="submit" class="btn-danger btn-crash">💥 Trigger Crash</button>
+            <button type="submit" class="btn-danger btn-crash" data-i18n="sim.crash.trigger">💥 Trigger Crash</button>
           </form>
-          <p class="crash-warning">⚠️ This will TERMINATE the app!</p>
+          <p class="crash-warning" data-i18n="sim.crash.warning">⚠️ This will TERMINATE the app!</p>
         </div>
       </div>
     </aside>
   </div>
 
   <footer>
-    <p>Performance Problem Simulator — Educational Tool for Azure App Service Diagnostics</p>
+    <p data-i18n="footer.tagline">Performance Problem Simulator — Educational Tool for Azure App Service Diagnostics</p>
     <p id="footer-credits"></p>
-    <p id="build-info">Build: Loading...</p>
+    <p id="build-info"><span data-i18n="footer.build">Build:</span> Loading...</p>
   </footer>
 
+  <script src="/js/i18n.js"></script>
   <script src="/js/socket-client.js"></script>
   <script src="/js/charts.js"></script>
   <script src="/js/dashboard.js"></script>

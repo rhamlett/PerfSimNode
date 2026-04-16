@@ -89,6 +89,8 @@ class SlowRequestServiceClass {
       simulationId: simulation.id,
       simulationType: 'SLOW_REQUEST',
       details: { delaySeconds, blockingPattern },
+      messageKey: 'log.slow.requestStarted',
+      messageParams: { num: 1, max: 1, duration: delaySeconds, pattern: patternDesc },
     });
 
     try {
@@ -112,6 +114,8 @@ class SlowRequestServiceClass {
       EventLogService.info('SIMULATION_COMPLETED', `Slow request completed (${patternDesc})`, {
         simulationId: simulation.id,
         simulationType: 'SLOW_REQUEST',
+        messageKey: 'log.slow.requestCompleted',
+        messageParams: { num: 1, max: 1, latency: delaySeconds.toFixed(1) },
       });
 
       return SimulationTrackerService.getSimulation(simulation.id) ?? simulation;
@@ -123,6 +127,8 @@ class SlowRequestServiceClass {
         {
           simulationId: simulation.id,
           simulationType: 'SLOW_REQUEST',
+          messageKey: 'log.slow.requestFailed',
+          messageParams: { num: 1, max: 1, error: (error as Error).message },
         }
       );
       throw error;

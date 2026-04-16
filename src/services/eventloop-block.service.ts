@@ -93,6 +93,8 @@ class EventLoopBlockServiceClass {
         simulationId: simulation.id,
         simulationType: 'EVENT_LOOP_BLOCKING',
         details: { durationSeconds, chunkMs },
+        messageKey: 'srv.thread.started',
+        messageParams: { duration: durationSeconds, chunk: chunkMs },
       }
     );
 
@@ -106,6 +108,7 @@ class EventLoopBlockServiceClass {
       EventLogService.info('SIMULATION_COMPLETED', 'Event loop blocking completed', {
         simulationId: simulation.id,
         simulationType: 'EVENT_LOOP_BLOCKING',
+        messageKey: 'srv.thread.completed',
       });
 
       // Return the updated simulation
@@ -118,6 +121,8 @@ class EventLoopBlockServiceClass {
         {
           simulationId: simulation.id,
           simulationType: 'EVENT_LOOP_BLOCKING',
+          messageKey: 'log.thread.failed',
+          messageParams: { error: (error as Error).message },
         }
       );
       throw error;

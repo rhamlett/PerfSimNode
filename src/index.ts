@@ -55,6 +55,9 @@
  * @module index
  */
 
+// Load .env file (if present) BEFORE anything reads process.env
+import 'dotenv/config';
+
 // Initialize Azure Monitor OpenTelemetry FIRST - before any other imports
 import './instrumentation';
 
@@ -69,6 +72,7 @@ import { MetricsService } from './services/metrics.service';
 import { EventLogService } from './services/event-log.service';
 import { LoadTestService } from './services/load-test.service';
 import { IdleTimeoutService } from './services/idle-timeout.service';
+import { runStartupTranslation } from './services/translation-startup.service';
 
 /**
  * Bootstrap and start the application server.
@@ -126,6 +130,8 @@ async function main(): Promise<void> {
       message: event.message,
       simulationId: event.simulationId,
       simulationType: event.simulationType,
+      messageKey: event.messageKey,
+      messageParams: event.messageParams,
     });
   });
 
@@ -214,6 +220,9 @@ async function main(): Promise<void> {
     io.emit('loadTestLatency', { latencyMs, timestamp: new Date().toISOString() });
   });
 
+  // Run startup translations BEFORE accepting requests
+  await runStartupTranslation();
+
   // Start server
   server.listen(port, () => {
     const cpuInfo = cpus();
@@ -223,6 +232,8 @@ async function main(): Promise<void> {
 
     EventLogService.info('SERVER_STARTED', `PerfSimNode server started on port ${port}`, {
       details: { port, metricsIntervalMs: config.metricsIntervalMs },
+      messageKey: 'srv.server.started',
+      messageParams: { port },
     });
 
     // -------------------------------------------------------------------

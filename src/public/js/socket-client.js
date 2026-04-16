@@ -64,7 +64,7 @@ function initSocket() {
     isConnected = true;
     reconnectAttempts = 0;
     intentionalDisconnect = false;
-    statusEl.textContent = 'Connected';
+    statusEl.textContent = typeof i18n === 'function' ? i18n('status.connected') : 'Connected';
     statusEl.className = 'status-connected';
     console.log('[Socket] Connected to server');
 
@@ -83,12 +83,12 @@ function initSocket() {
       return;
     }
 
-    statusEl.textContent = 'Disconnected';
+    statusEl.textContent = typeof i18n === 'function' ? i18n('status.disconnected') : 'Disconnected';
     statusEl.className = 'status-disconnected';
     
     // Log disconnection to event log
     if (typeof addEventToLog === 'function') {
-      addEventToLog({ level: 'warning', message: 'Connection lost. Attempting to reconnect...' });
+      addEventToLog({ level: 'warning', message: typeof i18n === 'function' ? i18n('log.connection.lost') : 'Connection lost. Attempting to reconnect...' });
     }
   });
 
@@ -96,7 +96,7 @@ function initSocket() {
   socket.io.on('reconnect_attempt', (attempt) => {
     if (intentionalDisconnect) return;
     reconnectAttempts = attempt;
-    statusEl.textContent = `Reconnecting (${attempt}/${maxReconnectAttempts})...`;
+    statusEl.textContent = typeof i18n === 'function' ? i18n('status.reconnecting') : `Reconnecting (${attempt}/${maxReconnectAttempts})...`;
     statusEl.className = 'status-reconnecting';
   });
 
@@ -104,13 +104,13 @@ function initSocket() {
     console.log('[Socket] Reconnected to server');
     // Log reconnection to event log
     if (typeof addEventToLog === 'function') {
-      addEventToLog({ level: 'success', message: 'Reconnected to server' });
+      addEventToLog({ level: 'success', message: typeof i18n === 'function' ? i18n('log.connection.reconnected') : 'Reconnected to server' });
     }
   });
 
   socket.io.on('reconnect_failed', () => {
     if (intentionalDisconnect) return;
-    statusEl.textContent = 'Connection Failed';
+    statusEl.textContent = typeof i18n === 'function' ? i18n('status.connectionFailed') : 'Connection Failed';
     statusEl.className = 'status-disconnected';
     console.error('[Socket] Failed to reconnect after', maxReconnectAttempts, 'attempts');
   });
